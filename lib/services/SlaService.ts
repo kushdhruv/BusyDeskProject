@@ -157,23 +157,20 @@ export class SlaService {
   }
 
   static async getActiveAlerts(user: SessionUser) {
-    const whereClause: Prisma.SlaAlertWhereInput = {
-      status: SlaAlertStatus.ACTIVE,
-      ticket: {
-        archivedAt: null,
-        status: { in: [Status.NEW, Status.OPEN] },
-      },
+    const ticketWhere: Prisma.TicketWhereInput = {
+      archivedAt: null,
+      status: { in: [Status.NEW, Status.OPEN] },
     };
 
     if (user.role !== Role.SUPERVISOR) {
-      whereClause.ticket = {
-        ...whereClause.ticket,
-        primaryAssigneeId: user.id,
-      };
+      ticketWhere.primaryAssigneeId = user.id;
     }
 
     const alerts = await prisma.slaAlert.findMany({
-      where: whereClause,
+      where: {
+        status: SlaAlertStatus.ACTIVE,
+        ticket: ticketWhere,
+      },
       include: {
         ticket: {
           select: {

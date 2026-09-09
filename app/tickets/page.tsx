@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Role, Priority, Category, Status } from "@prisma/client";
 import { SessionUser, BulkActionResponse } from "@/lib/types";
@@ -46,7 +46,7 @@ interface TicketItem {
   _count: { replies: number };
 }
 
-export default function TicketsQueuePage() {
+function TicketsQueueContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -699,3 +699,12 @@ export default function TicketsQueuePage() {
     </div>
   );
 }
+
+export default function TicketsQueuePage() {
+  return (
+    <Suspense fallback={<div className="text-center py-20 text-slate-400">Loading queue...</div>}>
+      <TicketsQueueContent />
+    </Suspense>
+  );
+}
+
