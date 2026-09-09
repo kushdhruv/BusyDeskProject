@@ -1,0 +1,193 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPERVISOR
+  AGENT
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum Category {
+  BUG
+  BILLING
+  FEATURE
+  QUESTION
+}
+
+enum Status {
+  NEW
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum AuthorType {
+  AGENT
+  CUSTOMER
+  SYSTEM
+}
+
+enum AuditEventType {
+  TICKET_CREATED
+  STATUS_CHANGED
+  REASSIGNED
+  COLLABORATOR_ADDED
+  COLLABORATOR_REMOVED
+  REPLY_ADDED
+  TICKET_EDITED
+  TICKET_ARCHIVED
+  TICKET_RESTORED
+  SLA_ALERT_ACKNOWLEDGED
+}
+
+enum SlaAlertType {
+  DUE_SOON
+  BREACHED
+}
+
+enum SlaAlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(AGENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdTickets      Ticket[]             @relation("TicketCreator")
+  assignedTickets     Ticket[]             @relation("TicketAssignee")
+  collaborations      TicketCollaborator[] @relation("UserCollaborations")
+  addedCollaborations TicketCollaborator[] @relation("AddedByCollaborations")
+  replies             Reply[]              @relation("UserReplies")
+  auditLogs           AuditLog[]           @relation("UserAuditLogs")
+  acknowledgedAlerts  SlaAlert[]           @relation("UserAlertAcks")
+
+  @@map("users")
+}
+
+model Ticket {
+  id                         String    @id @default(cuid())
+  ticketNumber               Int       @unique @default(autoincrement())
+  subject                    String
+  description                String
+  requesterName              String
+  requesterEmail             String
+  priority                   Priority  @default(MEDIUM)
+  category                   Category  @default(QUESTION)
+  status                     Status    @default(NEW)
+  createdById                String
+  primaryAssigneeId          String?
+  
+  slaTargetMinutes           Int
+  slaDueAt                   DateTime?
+  slaPausedAt                DateTime?
+  slaPausedRemainingSeconds  Int?
+  slaCycle                   Int       @default(1)
+  
+  resolvedAt                 DateTime?
+  closedAt                   DateTime?
+  archivedAt                 DateTime?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  createdBy       User                 @relation("TicketCreator", fields: [createdById], references: [id])
+  primaryAssignee User?                @relation("TicketAssignee", fields: [primaryAssigneeId], references: [id], onDelete: SetNull)
+  collaborators   TicketCollaborator[]
+  replies         Reply[]
+  auditLogs       AuditLog[]
+  slaAlerts       SlaAlert[]
+
+  @@index([primaryAssigneeId, status, archivedAt])
+  @@index([status, archivedAt, slaDueAt])
+  @@index([archivedAt, createdAt(sort: Desc)])
+  @@index([ticketNumber])
+  @@map("tickets")
+}
+
+model TicketCollaborator {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String
+  addedById String
+  createdAt DateTime @default(now())
+
+  ticket  Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user    User   @relation("UserCollaborations", fields: [userId], references: [id], onDelete: Cascade)
+  addedBy User   @relation("AddedByCollaborations", fields: [addedById], references: [id])
+
+  @@unique([ticketId, userId])
+  @@index([userId, ticketId])
+  @@map("ticket_collaborators")
+}
+
+model Reply {
+  id         String     @id @default(cuid())
+  ticketId   String
+  authorId   String?
+  authorType AuthorType @default(AGENT)
+  authorName String
+  authorEmail String
+  body       String
+  isInternal Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User?  @relation("UserReplies", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt(sort: Asc)])
+  @@map("replies")
+}
+
+model AuditLog {
+  id        String         @id @default(cuid())
+  ticketId  String
+  actorId   String?
+  actorName String
+  eventType AuditEventType
+  oldValue  Json?
+  newValue  Json?
+  metadata  Json?
+  createdAt DateTime       @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor  User?  @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt(sort: Asc)])
+  @@map("audit_logs")
+}
+
+model SlaAlert {
+  id               String         @id @default(cuid())
+  ticketId         String
+  type             SlaAlertType
+  status           SlaAlertStatus @default(ACTIVE)
+  breachCycle      Int            @default(1)
+  acknowledgedById String?
+  acknowledgedAt   DateTime?
+  createdAt        DateTime       @default(now())
+
+  ticket         Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  acknowledgedBy User?  @relation("UserAlertAcks", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, status])
+  @@map("sla_alerts")
+}

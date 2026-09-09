@@ -25,57 +25,57 @@ move, what a bulk action must report back, when a dismissed alert is allowed to 
 specifics are the actual ask, not just the bold headline in front of them.
 
 1. **Accounts and roles.** People sign in with an email and password, and there are at least two
-roles — a supervisor role and an agent role. Supervisors can reassign any ticket to any agent, close
-tickets, and see the entire queue. Agents can only act on tickets where they are the primary
-assignee or a collaborator, and cannot reassign a ticket away from themselves. The difference must
-be enforced on the server, not just hidden in the interface.
+   roles — a supervisor role and an agent role. Supervisors can reassign any ticket to any agent, close
+   tickets, and see the entire queue. Agents can only act on tickets where they are the primary
+   assignee or a collaborator, and cannot reassign a ticket away from themselves. The difference must
+   be enforced on the server, not just hidden in the interface.
 
 2. **Tickets.** Agents and supervisors create tickets with a subject, a description, a requester, a
-priority and a category, and can edit them later. Tickets can be archived and restored. Archiving
-removes a ticket from every default queue view without destroying its history.
+   priority and a category, and can edit them later. Tickets can be archived and restored. Archiving
+   removes a ticket from every default queue view without destroying its history.
 
 3. **Replies inside tickets.** Every reply belongs to exactly one ticket and carries a message body,
-an author, a timestamp, and a flag marking it as an internal note or a customer-visible reply.
-Replies can be added to a ticket at any time. Opening a ticket shows all of its replies in order.
+   an author, a timestamp, and a flag marking it as an internal note or a customer-visible reply.
+   Replies can be added to a ticket at any time. Opening a ticket shows all of its replies in order.
 
-4. **Ticket lifecycle.** A ticket moves through *New → Open → Pending → Resolved → Closed*,
-with its response clock measured against a target response time set by its priority. Pending
-specifically means the ticket is waiting on a reply from the customer, and the clock pauses for as
-long as a ticket sits in Pending rather than continuing to run against the agent; a customer reply
-returns the ticket to Open and resumes the clock. A Closed ticket can only be reopened within a
-fixed window afterward — once that window passes, it stays closed. Any other move must be rejected
-by the server with a message explaining why.
+4. **Ticket lifecycle.** A ticket moves through _New → Open → Pending → Resolved → Closed_,
+   with its response clock measured against a target response time set by its priority. Pending
+   specifically means the ticket is waiting on a reply from the customer, and the clock pauses for as
+   long as a ticket sits in Pending rather than continuing to run against the agent; a customer reply
+   returns the ticket to Open and resumes the clock. A Closed ticket can only be reopened within a
+   fixed window afterward — once that window passes, it stays closed. Any other move must be rejected
+   by the server with a message explaining why.
 
 5. **Collaborators.** A ticket has one primary assignee, but any number of other agents can be added
-to it as collaborators who can also reply and update it, and a single agent can collaborate on any
-number of tickets. Every agent can see one list of every ticket where they are the primary assignee
-or a collaborator.
+   to it as collaborators who can also reply and update it, and a single agent can collaborate on any
+   number of tickets. Every agent can see one list of every ticket where they are the primary assignee
+   or a collaborator.
 
 6. **Finding tickets.** One list shows the queue with a text search over subject and description,
-filters for status, priority, category and assignee, sorting by created date, priority or last
-update, and pagination showing the total number of matches. All of this must happen on the server —
-do not load every ticket into the browser and filter there.
+   filters for status, priority, category and assignee, sorting by created date, priority or last
+   update, and pagination showing the total number of matches. All of this must happen on the server —
+   do not load every ticket into the browser and filter there.
 
 7. **Acting on many tickets at once.** Select several tickets from the queue and bulk-reassign them
-to a different agent, or bulk-close them, in one action. Because some tickets in the selection may
-not be eligible for the move, the result must report per ticket what succeeded and what was refused
-and why, not just fail the whole batch. Separately, export the currently filtered queue as a CSV
-file.
+   to a different agent, or bulk-close them, in one action. Because some tickets in the selection may
+   not be eligible for the move, the result must report per ticket what succeeded and what was refused
+   and why, not just fail the whole batch. Separately, export the currently filtered queue as a CSV
+   file.
 
 8. **A dashboard.** A landing view shows headline numbers — open tickets, tickets pending on the
-customer, resolved this week, breaching their response time. It also breaks tickets down by status
-and by agent, and charts tickets resolved per week over the last eight weeks.
+   customer, resolved this week, breaching their response time. It also breaks tickets down by status
+   and by agent, and charts tickets resolved per week over the last eight weeks.
 
 9. **History you cannot rewrite.** Every ticket has a timeline showing every status change with the
-old and new status and who made it, every reassignment, and every reply, internal or
-customer-visible. Nothing in this timeline can be edited or deleted after the fact, including by
-supervisors.
+   old and new status and who made it, every reassignment, and every reply, internal or
+   customer-visible. Nothing in this timeline can be edited or deleted after the fact, including by
+   supervisors.
 
 10. **SLA alerts.** Any ticket whose response clock has passed its target response time, or is
-within a short window of doing so, appears in an alerts area, with a count badge visible in the
-navigation. An agent can acknowledge an alert for a ticket assigned to them, clearing it from the
-list. If the ticket is later reopened and breaches its target response time again, the alert
-returns.
+    within a short window of doing so, appears in an alerts area, with a count badge visible in the
+    navigation. An agent can acknowledge an alert for a ticket assigned to them, clearing it from the
+    list. If the ticket is later reopened and breaches its target response time again, the alert
+    returns.
 
 ## Stretch ideas (optional)
 
@@ -91,7 +91,6 @@ left over, pick whichever of these sounds most useful and build it:
 - Merging duplicate tickets.
 - SLA policies that vary by priority.
 - An email digest of the daily queue.
-
 
 ---
 
@@ -136,13 +135,13 @@ A repository whose entire history is a single "initial commit" containing a fini
 
 Alongside your code, commit these five files under `docs/`. Your zip includes a stub for each with the questions it needs to answer — fill them in as you go, not from memory at the end.
 
-| File | What it must answer |
-|------|----------------------|
-| `docs/architecture.md` | What the moving pieces are, how they talk to each other, where each one runs, the request path for one representative user action end to end, and what you decided not to build. |
-| `docs/schema.md` | Every table's columns and types, which relationships are one-to-many versus many-to-many, which constraints live in the database versus the application, what you deliberately denormalised, and what would break first at 100x the data. |
-| `docs/plan.md` | How you split the work into sessions, what order you built in and why, what you estimated versus what it actually took, and what you cut when you ran short. |
-| `docs/decisions.md` | At least five real decisions — what you chose, what you rejected, and why — including at least one you later reversed. |
-| `docs/ai-prompts.md` | The prompts you actually used, in order, grouped by what you were trying to do, including at least one that produced something wrong and what you did about it. |
+| File                   | What it must answer                                                                                                                                                                                                                       |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/architecture.md` | What the moving pieces are, how they talk to each other, where each one runs, the request path for one representative user action end to end, and what you decided not to build.                                                          |
+| `docs/schema.md`       | Every table's columns and types, which relationships are one-to-many versus many-to-many, which constraints live in the database versus the application, what you deliberately denormalised, and what would break first at 100x the data. |
+| `docs/plan.md`         | How you split the work into sessions, what order you built in and why, what you estimated versus what it actually took, and what you cut when you ran short.                                                                              |
+| `docs/decisions.md`    | At least five real decisions — what you chose, what you rejected, and why — including at least one you later reversed.                                                                                                                    |
+| `docs/ai-prompts.md`   | The prompts you actually used, in order, grouped by what you were trying to do, including at least one that produced something wrong and what you did about it.                                                                           |
 
 ## Host it for free
 
