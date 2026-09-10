@@ -103,21 +103,21 @@ export function TopBar({ user }: { user: SessionUser | null }) {
 
       {/* Action Center & Evaluator Switcher */}
       <div className="flex items-center gap-3">
-        {/* Fast Switcher for Evaluators */}
+        {/* Fast Switcher for Demo Personas */}
         <div className="relative">
           <button
             onClick={() => setShowSwitchMenu(!showSwitchMenu)}
             className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 rounded-lg transition border border-slate-200/80"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Switch Demo Role</span>
+            <span>Switch Account</span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
 
           {showSwitchMenu && (
             <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 animate-fade-in">
               <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
-                Quick Evaluator Switch
+                Switch Active User
               </div>
 
               <button

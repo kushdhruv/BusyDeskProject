@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Inbox, ShieldCheck, Headphones, Key, ArrowRight, Sparkles, Lock, Mail } from "lucide-react";
+import { Inbox, ShieldCheck, Headphones, Key, ArrowRight, Sparkles, Lock, Mail, Eye, EyeOff } from "lucide-react";
 
 const DEMO_USERS = [
   {
@@ -51,6 +51,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState<string>("supervisor@busy.com");
   const [password, setPassword] = useState<string>("password123");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,7 +96,7 @@ export default function LoginPage() {
         </div>
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Sign in to SupportDesk</h1>
         <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
-          Enterprise ticketing platform with strict server-side policy enforcement, deadline-based SLA lifecycle, and team collaboration.
+          Streamlined support ticketing, SLA tracking, and team collaboration.
         </p>
       </div>
 
@@ -133,14 +134,28 @@ export default function LoginPage() {
                 <Key className="w-3.5 h-3.5 text-slate-400" />
                 <span>Password</span>
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="w-full text-sm border border-slate-200 bg-slate-50/50 rounded-xl p-3 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="w-full text-sm border border-slate-200 bg-slate-50/50 rounded-xl p-3 pr-10 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md transition focus:outline-none cursor-pointer"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4 text-slate-500" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-slate-400" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -158,27 +173,22 @@ export default function LoginPage() {
               <ArrowRight className="w-4 h-4 text-indigo-400" />
             </button>
           </form>
-
-          <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Production-Minded Monolith</span>
-            <span>Next.js 14 App Router</span>
-          </div>
         </div>
 
-        {/* Right: Evaluator Demo Accounts */}
+        {/* Right: Demo Accounts */}
         <div className="lg:col-span-7">
           <div className="bg-slate-50/80 p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-900">
                 <Sparkles className="w-4 h-4 text-indigo-600" />
-                <span>Quick Evaluator Personas</span>
+                <span>Demo Accounts</span>
               </div>
               <span className="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
                 1-Click Autofill
               </span>
             </div>
             <p className="text-xs text-slate-600 mb-4">
-              Select any role below to test permission gates: Supervisors can close/reassign/bulk-manage; Agents are constrained to their tickets.
+              Select any profile below to automatically load credentials and test role permissions.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

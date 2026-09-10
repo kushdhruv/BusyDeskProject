@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "SupportDesk — Support Ticketing Platform",
-  description: "Production-minded support ticketing modular monolith with lifecycle state machine and SLA engine",
+  description: "Modern enterprise support ticketing platform with SLA tracking and team collaboration",
 };
 
 export default async function RootLayout({
