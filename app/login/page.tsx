@@ -178,14 +178,9 @@ export default function LoginPage() {
         {/* Right: Demo Accounts */}
         <div className="lg:col-span-7">
           <div className="bg-slate-50/80 p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-900">
-                <Sparkles className="w-4 h-4 text-indigo-600" />
-                <span>Demo Accounts</span>
-              </div>
-              <span className="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                1-Click Autofill
-              </span>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-900 mb-3">
+              <Sparkles className="w-4 h-4 text-indigo-600" />
+              <span>Demo Accounts</span>
             </div>
             <p className="text-xs text-slate-600 mb-4">
               Select any profile below to automatically load credentials and test role permissions.

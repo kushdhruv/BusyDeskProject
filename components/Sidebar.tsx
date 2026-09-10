@@ -83,11 +83,8 @@ export function Sidebar({
           <Inbox className="w-4 h-4" />
         </div>
         <div className="flex flex-col">
-          <span className="font-bold text-base text-white tracking-tight flex items-center gap-1.5">
+          <span className="font-bold text-base text-white tracking-tight">
             SupportDesk
-            <span className="text-[10px] uppercase font-semibold tracking-wider bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
-              v1.0
-            </span>
           </span>
           <span className="text-[11px] text-slate-400 font-medium">
             {isSupervisor ? "Supervisor Workspace" : "Agent Workspace"}
