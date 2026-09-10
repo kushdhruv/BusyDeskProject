@@ -1,7 +1,3 @@
-import { NextResponse } from "next/server";
-import { clearSessionCookie } from "@/middlewares/auth.middleware";
+import { logoutRoute } from "@/routes/auth.routes";
 
-export async function POST() {
-  await clearSessionCookie();
-  return NextResponse.json({ success: true });
-}
+export const POST = logoutRoute;

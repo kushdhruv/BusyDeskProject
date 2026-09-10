@@ -5,23 +5,24 @@
 - **GitHub repository:** https://github.com/kushdhruv/BusyDeskProject.git
 - **Live application:** https://busydesk.vercel.app
 
-## Notes for the reviewer
+## Notes for the Reviewer
 
-- The database is seeded with realistic demonstration data: 1 Supervisor, 3 Support Agents, 2 Customer accounts, and 35+ tickets across every lifecycle state, SLA breach scenarios, and 8 weeks of historical resolution cohorts.
+- The database is seeded with rich, realistic demonstration data: 1 Supervisor, 3 Support Agents, 2 Customer accounts, and 35+ tickets across every lifecycle state, SLA breach scenarios, and 8 weeks of historical resolution cohorts.
 - **Three-Role Architecture**:
   - **Supervisor & Agents**: Access the full ticket workspace, SLA alerts, internal notes, audit timeline, bulk operations, and supervisor analytics.
   - **Customer Portal**: Dedicated self-service portal for customers (`/dashboard` and `/register`) with query-level data isolation, public message timeline, and post-resolution CSAT surveys.
 - **Customer Self-Registration & Security**:
-  - Public registration at `/register` strictly creates `CUSTOMER` accounts only (role parameter from clients is discarded).
+  - Public registration at `/register` strictly creates `CUSTOMER` accounts only (any role parameter sent from clients is discarded).
   - Query-level filtering ensures customers only see their own tickets (`requesterId === user.id`) and only public replies (`isInternal: false`). Audit logs and SLA internals are completely omitted.
 - **SLA Resumption on Customer Reply**:
-  - When a ticket is in `PENDING` status, a customer reply automatically transitions the ticket to `OPEN` and resumes the SLA response countdown.
+  - When a ticket is in `PENDING` status, a customer reply automatically transitions the ticket to `OPEN` and resumes the SLA response countdown with mathematical precision.
 - **Post-Resolution CSAT Ratings**:
   - Customers can rate resolved/closed tickets with a 1–5 star rating and feedback comment. Submissions are atomic (CSAT record + `CSAT_SUBMITTED` audit event in 1 transaction) and immutable.
-  - Supervisors can view aggregated CSAT scores and rating distributions on the Supervisor Dashboard (refreshed on navigation/load).
-- When evaluating Goal 4 (Closed Ticket Reopening): Ticket `#4` was closed recently (can be reopened by Supervisor), while Ticket `#5` was closed 15 days ago (reopening is rejected by the server with an explanatory 7-day expiration message).
+  - Supervisors can view aggregated CSAT scores and rating distributions on the Supervisor Dashboard.
+- **Closed Ticket Reopening Rule**:
+  - Ticket `#4` was closed recently (can be reopened by Supervisor), while Ticket `#5` was closed 15 days ago (reopening is rejected by the server with an explanatory 7-day expiration message).
 
-## Demo credentials
+## Demo Credentials
 
 | Role | Email | Password | Details |
 |------|-------|----------|---------|
@@ -38,16 +39,16 @@
 
 | Layer | What you used | Why |
 |-------|---------------|-----|
-| **Frontend** (`frontend/`) | Pure Client React 18, Next.js App Router, Tailwind CSS, Lucide Icons | Self-contained UI layer with separate `package.json` and `node_modules`. Features dedicated Customer Help Center portal, live SLA countdowns, responsive queue workspace, and dynamic supervisor analytics. |
-| **Backend** (`backend/`) | Pure REST API & Domain Service Layer, Next.js API Routes, TypeScript, Modular Domain Services (`/lib/services/`), Central Policies (`/lib/policies/`) | Decoupled domain service layer with separate `package.json`, `node_modules`, and CORS middleware. Strictly enforces server-side authorization, query-level data masking, and state transitions. |
+| **Frontend** (`frontend/`) | React 18, Next.js 14 App Router, Tailwind CSS, Lucide Icons | Self-contained UI layer with separate `package.json` and `node_modules`. Features dedicated Customer Help Center portal, live SLA countdowns, responsive queue workspace, and dynamic supervisor analytics. |
+| **Backend** (`backend/`) | Dedicated Route Layer (`routes/`), Modular Controllers (`controllers/`), Central Policies (`models/policies/`), Next.js REST API Routes, TypeScript | Decoupled domain service layer with separate `package.json`, `node_modules`, and CORS middleware. Strictly enforces server-side authorization, query-level data masking, and state transitions. |
 | **Database** | PostgreSQL (Docker locally / Supabase in production), Prisma ORM | Strongly relational data model housed inside `backend/prisma/` with composite indexes, foreign key integrity (`onDelete: Restrict` for CSAT preservation), and atomic transactions. |
 | **Hosting** | Vercel (Decoupled Frontend & Backend API Services), Supabase (PostgreSQL) | Independent microservice deployment with zero cross-service code leaking and managed PostgreSQL. |
 
-## Goal checklist
+## Goal Checklist
 
 | # | Goal | Status | Notes |
 |---|------|--------|-------|
-| 1 | Accounts and roles | **Done** | Supervisor, Agent, and Customer roles enforced strictly on the server via `/lib/policies/` and Prisma query-level filters. Customers cannot see internal data, other customers' tickets, or staff controls. |
+| 1 | Accounts and roles | **Done** | Supervisor, Agent, and Customer roles enforced strictly on the server via `models/policies/` and Prisma query-level filters. Customers cannot see internal data, other customers' tickets, or staff controls. |
 | 2 | Tickets | **Done** | Created with subject, description, required `requesterId`, priority/urgency, category; editable; archive and restore functionality hides tickets from default queues without destroying history. |
 | 3 | Replies inside tickets | **Done** | Normalized `Reply` table with author, body, timestamp, and `isInternal` flag distinguishing internal notes from public customer replies. Customers only receive public replies. |
 | 4 | Ticket lifecycle | **Done** | `New -> Open -> Pending -> Resolved -> Closed`. Entering Pending pauses the SLA clock; customer replies return ticket to Open and resume the clock. Closed tickets can only be reopened within a 7-day window. |
@@ -61,7 +62,8 @@
 
 ## Automated Test Suite
 
-- **18 Test Suites / 135 Unit, Integration, Security & Fuzz Tests** passing with 100% green status (`npm test` in `backend/`):
+- **19 Test Suites / 137 Unit, Integration, Security & Fuzz Tests** passing with 100% green status (`npm test` in `backend/`):
+  - `tests/unit/routes.test.ts`: 2 tests verifying the central `API_ROUTE_REGISTRY` catalog and authentication requirement flags.
   - `tests/security/customer-security.test.ts`: 16 comprehensive tests covering registration role enforcement, Customer A vs B isolation, query-level data masking, unauthorized action rejection, conditional SLA resumption, atomic CSAT logging, and supervisor CSAT metrics.
   - `tests/unit/policies.test.ts`: Complete 3-role policy validation matrix across `TicketPolicy`, `ReplyPolicy`, `CollaboratorPolicy`, `AlertPolicy`, and `canRateCsat`.
   - `tests/business-rules.test.ts`: 11 core SLA and lifecycle state machine invariant tests.

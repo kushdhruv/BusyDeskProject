@@ -1,10 +1,3 @@
-import { NextResponse } from "next/server";
-import { getSessionUser } from "@/middlewares/auth.middleware";
+import { meRoute } from "@/routes/auth.routes";
 
-export async function GET() {
-  const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ user: null }, { status: 401 });
-  }
-  return NextResponse.json({ user });
-}
+export const GET = meRoute;
