@@ -5,14 +5,19 @@ import { REOPEN_WINDOW_MS } from "../constants";
 export interface TicketAccessContext {
   id: string;
   status: Status;
-  primaryAssigneeId: string | null;
+  requesterId?: string | null;
+  primaryAssigneeId?: string | null;
   closedAt?: Date | null;
   archivedAt?: Date | null;
   collaborators?: { userId: string }[];
+  satisfaction?: { id: string } | null;
 }
 
 export class TicketPolicy {
   static canView(user: SessionUser, ticket: TicketAccessContext): boolean {
+    if (user.role === Role.CUSTOMER) {
+      return ticket.requesterId === user.id;
+    }
     if (user.role === Role.SUPERVISOR) {
       return true;
     }
@@ -27,6 +32,9 @@ export class TicketPolicy {
   }
 
   static canEdit(user: SessionUser, ticket: TicketAccessContext): boolean {
+    if (user.role === Role.CUSTOMER) {
+      return false;
+    }
     if (user.role === Role.SUPERVISOR) {
       return true;
     }
@@ -35,7 +43,7 @@ export class TicketPolicy {
   }
 
   static canReassign(user: SessionUser): boolean {
-    // Only Supervisors can reassign primary assignee. Agents cannot reassign away from themselves.
+    // Only Supervisors can reassign primary assignee.
     return user.role === Role.SUPERVISOR;
   }
 
@@ -63,13 +71,29 @@ export class TicketPolicy {
   }
 
   static canArchive(user: SessionUser, ticket: TicketAccessContext): boolean {
+    if (user.role === Role.CUSTOMER) {
+      return false;
+    }
     if (user.role === Role.SUPERVISOR) {
       return true;
     }
     return ticket.primaryAssigneeId === user.id;
   }
 
+  static canRateCsat(user: SessionUser, ticket: TicketAccessContext): boolean {
+    if (user.role !== Role.CUSTOMER) {
+      return false;
+    }
+    if (ticket.requesterId !== user.id) {
+      return false;
+    }
+    const isResolvedOrClosed = ticket.status === Status.RESOLVED || ticket.status === Status.CLOSED;
+    return isResolvedOrClosed && !ticket.satisfaction;
+  }
+
   static computePermissions(user: SessionUser, ticket: TicketAccessContext): TicketPermissions {
+    const isCustomer = user.role === Role.CUSTOMER;
+
     return {
       canView: this.canView(user, ticket),
       canEdit: this.canEdit(user, ticket),
@@ -78,9 +102,10 @@ export class TicketPolicy {
       canReopen: this.canReopen(user, ticket),
       canArchive: this.canArchive(user, ticket),
       canReply: this.canView(user, ticket),
-      canAddInternalNote: this.canView(user, ticket),
-      canManageCollaborators: user.role === Role.SUPERVISOR || ticket.primaryAssigneeId === user.id,
-      canAcknowledgeAlert: user.role === Role.SUPERVISOR || ticket.primaryAssigneeId === user.id,
+      canAddInternalNote: !isCustomer && this.canView(user, ticket),
+      canManageCollaborators: !isCustomer && (user.role === Role.SUPERVISOR || ticket.primaryAssigneeId === user.id),
+      canAcknowledgeAlert: !isCustomer && (user.role === Role.SUPERVISOR || ticket.primaryAssigneeId === user.id),
+      canRateCsat: this.canRateCsat(user, ticket),
     };
   }
 }

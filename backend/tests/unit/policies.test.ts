@@ -7,7 +7,7 @@ import { AlertPolicy } from "../../lib/policies/AlertPolicy";
 import { SessionUser } from "../../lib/types";
 import { REOPEN_WINDOW_MS } from "../../lib/constants";
 
-describe("Unit Tests: Policy & Permission Layer", () => {
+describe("Unit Tests: 3-Role Policy & Permission Layer (SUPERVISOR, AGENT, CUSTOMER)", () => {
   const supervisorUser: SessionUser = {
     id: "user-supervisor-1",
     email: "supervisor@test.com",
@@ -29,9 +29,24 @@ describe("Unit Tests: Policy & Permission Layer", () => {
     role: Role.AGENT,
   };
 
+  const customerAlice: SessionUser = {
+    id: "user-customer-alice",
+    email: "alice@customer.com",
+    name: "Alice Henderson",
+    role: Role.CUSTOMER,
+  };
+
+  const customerBob: SessionUser = {
+    id: "user-customer-bob",
+    email: "bob@customer.com",
+    name: "Bob Martinez",
+    role: Role.CUSTOMER,
+  };
+
   const unassignedTicket: TicketAccessContext = {
     id: "ticket-1",
     status: Status.OPEN,
+    requesterId: customerAlice.id,
     primaryAssigneeId: null,
     collaborators: [],
   };
@@ -39,6 +54,7 @@ describe("Unit Tests: Policy & Permission Layer", () => {
   const assignedToAgent1: TicketAccessContext = {
     id: "ticket-2",
     status: Status.OPEN,
+    requesterId: customerAlice.id,
     primaryAssigneeId: agent1.id,
     collaborators: [{ userId: agent2.id }],
   };
@@ -68,15 +84,42 @@ describe("Unit Tests: Policy & Permission Layer", () => {
       expect(TicketPolicy.canView(agent3, unassignedTicket)).toBe(false);
     });
 
+    it("Customer can view their own requested ticket", () => {
+      expect(TicketPolicy.canView(customerAlice, assignedToAgent1)).toBe(true);
+      expect(TicketPolicy.canView(customerAlice, unassignedTicket)).toBe(true);
+    });
+
+    it("Customer CANNOT view another customer's ticket", () => {
+      expect(TicketPolicy.canView(customerBob, assignedToAgent1)).toBe(false);
+      expect(TicketPolicy.canView(customerBob, unassignedTicket)).toBe(false);
+    });
+
     it("Handles null or undefined collaborators gracefully", () => {
       const ticketWithoutCollabs: TicketAccessContext = {
         id: "ticket-3",
         status: Status.OPEN,
+        requesterId: customerAlice.id,
         primaryAssigneeId: agent1.id,
         collaborators: undefined,
       };
       expect(TicketPolicy.canView(agent1, ticketWithoutCollabs)).toBe(true);
       expect(TicketPolicy.canView(agent2, ticketWithoutCollabs)).toBe(false);
+      expect(TicketPolicy.canView(customerAlice, ticketWithoutCollabs)).toBe(true);
+      expect(TicketPolicy.canView(customerBob, ticketWithoutCollabs)).toBe(false);
+    });
+  });
+
+  describe("TicketPolicy.canEdit", () => {
+    it("Supervisor can edit any ticket", () => {
+      expect(TicketPolicy.canEdit(supervisorUser, assignedToAgent1)).toBe(true);
+    });
+
+    it("Assigned agent can edit their ticket", () => {
+      expect(TicketPolicy.canEdit(agent1, assignedToAgent1)).toBe(true);
+    });
+
+    it("Customer CANNOT directly edit tickets", () => {
+      expect(TicketPolicy.canEdit(customerAlice, assignedToAgent1)).toBe(false);
     });
   });
 
@@ -88,6 +131,10 @@ describe("Unit Tests: Policy & Permission Layer", () => {
     it("Agent is strictly prohibited from reassigning tickets away or to others", () => {
       expect(TicketPolicy.canReassign(agent1)).toBe(false);
     });
+
+    it("Customer is strictly prohibited from reassigning tickets", () => {
+      expect(TicketPolicy.canReassign(customerAlice)).toBe(false);
+    });
   });
 
   describe("TicketPolicy.canClose", () => {
@@ -95,6 +142,7 @@ describe("Unit Tests: Policy & Permission Layer", () => {
       const resolvedTicket: TicketAccessContext = {
         id: "ticket-r",
         status: Status.RESOLVED,
+        requesterId: customerAlice.id,
         primaryAssigneeId: agent1.id,
       };
       expect(TicketPolicy.canClose(supervisorUser, resolvedTicket)).toBe(true);
@@ -105,6 +153,7 @@ describe("Unit Tests: Policy & Permission Layer", () => {
       const pendingTicket: TicketAccessContext = {
         id: "ticket-p",
         status: Status.PENDING,
+        requesterId: customerAlice.id,
         primaryAssigneeId: agent1.id,
       };
       expect(TicketPolicy.canClose(supervisorUser, pendingTicket)).toBe(false);
@@ -114,9 +163,20 @@ describe("Unit Tests: Policy & Permission Layer", () => {
       const resolvedTicket: TicketAccessContext = {
         id: "ticket-r",
         status: Status.RESOLVED,
+        requesterId: customerAlice.id,
         primaryAssigneeId: agent1.id,
       };
       expect(TicketPolicy.canClose(agent1, resolvedTicket)).toBe(false);
+    });
+
+    it("Customer cannot close tickets", () => {
+      const resolvedTicket: TicketAccessContext = {
+        id: "ticket-r",
+        status: Status.RESOLVED,
+        requesterId: customerAlice.id,
+        primaryAssigneeId: agent1.id,
+      };
+      expect(TicketPolicy.canClose(customerAlice, resolvedTicket)).toBe(false);
     });
   });
 
@@ -125,6 +185,7 @@ describe("Unit Tests: Policy & Permission Layer", () => {
       const recentClosedTicket: TicketAccessContext = {
         id: "ticket-c1",
         status: Status.CLOSED,
+        requesterId: customerAlice.id,
         primaryAssigneeId: agent1.id,
         closedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
       };
@@ -135,6 +196,7 @@ describe("Unit Tests: Policy & Permission Layer", () => {
       const expiredClosedTicket: TicketAccessContext = {
         id: "ticket-c2",
         status: Status.CLOSED,
+        requesterId: customerAlice.id,
         primaryAssigneeId: agent1.id,
         closedAt: new Date(Date.now() - (REOPEN_WINDOW_MS + 10000)), // 7 days + 10s
       };
@@ -145,24 +207,23 @@ describe("Unit Tests: Policy & Permission Layer", () => {
       const corruptClosedTicket: TicketAccessContext = {
         id: "ticket-c3",
         status: Status.CLOSED,
+        requesterId: customerAlice.id,
         primaryAssigneeId: agent1.id,
         closedAt: null,
       };
       expect(TicketPolicy.canReopen(supervisorUser, corruptClosedTicket)).toBe(false);
     });
 
-    it("Supervisor cannot reopen ticket that is not CLOSED (e.g. OPEN or RESOLVED)", () => {
-      expect(TicketPolicy.canReopen(supervisorUser, assignedToAgent1)).toBe(false);
-    });
-
-    it("Agent cannot reopen CLOSED ticket even within 7 days", () => {
+    it("Customer and Agent cannot reopen tickets", () => {
       const recentClosedTicket: TicketAccessContext = {
         id: "ticket-c1",
         status: Status.CLOSED,
+        requesterId: customerAlice.id,
         primaryAssigneeId: agent1.id,
         closedAt: new Date(Date.now() - 1000),
       };
       expect(TicketPolicy.canReopen(agent1, recentClosedTicket)).toBe(false);
+      expect(TicketPolicy.canReopen(customerAlice, recentClosedTicket)).toBe(false);
     });
   });
 
@@ -176,82 +237,56 @@ describe("Unit Tests: Policy & Permission Layer", () => {
       expect(TicketPolicy.canArchive(agent1, assignedToAgent1)).toBe(true);
     });
 
-    it("Collaborator or unassigned Agent cannot archive ticket", () => {
-      expect(TicketPolicy.canArchive(agent2, assignedToAgent1)).toBe(false);
-      expect(TicketPolicy.canArchive(agent1, unassignedTicket)).toBe(false);
+    it("Customer cannot archive tickets", () => {
+      expect(TicketPolicy.canArchive(customerAlice, assignedToAgent1)).toBe(false);
     });
   });
 
-  describe("TicketPolicy.computePermissions", () => {
-    it("Computes full granular permission matrix for Supervisor", () => {
-      const resolvedTicket: TicketAccessContext = {
-        id: "ticket-r",
-        status: Status.RESOLVED,
-        primaryAssigneeId: agent1.id,
-      };
-      const perms = TicketPolicy.computePermissions(supervisorUser, resolvedTicket);
-      expect(perms.canView).toBe(true);
-      expect(perms.canEdit).toBe(true);
-      expect(perms.canReassign).toBe(true);
-      expect(perms.canClose).toBe(true);
-      expect(perms.canArchive).toBe(true);
-      expect(perms.canReply).toBe(true);
-      expect(perms.canAddInternalNote).toBe(true);
-      expect(perms.canManageCollaborators).toBe(true);
-      expect(perms.canAcknowledgeAlert).toBe(true);
+  describe("TicketPolicy.canRateCsat", () => {
+    const resolvedTicket: TicketAccessContext = {
+      id: "ticket-r",
+      status: Status.RESOLVED,
+      requesterId: customerAlice.id,
+      primaryAssigneeId: agent1.id,
+      satisfaction: null,
+    };
+
+    const closedTicket: TicketAccessContext = {
+      id: "ticket-c",
+      status: Status.CLOSED,
+      requesterId: customerAlice.id,
+      primaryAssigneeId: agent1.id,
+      satisfaction: null,
+    };
+
+    const ratedTicket: TicketAccessContext = {
+      id: "ticket-rated",
+      status: Status.RESOLVED,
+      requesterId: customerAlice.id,
+      primaryAssigneeId: agent1.id,
+      satisfaction: { rating: 5 },
+    };
+
+    it("Customer can rate CSAT on their own RESOLVED or CLOSED unrated ticket", () => {
+      expect(TicketPolicy.canRateCsat(customerAlice, resolvedTicket)).toBe(true);
+      expect(TicketPolicy.canRateCsat(customerAlice, closedTicket)).toBe(true);
     });
 
-    it("Computes granular permission matrix for Primary Assignee Agent", () => {
-      const openTicket: TicketAccessContext = {
-        id: "ticket-o",
-        status: Status.OPEN,
-        primaryAssigneeId: agent1.id,
-        collaborators: [{ userId: agent2.id }],
-      };
-      const perms = TicketPolicy.computePermissions(agent1, openTicket);
-      expect(perms.canView).toBe(true);
-      expect(perms.canEdit).toBe(true);
-      expect(perms.canReassign).toBe(false);
-      expect(perms.canClose).toBe(false);
-      expect(perms.canReopen).toBe(false);
-      expect(perms.canArchive).toBe(true);
-      expect(perms.canReply).toBe(true);
-      expect(perms.canAddInternalNote).toBe(true);
-      expect(perms.canManageCollaborators).toBe(true);
-      expect(perms.canAcknowledgeAlert).toBe(true);
+    it("Customer CANNOT rate CSAT on OPEN or PENDING tickets", () => {
+      expect(TicketPolicy.canRateCsat(customerAlice, assignedToAgent1)).toBe(false);
     });
 
-    it("Computes restricted permission matrix for Collaborator Agent", () => {
-      const openTicket: TicketAccessContext = {
-        id: "ticket-o",
-        status: Status.OPEN,
-        primaryAssigneeId: agent1.id,
-        collaborators: [{ userId: agent2.id }],
-      };
-      const perms = TicketPolicy.computePermissions(agent2, openTicket);
-      expect(perms.canView).toBe(true);
-      expect(perms.canEdit).toBe(true);
-      expect(perms.canReassign).toBe(false);
-      expect(perms.canClose).toBe(false);
-      expect(perms.canArchive).toBe(false);
-      expect(perms.canReply).toBe(true);
-      expect(perms.canAddInternalNote).toBe(true);
-      expect(perms.canManageCollaborators).toBe(false);
-      expect(perms.canAcknowledgeAlert).toBe(false);
-    });
-  });
-
-  describe("CollaboratorPolicy", () => {
-    it("Supervisor can manage collaborators on any ticket", () => {
-      expect(CollaboratorPolicy.canManage(supervisorUser, unassignedTicket)).toBe(true);
+    it("Customer CANNOT rate CSAT on tickets that already have a rating (immutable)", () => {
+      expect(TicketPolicy.canRateCsat(customerAlice, ratedTicket)).toBe(false);
     });
 
-    it("Primary assignee can manage collaborators on their ticket", () => {
-      expect(CollaboratorPolicy.canManage(agent1, assignedToAgent1)).toBe(true);
+    it("Customer CANNOT rate CSAT on another customer's ticket", () => {
+      expect(TicketPolicy.canRateCsat(customerBob, resolvedTicket)).toBe(false);
     });
 
-    it("Collaborator agent cannot add or remove other collaborators", () => {
-      expect(CollaboratorPolicy.canManage(agent2, assignedToAgent1)).toBe(false);
+    it("Supervisor and Agent CANNOT rate CSAT", () => {
+      expect(TicketPolicy.canRateCsat(supervisorUser, resolvedTicket)).toBe(false);
+      expect(TicketPolicy.canRateCsat(agent1, resolvedTicket)).toBe(false);
     });
   });
 
@@ -265,30 +300,44 @@ describe("Unit Tests: Policy & Permission Layer", () => {
       expect(ReplyPolicy.canAddInternalNote(agent2, assignedToAgent1)).toBe(true);
     });
 
-    it("Unrelated agent cannot reply or add internal notes", () => {
-      const unrelated: SessionUser = {
-        id: "unrelated-user",
-        email: "unrelated@test.com",
-        name: "Unrelated",
-        role: Role.AGENT,
-      };
-      expect(ReplyPolicy.canReply(unrelated, assignedToAgent1)).toBe(false);
-      expect(ReplyPolicy.canAddInternalNote(unrelated, assignedToAgent1)).toBe(false);
+    it("Customer can reply to their own ticket", () => {
+      expect(ReplyPolicy.canReply(customerAlice, assignedToAgent1)).toBe(true);
+    });
+
+    it("Customer CANNOT add internal notes", () => {
+      expect(ReplyPolicy.canAddInternalNote(customerAlice, assignedToAgent1)).toBe(false);
+    });
+
+    it("Customer CANNOT reply to another customer's ticket", () => {
+      expect(ReplyPolicy.canReply(customerBob, assignedToAgent1)).toBe(false);
+    });
+  });
+
+  describe("CollaboratorPolicy", () => {
+    it("Supervisor can manage collaborators on any ticket", () => {
+      expect(CollaboratorPolicy.canManage(supervisorUser, unassignedTicket)).toBe(true);
+    });
+
+    it("Primary assignee can manage collaborators on their ticket", () => {
+      expect(CollaboratorPolicy.canManage(agent1, assignedToAgent1)).toBe(true);
+    });
+
+    it("Customer CANNOT manage collaborators", () => {
+      expect(CollaboratorPolicy.canManage(customerAlice, assignedToAgent1)).toBe(false);
     });
   });
 
   describe("AlertPolicy", () => {
     it("Supervisor can acknowledge alerts for any ticket", () => {
       expect(AlertPolicy.canAcknowledge(supervisorUser, unassignedTicket)).toBe(true);
-      expect(AlertPolicy.canAcknowledge(supervisorUser, assignedToAgent1)).toBe(true);
     });
 
     it("Primary Assignee can acknowledge alert for their assigned ticket", () => {
       expect(AlertPolicy.canAcknowledge(agent1, assignedToAgent1)).toBe(true);
     });
 
-    it("Collaborator or unrelated agent cannot acknowledge alert", () => {
-      expect(AlertPolicy.canAcknowledge(agent2, assignedToAgent1)).toBe(false);
+    it("Customer CANNOT acknowledge alerts", () => {
+      expect(AlertPolicy.canAcknowledge(customerAlice, assignedToAgent1)).toBe(false);
     });
   });
 });

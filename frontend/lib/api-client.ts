@@ -14,9 +14,10 @@ export interface GetQueueParams {
 export interface CreateTicketDTO {
   subject: string;
   description: string;
-  requesterName: string;
-  requesterEmail: string;
+  requesterName?: string;
+  requesterEmail?: string;
   priority?: string;
+  customerUrgency?: "LOW" | "NORMAL" | "HIGH";
   category?: string;
   primaryAssigneeId?: string;
 }
@@ -63,6 +64,13 @@ export class ApiClient {
     });
   }
 
+  static async register(data: { name: string; email: string; password: string }) {
+    return this.request<{ user: any }>("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   static async logout() {
     return this.request<{ success: boolean }>("/api/auth/logout", {
       method: "POST",
@@ -89,10 +97,18 @@ export class ApiClient {
 
     return this.request<{
       tickets: any[];
-      total: number;
-      page: number;
-      totalPages: number;
-      limit: number;
+      pagination?: {
+        page: number;
+        limit: number;
+        totalCount: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+      };
+      total?: number;
+      page?: number;
+      totalPages?: number;
+      limit?: number;
     }>(`/api/tickets?${query.toString()}`);
   }
 
@@ -121,10 +137,17 @@ export class ApiClient {
     });
   }
 
-  static async addReply(ticketId: string, body: string, isInternal: boolean) {
+  static async addReply(ticketId: string, body: string, isInternal: boolean = false) {
     return this.request<{ reply: any }>(`/api/tickets/${ticketId}/replies`, {
       method: "POST",
       body: JSON.stringify({ body, isInternal }),
+    });
+  }
+
+  static async submitCsat(ticketId: string, data: { rating: number; comment?: string }) {
+    return this.request<{ satisfaction: any }>(`/api/tickets/${ticketId}/csat`, {
+      method: "POST",
+      body: JSON.stringify(data),
     });
   }
 
@@ -162,15 +185,7 @@ export class ApiClient {
 
   // Dashboard Metrics
   static async getDashboard() {
-    return this.request<{
-      openTicketsCount: number;
-      pendingOnCustomerCount: number;
-      resolvedThisWeekCount: number;
-      breachingSlaCount: number;
-      statusBreakdown: { status: string; count: number }[];
-      agentBreakdown: { agentId: string; agentName: string; activeTicketsCount: number }[];
-      weeklyResolutionTrend: { weekLabel: string; resolvedCount: number }[];
-    }>("/api/dashboard");
+    return this.request<any>("/api/dashboard");
   }
 
   // Alerts

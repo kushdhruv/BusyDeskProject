@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, DashboardMetrics, Status } from "@/lib/types";
+import { CustomerDashboard } from "@/components/customer/CustomerDashboard";
 import {
   Inbox,
   Clock,
@@ -18,12 +19,13 @@ import {
   AlertCircle,
   ExternalLink,
   Loader2,
+  Star,
 } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [metrics, setMetrics] = useState<DashboardMetrics | any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -56,10 +58,24 @@ export default function DashboardPage() {
     fetchData();
   }, [router]);
 
-  if (loading || !metrics || !user) {
+  if (loading || !user) {
     return (
       <div className="py-20 flex flex-col items-center justify-center text-slate-400 text-xs">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-2" />
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-2" />
+        Loading Dashboard...
+      </div>
+    );
+  }
+
+  // If authenticated user is a CUSTOMER, render the tailored Customer Help Center Dashboard
+  if (user.role === "CUSTOMER") {
+    return <CustomerDashboard user={user} />;
+  }
+
+  if (!metrics || !metrics.statusBreakdown) {
+    return (
+      <div className="py-20 flex flex-col items-center justify-center text-slate-400 text-xs">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-2" />
         Loading Dashboard metrics...
       </div>
     );
@@ -67,19 +83,19 @@ export default function DashboardPage() {
 
   const isSupervisor = user.role === "SUPERVISOR";
 
-  const totalTicketsCount = metrics.statusBreakdown.reduce((acc, curr) => acc + curr.count, 0) || 1;
+  const totalTicketsCount = metrics.statusBreakdown.reduce((acc: number, curr: any) => acc + curr.count, 0) || 1;
   const onTimePercentage = Math.round(
     ((totalTicketsCount - metrics.breachingSlaCount) / totalTicketsCount) * 100
   );
   const breachedPercentage = 100 - onTimePercentage;
 
   // Max value for agent workload chart scaling
-  const maxAgentTickets = Math.max(1, ...metrics.agentBreakdown.map((a) => a.activeTicketsCount));
+  const maxAgentTickets = Math.max(1, ...metrics.agentBreakdown.map((a: any) => a.activeTicketsCount));
 
   // Max value for 8-week trend chart
   const maxWeeklyResolved = Math.max(
     1,
-    ...metrics.weeklyResolutionTrend.map((w) => w.resolvedCount)
+    ...metrics.weeklyResolutionTrend.map((w: any) => w.resolvedCount)
   );
 
   return (
@@ -88,11 +104,11 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            {isSupervisor ? "Dashboard" : "My Dashboard"}
+            {isSupervisor ? "Supervisor Dashboard" : "Agent Dashboard"}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {isSupervisor
-              ? "Here's what's happening across all team queues and SLA performance."
+              ? "Comprehensive overview of queue health, agent workloads, and SLA metrics."
               : "Here's a quick overview of your assigned and collaborative tickets."}
           </p>
         </div>
@@ -104,7 +120,7 @@ export default function DashboardPage() {
           </div>
           <a
             href="/tickets"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition"
           >
             <span>View All Queue</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -130,7 +146,7 @@ export default function DashboardPage() {
           <div className="flex items-baseline gap-2 mt-2">
             <div className="text-2xl font-bold text-slate-900">{metrics.openTicketsCount}</div>
             <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-              +12%
+              Active
             </span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">Active tickets in progress</p>
@@ -150,7 +166,7 @@ export default function DashboardPage() {
           <div className="flex items-baseline gap-2 mt-2">
             <div className="text-2xl font-bold text-slate-900">{metrics.pendingOnCustomerCount}</div>
             <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
-              +5%
+              Awaiting
             </span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">Waiting on customer reply</p>
@@ -170,7 +186,7 @@ export default function DashboardPage() {
           <div className="flex items-baseline gap-2 mt-2">
             <div className="text-2xl font-bold text-slate-900">{metrics.resolvedThisWeekCount}</div>
             <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-              +18%
+              Resolved
             </span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">Closed or resolved this week</p>
@@ -190,12 +206,76 @@ export default function DashboardPage() {
           <div className="flex items-baseline gap-2 mt-2">
             <div className="text-2xl font-bold text-rose-600">{metrics.breachingSlaCount}</div>
             <span className="text-[11px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
-              {metrics.breachingSlaCount > 0 ? "Urgent Action" : "Healthy"}
+              {metrics.breachingSlaCount > 0 ? "Action Required" : "Healthy"}
             </span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">Tickets overdue past response target</p>
         </a>
       </div>
+
+      {/* Supervisor CSAT Card */}
+      {isSupervisor && metrics.csatResponseCount !== undefined && (
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-md border border-indigo-500/20">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[11px] font-semibold">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>Customer Satisfaction (CSAT)</span>
+              </div>
+              <h2 className="text-base font-bold">Overall Customer CSAT Score</h2>
+              <p className="text-xs text-slate-300">
+                Aggregated from {metrics.csatResponseCount} customer ratings on resolved tickets.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-8">
+              <div className="text-center">
+                <div className="flex items-center gap-1">
+                  <span className="text-3xl font-extrabold text-white">
+                    {metrics.averageCsatRating > 0 ? metrics.averageCsatRating.toFixed(1) : "N/A"}
+                  </span>
+                  <span className="text-xs text-amber-400 font-bold">/ 5.0</span>
+                </div>
+                <div className="flex items-center justify-center gap-0.5 mt-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      className={`w-3.5 h-3.5 ${
+                        s <= Math.round(metrics.averageCsatRating || 0)
+                          ? "text-amber-400 fill-amber-400"
+                          : "text-slate-600"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Rating Distribution Bar */}
+              {metrics.csatRatingDistribution && (
+                <div className="hidden sm:flex flex-col gap-1 w-48 border-l border-white/10 pl-6 text-[10px]">
+                  {metrics.csatRatingDistribution.map((item: any) => {
+                    const pct = metrics.csatResponseCount
+                      ? Math.round((item.count / metrics.csatResponseCount) * 100)
+                      : 0;
+                    return (
+                      <div key={item.rating} className="flex items-center gap-2">
+                        <span className="w-5 text-slate-400 font-medium">{item.rating} ★</span>
+                        <div className="flex-1 bg-white/10 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            style={{ width: `${pct}%` }}
+                            className="bg-amber-400 h-1.5 rounded-full"
+                          />
+                        </div>
+                        <span className="w-6 text-right font-medium text-slate-300">{item.count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mid Row: Tickets by Status Donut & Tickets by Agent Horizontal Bars */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -254,7 +334,7 @@ export default function DashboardPage() {
 
             {/* Status Legend Breakdown */}
             <div className="flex-1 w-full space-y-2.5">
-              {metrics.statusBreakdown.map((s) => {
+              {metrics.statusBreakdown.map((s: any) => {
                 const statusColors: Record<Status, { dot: string; label: string }> = {
                   NEW: { dot: "bg-cyan-500", label: "New" },
                   OPEN: { dot: "bg-blue-600", label: "Open" },
@@ -262,7 +342,7 @@ export default function DashboardPage() {
                   RESOLVED: { dot: "bg-emerald-500", label: "Resolved" },
                   CLOSED: { dot: "bg-slate-400", label: "Closed" },
                 };
-                const config = statusColors[s.status] || { dot: "bg-slate-400", label: s.status };
+                const config = statusColors[s.status as Status] || { dot: "bg-slate-400", label: s.status };
 
                 return (
                   <div key={s.status} className="flex items-center justify-between text-xs">
@@ -286,7 +366,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-4 pt-1">
-            {metrics.agentBreakdown.map((agent) => {
+            {metrics.agentBreakdown.map((agent: any) => {
               const widthPct = Math.max(8, Math.round((agent.activeTicketsCount / maxAgentTickets) * 100));
 
               return (
@@ -298,7 +378,7 @@ export default function DashboardPage() {
                   <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                     <div
                       style={{ width: `${widthPct}%` }}
-                      className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
+                      className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500"
                     />
                   </div>
                 </div>
@@ -315,22 +395,22 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-blue-600" />
+                <BarChart3 className="w-4 h-4 text-indigo-600" />
                 <span>Tickets Resolved per Week</span>
               </h2>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 Weekly resolution volume over the past 8 continuous cohorts
               </p>
             </div>
-            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
+            <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
               8-Week Total:{" "}
-              {metrics.weeklyResolutionTrend.reduce((acc, curr) => acc + curr.resolvedCount, 0)}
+              {metrics.weeklyResolutionTrend.reduce((acc: number, curr: any) => acc + curr.resolvedCount, 0)}
             </span>
           </div>
 
           {/* Bar Chart Visualization */}
           <div className="grid grid-cols-8 gap-3 items-end h-44 pt-6 pb-2 border-b border-slate-100">
-            {metrics.weeklyResolutionTrend.map((week, idx) => {
+            {metrics.weeklyResolutionTrend.map((week: any, idx: number) => {
               const heightPct = Math.max(10, Math.round((week.resolvedCount / maxWeeklyResolved) * 100));
               const isLatest = idx === metrics.weeklyResolutionTrend.length - 1;
 
@@ -344,8 +424,8 @@ export default function DashboardPage() {
                       style={{ height: `${heightPct}%` }}
                       className={`w-full rounded-t-md transition-all duration-300 ${
                         isLatest
-                          ? "bg-blue-600 group-hover:bg-blue-700"
-                          : "bg-blue-400/80 group-hover:bg-blue-500"
+                          ? "bg-indigo-600 group-hover:bg-indigo-700"
+                          : "bg-indigo-400/80 group-hover:bg-indigo-500"
                       }`}
                     />
                   </div>

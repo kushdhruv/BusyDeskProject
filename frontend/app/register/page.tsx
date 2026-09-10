@@ -2,37 +2,39 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Inbox, Key, ArrowRight, Lock, Mail, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { Inbox, Key, ArrowRight, Lock, Mail, Eye, EyeOff, User as UserIcon, ShieldCheck } from "lucide-react";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
+  const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Invalid email or password.");
+        throw new Error(data.error || "Failed to create account.");
       }
 
       router.push("/dashboard");
       router.refresh();
     } catch (err: any) {
-      setError(err.message || "Failed to sign in. Please check your credentials.");
+      setError(err.message || "Failed to register. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -45,35 +47,35 @@ export default function LoginPage() {
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#0F172A] text-white mb-3 shadow-lg shadow-slate-900/10">
           <Inbox className="w-6 h-6 text-indigo-400" />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Sign in to SupportDesk</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Customer Support Portal</h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-          Enterprise support ticketing, SLA tracking, and team collaboration.
+          Create a customer account to submit support requests, track status in real-time, and rate our team.
         </p>
       </div>
 
-      {/* Centered Login Card */}
+      {/* Centered Registration Card */}
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Account Authentication</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Enter your work email and password</p>
+            <h2 className="text-base font-bold text-slate-900">Create Customer Account</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Submit & track your support tickets</p>
           </div>
-          <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 shadow-2xs">
-            <Lock className="w-4 h-4 text-indigo-600" />
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs">
+            <UserIcon className="w-4 h-4 text-indigo-600" />
           </div>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-slate-400" />
-              <span>Work Email</span>
+              <UserIcon className="w-3.5 h-3.5 text-slate-400" />
+              <span>Full Name</span>
             </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. supervisor@busy.com or sarah@busy.com"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Alice Henderson"
               required
               autoFocus
               className="w-full text-sm border border-slate-200 bg-slate-50/50 rounded-xl p-3 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
@@ -82,8 +84,23 @@ export default function LoginPage() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-slate-400" />
+              <span>Email Address</span>
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="alice@example.com"
+              required
+              className="w-full text-sm border border-slate-200 bg-slate-50/50 rounded-xl p-3 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
               <Key className="w-3.5 h-3.5 text-slate-400" />
-              <span>Password</span>
+              <span>Password (min. 6 characters)</span>
             </label>
             <div className="relative">
               <input
@@ -92,6 +109,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                minLength={6}
                 className="w-full text-sm border border-slate-200 bg-slate-50/50 rounded-xl p-3 pr-10 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
               />
               <button
@@ -121,21 +139,21 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 bg-[#0F172A] hover:bg-slate-800 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition text-sm cursor-pointer mt-4"
           >
-            <span>{loading ? "Authenticating..." : "Sign In to Workspace"}</span>
+            <span>{loading ? "Creating Account..." : "Create Customer Account"}</span>
             <ArrowRight className="w-4 h-4 text-indigo-400" />
           </button>
         </form>
 
         <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col items-center gap-3">
           <p className="text-xs text-slate-500">
-            Need customer support?{" "}
-            <a href="/register" className="font-semibold text-indigo-600 hover:text-indigo-700 underline underline-offset-2">
-              Create a customer account
-            </a>
+            Already have an account?{" "}
+            <Link href="/login" className="font-semibold text-indigo-600 hover:text-indigo-700 underline underline-offset-2">
+              Sign in here
+            </Link>
           </p>
           <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Strict server-side JWT session verification with bcrypt</span>
+            <span>Secure server-side authentication & ticket isolation</span>
           </p>
         </div>
       </div>

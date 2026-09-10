@@ -8,6 +8,9 @@ export class ReplyPolicy {
   }
 
   static canAddInternalNote(user: SessionUser, ticket: TicketAccessContext): boolean {
+    if (user.role === Role.CUSTOMER) {
+      return false;
+    }
     return TicketPolicy.canView(user, ticket);
   }
 }

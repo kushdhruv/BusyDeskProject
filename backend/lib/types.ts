@@ -18,6 +18,7 @@ export interface TicketPermissions {
   canAddInternalNote: boolean;
   canManageCollaborators: boolean;
   canAcknowledgeAlert: boolean;
+  canRateCsat: boolean;
 }
 
 export interface TimelineItem {
@@ -72,8 +73,18 @@ export interface DashboardMetrics {
     activeTicketsCount: number;
   }[];
   weeklyResolutionTrend: {
-    weekLabel: string; // e.g. "Week of Aug 04"
+    weekLabel: string;
     weekStart: string;
     resolvedCount: number;
   }[];
+  averageCsatRating: number;
+  csatResponseCount: number;
+  csatRatingDistribution: { rating: number; count: number }[];
+}
+
+export interface CustomerDashboardMetrics {
+  totalTicketsCount: number;
+  openTicketsCount: number;
+  pendingOnCustomerCount: number;
+  resolvedTicketsCount: number;
 }

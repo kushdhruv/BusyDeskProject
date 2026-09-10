@@ -26,6 +26,7 @@ describe("Integration Tests: Comprehensive Bug Fix Verifications", () => {
       data: {
         subject: "Passive SLA Breach Test",
         description: "Testing dynamic SLA detection without explicit mutation",
+        requesterId: supervisor.id,
         requesterName: "Passive User",
         requesterEmail: "passive@example.com",
         priority: Priority.HIGH,
@@ -55,6 +56,7 @@ describe("Integration Tests: Comprehensive Bug Fix Verifications", () => {
       data: {
         subject: "Warning Escalation Test",
         description: "Testing warning to breach escalation",
+        requesterId: supervisor.id,
         requesterName: "Warn User",
         requesterEmail: "warn@example.com",
         priority: Priority.HIGH,

@@ -11,9 +11,11 @@ import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "../constants";
 export interface CreateTicketDTO {
   subject: string;
   description: string;
-  requesterName: string;
-  requesterEmail: string;
+  requesterId?: string;
+  requesterName?: string;
+  requesterEmail?: string;
   priority?: Priority;
+  customerUrgency?: "LOW" | "NORMAL" | "HIGH";
   category?: Category;
   primaryAssigneeId?: string | null;
 }
@@ -35,24 +37,57 @@ export class TicketService {
   static async createTicket(data: CreateTicketDTO, actor: SessionUser) {
     if (!data.subject?.trim()) throw new Error("Subject is required.");
     if (!data.description?.trim()) throw new Error("Description is required.");
-    if (!data.requesterName?.trim()) throw new Error("Requester name is required.");
-    if (!data.requesterEmail?.trim()) throw new Error("Requester email is required.");
 
-    const priority = data.priority || Priority.MEDIUM;
-    const category = data.category || Category.QUESTION;
-    const slaTargetMinutes = SlaService.getTargetMinutes(priority);
-
-    // Default primary assignee: If Agent creates ticket, auto-assign to creator so they immediately have working permissions
+    let requesterId = data.requesterId;
+    let requesterName = data.requesterName?.trim();
+    let requesterEmail = data.requesterEmail?.trim();
+    let priority = data.priority || Priority.MEDIUM;
     let primaryAssigneeId = data.primaryAssigneeId;
-    if (actor.role === Role.AGENT) {
-      if (primaryAssigneeId && primaryAssigneeId !== actor.id) {
-        throw new Error("Agents cannot assign tickets to other agents upon creation. Only Supervisors can assign tickets to other agents.");
+
+    if (actor.role === Role.CUSTOMER) {
+      // Security: Hardcode customer's own identity as requester & creator
+      requesterId = actor.id;
+      requesterName = actor.name;
+      requesterEmail = actor.email;
+      primaryAssigneeId = null; // Customers cannot assign tickets
+
+      // Server-side mapped urgency -> internal priority
+      if (data.customerUrgency === "LOW") {
+        priority = Priority.LOW;
+      } else if (data.customerUrgency === "HIGH") {
+        priority = Priority.HIGH;
+      } else {
+        priority = Priority.MEDIUM;
       }
-      if (!primaryAssigneeId) {
-        primaryAssigneeId = actor.id;
+    } else {
+      if (!requesterName) throw new Error("Requester name is required.");
+      if (!requesterEmail) throw new Error("Requester email is required.");
+
+      // If Agent/Supervisor didn't specify requesterId, resolve or use existing customer by email
+      if (!requesterId) {
+        const existingCustomer = await prisma.user.findUnique({
+          where: { email: requesterEmail.toLowerCase() },
+        });
+        if (existingCustomer) {
+          requesterId = existingCustomer.id;
+        } else {
+          // If no customer user exists yet, link to actor or create customer stub
+          requesterId = actor.id;
+        }
+      }
+
+      if (actor.role === Role.AGENT) {
+        if (primaryAssigneeId && primaryAssigneeId !== actor.id) {
+          throw new Error("Agents cannot assign tickets to other agents upon creation. Only Supervisors can assign tickets to other agents.");
+        }
+        if (!primaryAssigneeId) {
+          primaryAssigneeId = actor.id;
+        }
       }
     }
 
+    const category = data.category || Category.QUESTION;
+    const slaTargetMinutes = SlaService.getTargetMinutes(priority);
     const now = new Date();
     const slaDueAt = new Date(now.getTime() + slaTargetMinutes * 60 * 1000);
 
@@ -61,8 +96,9 @@ export class TicketService {
         data: {
           subject: data.subject.trim(),
           description: data.description.trim(),
-          requesterName: data.requesterName.trim(),
-          requesterEmail: data.requesterEmail.trim(),
+          requesterId: requesterId!,
+          requesterName: requesterName!,
+          requesterEmail: requesterEmail!,
           priority,
           category,
           status: Status.NEW,
@@ -90,6 +126,7 @@ export class TicketService {
             priority: ticket.priority,
             category: ticket.category,
             primaryAssigneeId: ticket.primaryAssigneeId,
+            requesterId: ticket.requesterId,
             status: ticket.status,
           },
         },
@@ -200,8 +237,8 @@ export class TicketService {
       throw new Error("Ticket not found.");
     }
 
-    if (!TicketPolicy.canEdit(actor, ticket)) {
-      throw new Error("You do not have permission to modify this ticket.");
+    if (!TicketPolicy.canEdit(actor, ticket) || actor.role === Role.CUSTOMER) {
+      throw new Error("You do not have permission to modify this ticket status.");
     }
 
     const validation = LifecycleService.validateTransition(ticket.status, newStatus, actor, {
@@ -364,20 +401,35 @@ export class TicketService {
   }
 
   static async getTicketDetails(ticketId: string, user: SessionUser) {
+    const isCustomer = user.role === Role.CUSTOMER;
+
+    // Defense-in-depth: Query-level filtering
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
       include: {
         createdBy: { select: { id: true, name: true, email: true, role: true } },
         primaryAssignee: { select: { id: true, name: true, email: true, role: true } },
-        collaborators: {
-          include: {
-            user: { select: { id: true, name: true, email: true, role: true } },
-            addedBy: { select: { id: true, name: true } },
+        collaborators: isCustomer
+          ? false
+          : {
+              include: {
+                user: { select: { id: true, name: true, email: true, role: true } },
+                addedBy: { select: { id: true, name: true } },
+              },
+            },
+        slaAlerts: isCustomer
+          ? false
+          : {
+              where: { status: { in: ["ACTIVE", "ACKNOWLEDGED"] } },
+              orderBy: { createdAt: "desc" },
+            },
+        satisfaction: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true,
           },
-        },
-        slaAlerts: {
-          where: { status: { in: ["ACTIVE", "ACKNOWLEDGED"] } },
-          orderBy: { createdAt: "desc" },
         },
       },
     });
@@ -391,7 +443,35 @@ export class TicketService {
     }
 
     const permissions = TicketPolicy.computePermissions(user, ticket);
-    const timeline = await TimelineService.getUnifiedTimeline(ticketId);
+
+    // Query-level timeline retrieval: customers only get customer-visible replies; no audit logs
+    let timeline: any[] = [];
+    if (isCustomer) {
+      const customerReplies = await prisma.reply.findMany({
+        where: {
+          ticketId,
+          isInternal: false,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      timeline = customerReplies.map((r) => ({
+        id: `reply-${r.id}`,
+        type: "REPLY" as const,
+        createdAt: r.createdAt.toISOString(),
+        reply: {
+          id: r.id,
+          authorId: r.authorId,
+          authorType: r.authorType,
+          authorName: r.authorName,
+          authorEmail: r.authorEmail,
+          body: r.body,
+          isInternal: false,
+        },
+      }));
+    } else {
+      timeline = await TimelineService.getUnifiedTimeline(ticketId);
+    }
 
     return {
       ticket,
@@ -414,14 +494,17 @@ export class TicketService {
       where.archivedAt = null;
     }
 
-    // Role-based visibility scoping
-    if (user.role === Role.AGENT) {
+    // Role-based query-level security scoping
+    if (user.role === Role.CUSTOMER) {
+      // Customer strictly sees ONLY their own tickets, archive always null
+      where.requesterId = user.id;
+      where.archivedAt = null;
+    } else if (user.role === Role.AGENT) {
       if (params.scope === "collaborating") {
         where.collaborators = { some: { userId: user.id } };
       } else if (params.scope === "assigned_to_me") {
         where.primaryAssigneeId = user.id;
       } else {
-        // Agent sees assigned + collaborating
         where.OR = [
           { primaryAssigneeId: user.id },
           { collaborators: { some: { userId: user.id } } },
@@ -435,36 +518,41 @@ export class TicketService {
     const now = new Date();
     if (params.scope === "awaiting_customer") {
       where.status = Status.PENDING;
-    } else if (params.scope === "due_soon") {
+    } else if (params.scope === "due_soon" && user.role !== Role.CUSTOMER) {
       where.status = { in: [Status.NEW, Status.OPEN] };
       where.slaDueAt = {
         gt: now,
         lte: new Date(now.getTime() + 60 * 60 * 1000),
       };
-    } else if (params.scope === "breached") {
+    } else if (params.scope === "breached" && user.role !== Role.CUSTOMER) {
       where.status = { in: [Status.NEW, Status.OPEN] };
       where.slaDueAt = { lte: now };
     }
 
     // Filters
     if (params.status) where.status = params.status;
-    if (params.priority) where.priority = params.priority;
+    if (params.priority && user.role !== Role.CUSTOMER) where.priority = params.priority;
     if (params.category) where.category = params.category;
-    if (params.assigneeId) where.primaryAssigneeId = params.assigneeId;
+    if (params.assigneeId && user.role !== Role.CUSTOMER) where.primaryAssigneeId = params.assigneeId;
 
     // Search: Subject and Description
     if (params.search?.trim()) {
       const q = params.search.trim();
+      const searchConditions: Prisma.TicketWhereInput[] = [
+        { subject: { contains: q, mode: Prisma.QueryMode.insensitive } },
+        { description: { contains: q, mode: Prisma.QueryMode.insensitive } },
+      ];
+
+      if (user.role !== Role.CUSTOMER) {
+        searchConditions.push(
+          { requesterName: { contains: q, mode: Prisma.QueryMode.insensitive } },
+          { requesterEmail: { contains: q, mode: Prisma.QueryMode.insensitive } }
+        );
+      }
+
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
-        {
-          OR: [
-            { subject: { contains: q, mode: "insensitive" } },
-            { description: { contains: q, mode: "insensitive" } },
-            { requesterName: { contains: q, mode: "insensitive" } },
-            { requesterEmail: { contains: q, mode: "insensitive" } },
-          ],
-        },
+        { OR: searchConditions },
       ];
     }
 
@@ -475,13 +563,12 @@ export class TicketService {
       [sortField]: sortOrder,
     };
 
-    // Server-side pagination via concurrent queries
     const [tickets, totalCount] = await Promise.all([
       prisma.ticket.findMany({
         where,
         include: {
-          primaryAssignee: { select: { id: true, name: true, email: true } },
-          collaborators: {
+          primaryAssignee: user.role === Role.CUSTOMER ? false : { select: { id: true, name: true, email: true } },
+          collaborators: user.role === Role.CUSTOMER ? false : {
             include: { user: { select: { id: true, name: true, email: true } } },
           },
           _count: { select: { replies: true } },

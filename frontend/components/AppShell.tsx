@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { User as SessionUser } from "@/lib/types";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { CustomerPortalLayout } from "./customer/CustomerPortalLayout";
 
 export function AppShell({
   children,
@@ -15,7 +16,7 @@ export function AppShell({
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const isAuthPage = pathname === "/login";
+  const isAuthPage = pathname === "/login" || pathname === "/register";
 
   useEffect(() => {
     if (isAuthPage) {
@@ -50,7 +51,7 @@ export function AppShell({
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
           <span className="text-xs font-semibold text-slate-500">Loading SupportDesk...</span>
         </div>
       </div>
@@ -61,8 +62,14 @@ export function AppShell({
     return null;
   }
 
+  // Render Customer Portal layout for customers
+  if (user.role === "CUSTOMER") {
+    return <CustomerPortalLayout user={user}>{children}</CustomerPortalLayout>;
+  }
+
+  // Render Staff (Agent & Supervisor) Layout
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
       {/* Dark Navy Sidebar */}
       <Sidebar user={user} />
 

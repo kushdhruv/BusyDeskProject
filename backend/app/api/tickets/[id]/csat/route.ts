@@ -1,0 +1,41 @@
+import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth";
+import { CsatService } from "@/lib/services/CsatService";
+
+interface RouteParams {
+  params: { id: string };
+}
+
+export async function POST(req: Request, { params }: RouteParams) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { rating, comment } = body;
+
+    if (typeof rating !== "number" || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return NextResponse.json(
+        { error: "Rating must be an integer between 1 and 5." },
+        { status: 400 }
+      );
+    }
+
+    const csat = await CsatService.submitCsat(
+      params.id,
+      { rating, comment },
+      user
+    );
+
+    return NextResponse.json({ satisfaction: csat }, { status: 201 });
+  } catch (error: any) {
+    const status = error.message.includes("permission") || error.message.includes("not permitted")
+      ? 403
+      : error.message.includes("not found")
+      ? 404
+      : 400;
+    return NextResponse.json({ error: error.message }, { status });
+  }
+}

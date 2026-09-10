@@ -8,6 +8,7 @@ import { PriorityBadge, CategoryBadge } from "@/components/PriorityBadge";
 import { SlaCountdown } from "@/components/SlaCountdown";
 import { SimulateCustomerReplyModal } from "@/components/SimulateCustomerReplyModal";
 import { AddCollaboratorModal } from "@/components/AddCollaboratorModal";
+import { CustomerTicketDetail } from "@/components/customer/CustomerTicketDetail";
 import {
   ArrowLeft,
   Clock,
@@ -261,6 +262,18 @@ export default function TicketWorkspacePage() {
           Return to Queue
         </button>
       </div>
+    );
+  }
+
+  // Render Customer Portal View if user is a CUSTOMER
+  if (user?.role === "CUSTOMER") {
+    return (
+      <CustomerTicketDetail
+        user={user}
+        ticket={ticketData}
+        timeline={timeline}
+        onRefresh={loadTicket}
+      />
     );
   }
 

@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 3001",
     "test": "vitest run",
+    "seed": "prisma db seed",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed"
   },

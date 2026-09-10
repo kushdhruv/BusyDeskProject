@@ -1,4 +1,4 @@
-import { AuthorType, AuditEventType, Status, Prisma } from "@prisma/client";
+import { AuthorType, AuditEventType, Status, Role, Prisma } from "@prisma/client";
 import { prisma } from "../prisma";
 import { SessionUser } from "../types";
 import { ReplyPolicy } from "../policies/ReplyPolicy";
@@ -6,9 +6,9 @@ import { AuditService } from "./AuditService";
 import { SlaService } from "./SlaService";
 
 export class ReplyService {
-  static async addAgentReply(
+  static async addReply(
     ticketId: string,
-    data: { body: string; isInternal: boolean },
+    data: { body: string; isInternal?: boolean },
     actor: SessionUser
   ) {
     if (!data.body || data.body.trim().length === 0) {
@@ -24,26 +24,39 @@ export class ReplyService {
       throw new Error("Ticket not found.");
     }
 
-    if (data.isInternal) {
-      if (!ReplyPolicy.canAddInternalNote(actor, ticket)) {
-        throw new Error("You do not have permission to add internal notes to this ticket.");
+    const isInternal = !!data.isInternal;
+
+    if (actor.role === Role.CUSTOMER) {
+      if (isInternal) {
+        throw new Error("Customers are not permitted to submit internal notes.");
       }
-    } else {
-      if (!ReplyPolicy.canReply(actor, ticket)) {
+      if (ticket.requesterId !== actor.id) {
         throw new Error("You do not have permission to reply to this ticket.");
       }
+    } else {
+      if (isInternal) {
+        if (!ReplyPolicy.canAddInternalNote(actor, ticket)) {
+          throw new Error("You do not have permission to add internal notes to this ticket.");
+        }
+      } else {
+        if (!ReplyPolicy.canReply(actor, ticket)) {
+          throw new Error("You do not have permission to reply to this ticket.");
+        }
+      }
     }
+
+    const authorType = actor.role === Role.CUSTOMER ? AuthorType.CUSTOMER : AuthorType.AGENT;
 
     return prisma.$transaction(async (tx) => {
       const reply = await tx.reply.create({
         data: {
           ticketId,
           authorId: actor.id,
-          authorType: AuthorType.AGENT,
+          authorType,
           authorName: actor.name,
           authorEmail: actor.email,
           body: data.body.trim(),
-          isInternal: data.isInternal,
+          isInternal,
         },
       });
 
@@ -55,32 +68,64 @@ export class ReplyService {
           eventType: AuditEventType.REPLY_ADDED,
           metadata: {
             replyId: reply.id,
-            isInternal: data.isInternal,
-            authorType: AuthorType.AGENT,
+            isInternal,
+            authorType,
           },
         },
         tx
       );
 
-      // If ticket is in NEW status, moving to OPEN on first agent reply
-      if (ticket.status === Status.NEW) {
-        await tx.ticket.update({
-          where: { id: ticketId },
-          data: { status: Status.OPEN },
-        });
+      // Customer Reply Invariant: ONLY if ticket is in PENDING status, transition to OPEN and resume SLA
+      if (authorType === AuthorType.CUSTOMER) {
+        if (ticket.status === Status.PENDING) {
+          const slaUpdate = SlaService.computeStateOnStatusChange(
+            ticket,
+            Status.OPEN,
+            new Date()
+          );
 
-        await AuditService.log(
-          {
-            ticketId,
-            actorId: actor.id,
-            actorName: actor.name,
-            eventType: AuditEventType.STATUS_CHANGED,
-            oldValue: { status: Status.NEW },
-            newValue: { status: Status.OPEN },
-            metadata: { reason: "Moved to OPEN on agent reply" },
-          },
-          tx
-        );
+          await tx.ticket.update({
+            where: { id: ticketId },
+            data: slaUpdate,
+          });
+
+          await AuditService.log(
+            {
+              ticketId,
+              actorId: actor.id,
+              actorName: actor.name,
+              eventType: AuditEventType.STATUS_CHANGED,
+              oldValue: { status: Status.PENDING },
+              newValue: { status: Status.OPEN },
+              metadata: {
+                reason: "Customer replied to ticket; SLA clock resumed",
+                resumedSlaDueAt: slaUpdate.slaDueAt,
+              },
+            },
+            tx
+          );
+        }
+      } else {
+        // If ticket is in NEW status, moving to OPEN on first agent reply
+        if (ticket.status === Status.NEW) {
+          await tx.ticket.update({
+            where: { id: ticketId },
+            data: { status: Status.OPEN },
+          });
+
+          await AuditService.log(
+            {
+              ticketId,
+              actorId: actor.id,
+              actorName: actor.name,
+              eventType: AuditEventType.STATUS_CHANGED,
+              oldValue: { status: Status.NEW },
+              newValue: { status: Status.OPEN },
+              metadata: { reason: "Moved to OPEN on agent reply" },
+            },
+            tx
+          );
+        }
       }
 
       await SlaService.syncAlertForTicket(ticketId, tx);
@@ -89,6 +134,16 @@ export class ReplyService {
     });
   }
 
+  // Backward-compatible alias for agent reply
+  static async addAgentReply(
+    ticketId: string,
+    data: { body: string; isInternal: boolean },
+    actor: SessionUser
+  ) {
+    return this.addReply(ticketId, data, actor);
+  }
+
+  // Testing/simulation helper endpoint
   static async addCustomerReply(
     ticketId: string,
     data: { body: string; customerName?: string; customerEmail?: string }
@@ -112,7 +167,7 @@ export class ReplyService {
       const reply = await tx.reply.create({
         data: {
           ticketId,
-          authorId: null,
+          authorId: ticket.requesterId || null,
           authorType: AuthorType.CUSTOMER,
           authorName: customerName,
           authorEmail: customerEmail,
@@ -124,7 +179,7 @@ export class ReplyService {
       await AuditService.log(
         {
           ticketId,
-          actorId: null,
+          actorId: ticket.requesterId || null,
           actorName: customerName,
           eventType: AuditEventType.REPLY_ADDED,
           metadata: {
@@ -136,7 +191,6 @@ export class ReplyService {
         tx
       );
 
-      // Requirement 4: When customer replies, Pending -> Open and resumes SLA clock
       if (ticket.status === Status.PENDING) {
         const slaUpdate = SlaService.computeStateOnStatusChange(
           ticket,
@@ -152,7 +206,7 @@ export class ReplyService {
         await AuditService.log(
           {
             ticketId,
-            actorId: null,
+            actorId: ticket.requesterId || null,
             actorName: customerName,
             eventType: AuditEventType.STATUS_CHANGED,
             oldValue: { status: Status.PENDING },

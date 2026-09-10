@@ -1,11 +1,37 @@
 import { Status, Role } from "@prisma/client";
 import { prisma } from "../prisma";
-import { DashboardMetrics } from "../types";
+import { DashboardMetrics, CustomerDashboardMetrics, SessionUser } from "../types";
 
 export class DashboardService {
-  static async getMetrics(): Promise<DashboardMetrics> {
+  static async getMetrics(user?: SessionUser): Promise<DashboardMetrics | CustomerDashboardMetrics> {
     const now = new Date();
 
+    // 1. Customer Scoped Metrics
+    if (user && user.role === Role.CUSTOMER) {
+      const [totalCount, openCount, pendingCount, resolvedCount] = await Promise.all([
+        prisma.ticket.count({
+          where: { requesterId: user.id, archivedAt: null },
+        }),
+        prisma.ticket.count({
+          where: { requesterId: user.id, archivedAt: null, status: { in: [Status.NEW, Status.OPEN] } },
+        }),
+        prisma.ticket.count({
+          where: { requesterId: user.id, archivedAt: null, status: Status.PENDING },
+        }),
+        prisma.ticket.count({
+          where: { requesterId: user.id, archivedAt: null, status: { in: [Status.RESOLVED, Status.CLOSED] } },
+        }),
+      ]);
+
+      return {
+        totalTicketsCount: totalCount,
+        openTicketsCount: openCount,
+        pendingOnCustomerCount: pendingCount,
+        resolvedTicketsCount: resolvedCount,
+      };
+    }
+
+    // 2. Internal Staff (Agent / Supervisor) Metrics
     // Calculate start of current week (Monday)
     const startOfWeek = new Date(now);
     const day = startOfWeek.getDay();
@@ -26,6 +52,8 @@ export class DashboardService {
       statusGroups,
       agents,
       resolvedTickets8Weeks,
+      csatAggregate,
+      csatGroups,
     ] = await Promise.all([
       // 1. Open tickets (NEW or OPEN, active)
       prisma.ticket.count({
@@ -95,6 +123,18 @@ export class DashboardService {
           resolvedAt: true,
         },
       }),
+
+      // 8. CSAT Aggregate
+      prisma.customerSatisfaction.aggregate({
+        _avg: { rating: true },
+        _count: { id: true },
+      }),
+
+      // 9. CSAT Distribution
+      prisma.customerSatisfaction.groupBy({
+        by: ["rating"],
+        _count: { id: true },
+      }),
     ]);
 
     // Format status breakdown
@@ -154,6 +194,18 @@ export class DashboardService {
       resolvedCount: b.count,
     }));
 
+    // Format CSAT distribution
+    const csatDistMap = new Map(csatGroups.map((g) => [g.rating, g._count.id]));
+    const csatRatingDistribution = [5, 4, 3, 2, 1].map((r) => ({
+      rating: r,
+      count: csatDistMap.get(r) || 0,
+    }));
+
+    const averageCsatRating = csatAggregate._avg.rating
+      ? Number(csatAggregate._avg.rating.toFixed(1))
+      : 0;
+    const csatResponseCount = csatAggregate._count.id || 0;
+
     return {
       openTicketsCount: openCount,
       pendingOnCustomerCount: pendingCount,
@@ -162,6 +214,9 @@ export class DashboardService {
       statusBreakdown,
       agentBreakdown,
       weeklyResolutionTrend,
+      averageCsatRating,
+      csatResponseCount,
+      csatRatingDistribution,
     };
   }
 }

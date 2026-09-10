@@ -202,6 +202,7 @@ describe("Support Ticketing System — Core Business Invariants", () => {
       data: {
         subject: "Test SLA Re-breach Cycle",
         description: "Testing alert return upon reopening",
+        requesterId: supervisorUser.id,
         requesterName: "Alice",
         requesterEmail: "alice@example.com",
         priority: Priority.URGENT,

@@ -114,6 +114,7 @@ describe("Integration Tests: Ticket Lifecycle, Inbound Replies & SLA Transitions
       data: {
         subject: "Expired Closed Ticket",
         description: "Closed long ago",
+        requesterId: supervisor.id,
         requesterName: "Old Customer",
         requesterEmail: "old@customer.com",
         priority: Priority.LOW,

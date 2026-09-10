@@ -23,6 +23,7 @@ describe("Integration Tests: SLA Breach Detection, Alerts & Acknowledgement", ()
       data: {
         subject: "SLA Alert Integration Test",
         description: "Breached ticket testing",
+        requesterId: supervisor.id,
         requesterName: "Urgent Cust",
         requesterEmail: "urg@cust.com",
         priority: Priority.URGENT,
