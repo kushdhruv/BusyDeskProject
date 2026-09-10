@@ -2,13 +2,13 @@
 
 ## Links
 
-- **GitHub repository:** <public repo URL>
-- **Live application:** <deployed URL>
+- **GitHub repository:** https://github.com/kushdhruv/BusyDeskProject.git
+- **Live application:** https://busydesk.vercel.app
 
 ## Notes for the reviewer
 
 - The database is seeded with realistic demonstration data: 1 Supervisor, 3 Support Agents, and 35+ tickets across every lifecycle state, SLA breach scenarios, and 8 weeks of historical resolution cohorts.
-- On the login page, you can use the quick **"Evaluator Demo Accounts"** cards to auto-fill credentials for Supervisor or any Agent with a single click, or type the credentials manually.
+- On the login page, you can use the quick **"Demo Accounts"** cards to auto-fill credentials for Supervisor or any Agent with a single click, or type the credentials manually.
 - In the ticket workspace (`/tickets/:id`), click the **"Simulate Customer Reply"** button in the header to observe a Pending ticket automatically transition back to Open, unpause its SLA countdown, and record an immutable timeline entry.
 - When evaluating Goal 4 (Closed Ticket Reopening): Ticket `#4` was closed recently (can be reopened), while Ticket `#5` was closed 15 days ago (reopening is rejected by the server with an explanatory 7-day expiration message).
 

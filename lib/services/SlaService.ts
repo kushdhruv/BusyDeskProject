@@ -3,10 +3,11 @@ import { prisma } from "../prisma";
 import { SLA_TARGETS_MINUTES, SLA_WARNING_THRESHOLD_MINUTES } from "../constants";
 import { SessionUser } from "../types";
 import { AlertPolicy } from "../policies/AlertPolicy";
+import { SlaEngine } from "../../services/sla-engine/src";
 
 export class SlaService {
   static getTargetMinutes(priority: Priority): number {
-    return SLA_TARGETS_MINUTES[priority] || SLA_TARGETS_MINUTES.MEDIUM;
+    return SlaEngine.getTargetMinutes(priority as any);
   }
 
   static computeStateOnStatusChange(
