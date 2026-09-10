@@ -9,7 +9,10 @@
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:fuzz": "vitest run tests/fuzz"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
