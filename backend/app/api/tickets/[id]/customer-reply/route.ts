@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ReplyService } from "@/lib/services/ReplyService";
+import { ReplyService } from "@/controllers/reply.controller";
 
 interface RouteParams {
   params: { id: string };

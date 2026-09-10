@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Role } from "@prisma/client";
-import { prisma } from "../../lib/prisma";
-import { TicketService } from "../../lib/services/TicketService";
-import { SessionUser } from "../../lib/types";
+import { prisma } from "@/db/prisma.db";
+import { TicketService } from "@/controllers/ticket.controller";
+import { SessionUser } from "@/models/types.model";
 
 describe("Fuzz Testing: Query Parameters, Pagination Boundaries & Search Special Chars", () => {
   let supervisor: SessionUser;

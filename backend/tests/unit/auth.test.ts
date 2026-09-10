@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Role } from "@prisma/client";
-import { createSessionToken, verifySessionToken } from "../../lib/auth";
-import { SessionUser } from "../../lib/types";
+import { createSessionToken, verifySessionToken } from "@/middlewares/auth.middleware";
+import { SessionUser } from "@/models/types.model";
 
 describe("Unit Tests: Authentication & JWT Tokens", () => {
   const mockUser: SessionUser = {

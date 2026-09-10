@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { AuthorType, AuditEventType } from "@prisma/client";
-import { TimelineItem } from "../../lib/types";
+import { TimelineItem } from "@/models/types.model";
 
 describe("Unit Tests: Timeline Item Merging and Chronological Ordering", () => {
   it("Orders interleaved replies and audit logs chronologically", () => {

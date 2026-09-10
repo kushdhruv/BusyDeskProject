@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { TicketService } from "@/lib/services/TicketService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { TicketController } from "@/controllers/ticket.controller";
 
 interface RouteParams {
   params: { id: string };
@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     const body = await req.json();
     const { primaryAssigneeId } = body;
 
-    const ticket = await TicketService.reassign(params.id, primaryAssigneeId || null, user);
+    const ticket = await TicketController.reassign(params.id, primaryAssigneeId || null, user);
     return NextResponse.json({ ticket });
   } catch (error: any) {
     const status = error.message.includes("Supervisors") ? 403 : 400;

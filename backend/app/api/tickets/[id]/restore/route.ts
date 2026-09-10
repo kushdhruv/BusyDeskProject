@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { TicketService } from "@/lib/services/TicketService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { TicketController } from "@/controllers/ticket.controller";
 
 interface RouteParams {
   params: { id: string };
@@ -13,7 +13,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ticket = await TicketService.restore(params.id, user);
+    const ticket = await TicketController.restore(params.id, user);
     return NextResponse.json({ ticket });
   } catch (error: any) {
     const status = error.message.includes("permission") ? 403 : 400;

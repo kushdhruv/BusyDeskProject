@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { AuthService } from "@/lib/services/AuthService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { AuthController } from "@/controllers/auth.controller";
 
 export async function GET() {
   const user = await getSessionUser();
@@ -8,6 +8,6 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const users = await AuthService.getAllUsers();
+  const users = await AuthController.getAllUsers();
   return NextResponse.json({ users });
 }

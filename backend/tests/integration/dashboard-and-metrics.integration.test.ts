@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { DashboardService } from "../../lib/services/DashboardService";
+import { DashboardController as DashboardService } from "@/controllers/dashboard.controller";
+import { DashboardMetrics } from "@/models/types.model";
 
 describe("Integration Tests: Dashboard Aggregates & 8-Week Historical Resolution Trend", () => {
   it("Calculates 4 headline metrics, status distributions, and 8 continuous weekly buckets", async () => {
-    const metrics = await DashboardService.getMetrics();
+    const metrics = (await DashboardService.getMetrics()) as DashboardMetrics;
 
     // 1. Headline metrics
     expect(typeof metrics.openTicketsCount).toBe("number");

@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Role, Status } from "@prisma/client";
-import { prisma } from "../../lib/prisma";
-import { TicketService } from "../../lib/services/TicketService";
-import { BulkService } from "../../lib/services/BulkService";
-import { ReplyService } from "../../lib/services/ReplyService";
-import { SessionUser } from "../../lib/types";
+import { prisma } from "@/db/prisma.db";
+import { TicketService } from "@/controllers/ticket.controller";
+import { BulkService } from "@/controllers/bulk.controller";
+import { ReplyService } from "@/controllers/reply.controller";
+import { SessionUser } from "@/models/types.model";
 
 describe("Fuzz Testing: Bulk Chaos Arrays & High Concurrency Race Conditions", () => {
   let supervisor: SessionUser;

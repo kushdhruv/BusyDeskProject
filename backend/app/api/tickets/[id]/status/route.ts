@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { TicketService } from "@/lib/services/TicketService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { TicketController } from "@/controllers/ticket.controller";
 import { Status } from "@prisma/client";
 
 interface RouteParams {
@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       );
     }
 
-    const ticket = await TicketService.changeStatus(params.id, status as Status, user);
+    const ticket = await TicketController.changeStatus(params.id, status as Status, user);
     return NextResponse.json({ ticket });
   } catch (error: any) {
     const isPermission = error.message.includes("permission") || error.message.includes("Supervisors are authorized");

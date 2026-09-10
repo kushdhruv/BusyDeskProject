@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Role, Priority, Category, Status, SlaAlertType, SlaAlertStatus } from "@prisma/client";
-import { prisma } from "../../lib/prisma";
-import { TicketService } from "../../lib/services/TicketService";
-import { SlaService } from "../../lib/services/SlaService";
-import { SessionUser } from "../../lib/types";
+import { prisma } from "@/db/prisma.db";
+import { TicketService } from "@/controllers/ticket.controller";
+import { SlaService } from "@/controllers/sla.controller";
+import { SessionUser } from "@/models/types.model";
 
 describe("Integration Tests: SLA Breach Detection, Alerts & Acknowledgement", () => {
   let supervisor: SessionUser;

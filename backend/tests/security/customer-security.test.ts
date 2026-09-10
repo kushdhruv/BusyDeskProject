@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Role, Priority, Category, Status, AuditEventType, AuthorType } from "@prisma/client";
-import { prisma } from "../../lib/prisma";
-import { AuthService } from "../../lib/services/AuthService";
-import { TicketService } from "../../lib/services/TicketService";
-import { ReplyService } from "../../lib/services/ReplyService";
-import { CsatService } from "../../lib/services/CsatService";
-import { DashboardService } from "../../lib/services/DashboardService";
-import { SessionUser, DashboardMetrics, CustomerDashboardMetrics } from "../../lib/types";
+import { prisma } from "@/db/prisma.db";
+import { AuthController as AuthService } from "@/controllers/auth.controller";
+import { TicketController as TicketService } from "@/controllers/ticket.controller";
+import { ReplyController as ReplyService } from "@/controllers/reply.controller";
+import { CsatController as CsatService } from "@/controllers/csat.controller";
+import { DashboardController as DashboardService } from "@/controllers/dashboard.controller";
+import { SessionUser, DashboardMetrics, CustomerDashboardMetrics } from "@/models/types.model";
 
 describe("Security & Integration Tests: Unified 3-Role Customer Security, Isolation & CSAT Invariants", () => {
   let supervisor: SessionUser;

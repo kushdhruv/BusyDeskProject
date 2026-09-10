@@ -1,13 +1,25 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { User as SessionUser } from "@/lib/types";
-import { Search, Bell, Plus, Command } from "lucide-react";
+import { Search, Bell, Plus, Command, Menu, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
-export function TopBar({ user }: { user: SessionUser | null }) {
+interface TopBarProps {
+  user: SessionUser | null;
+  onToggleMobile?: () => void;
+  sidebarCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+}
+
+export function TopBar({
+  user,
+  onToggleMobile,
+  sidebarCollapsed,
+  onToggleCollapse,
+}: TopBarProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const [searchTerm, setSearchTerm] = useState("");
   const [unreadAlerts, setUnreadAlerts] = useState<number>(0);
 
@@ -52,48 +64,69 @@ export function TopBar({ user }: { user: SessionUser | null }) {
   if (!user) return null;
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-      {/* Search Input Bar */}
-      <form onSubmit={handleSearchSubmit} className="flex-1 max-w-xl">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            id="global-search-input"
-            type="text"
-            placeholder="Search tickets, subject, description, requester... (Ctrl+K)"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-14 py-2 bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-xs text-slate-800 placeholder-slate-400 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
-          />
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-0.5 text-[10px] font-semibold text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-2xs">
-            <Command className="w-2.5 h-2.5" /> K
-          </div>
-        </div>
-      </form>
+    <header className="h-14 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 flex-shrink-0">
+      {/* Left side: Mobile Hamburger + Desktop Sidebar Toggle + Search */}
+      <div className="flex items-center gap-3 flex-1 max-w-xl">
+        {/* Mobile Hamburger Drawer Trigger */}
+        <button
+          onClick={onToggleMobile}
+          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors lg:hidden cursor-pointer"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
 
-      {/* Action Center */}
-      <div className="flex items-center gap-3">
+        {/* Desktop Collapse / Pop-up Sidebar Button (shows when collapsed for quick pop-out) */}
+        {sidebarCollapsed && onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            title="Expand sidebar (Pop up)"
+            className="hidden lg:flex p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+            aria-label="Expand sidebar"
+          >
+            <PanelLeftOpen className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Search Input Bar */}
+        <form onSubmit={handleSearchSubmit} className="flex-1 w-full max-w-md">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              id="global-search-input"
+              type="text"
+              placeholder="Search tickets (Ctrl+K)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-12 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors"
+            />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:flex items-center gap-0.5 text-[10px] font-medium text-slate-400 bg-white border border-slate-200 px-1 py-0.2 rounded">
+              <Command className="w-2.5 h-2.5" /> K
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* Right side Action Center */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         {/* SLA Alert Notification Bell */}
         <a
           href="/alerts"
-          className="relative p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
-          title="SLA Alerts"
+          className="relative p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+          title={unreadAlerts > 0 ? `${unreadAlerts} active SLA alerts` : "SLA Alerts"}
         >
           <Bell className="w-4 h-4" />
           {unreadAlerts > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white font-bold text-[10px] flex items-center justify-center rounded-full shadow-sm">
-              {unreadAlerts}
-            </span>
+            <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
           )}
         </a>
 
         {/* New Ticket CTA */}
-        <a
-          href="/tickets/new"
-          className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm hover:shadow transition active:scale-98"
-        >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>New Ticket</span>
+        <a href="/tickets/new">
+          <Button variant="primary" size="sm" icon={<Plus className="w-3.5 h-3.5" />}>
+            <span className="hidden sm:inline">New Ticket</span>
+            <span className="sm:hidden">New</span>
+          </Button>
         </a>
       </div>
     </header>

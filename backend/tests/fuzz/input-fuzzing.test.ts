@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Role, Priority, Category, Status } from "@prisma/client";
-import { prisma } from "../../lib/prisma";
-import { TicketService } from "../../lib/services/TicketService";
-import { ReplyService } from "../../lib/services/ReplyService";
-import { SessionUser } from "../../lib/types";
+import { prisma } from "@/db/prisma.db";
+import { TicketService } from "@/controllers/ticket.controller";
+import { ReplyService } from "@/controllers/reply.controller";
+import { SessionUser } from "@/models/types.model";
 
 describe("Fuzz Testing: Input Validation, Payloads, Injection & Unicode Edge Cases", () => {
   let supervisor: SessionUser;

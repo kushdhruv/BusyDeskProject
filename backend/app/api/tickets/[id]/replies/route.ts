@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { ReplyService } from "@/lib/services/ReplyService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { ReplyController } from "@/controllers/reply.controller";
 
 interface RouteParams {
   params: { id: string };
@@ -20,7 +20,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Reply body cannot be empty." }, { status: 400 });
     }
 
-    const reply = await ReplyService.addAgentReply(
+    const reply = await ReplyController.addAgentReply(
       params.id,
       { body: replyBody, isInternal: Boolean(isInternal) },
       user

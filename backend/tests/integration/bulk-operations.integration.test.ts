@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Role, Priority, Category, Status } from "@prisma/client";
-import { prisma } from "../../lib/prisma";
-import { TicketService } from "../../lib/services/TicketService";
-import { BulkService } from "../../lib/services/BulkService";
-import { SessionUser } from "../../lib/types";
+import { prisma } from "@/db/prisma.db";
+import { TicketController as TicketService } from "@/controllers/ticket.controller";
+import { BulkController as BulkService } from "@/controllers/bulk.controller";
+import { SessionUser } from "@/models/types.model";
 
 describe("Integration Tests: Bulk Actions, Partial Success & Isolated Transactions", () => {
   let supervisor: SessionUser;

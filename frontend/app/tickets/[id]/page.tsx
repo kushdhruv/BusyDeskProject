@@ -9,6 +9,9 @@ import { SlaCountdown } from "@/components/SlaCountdown";
 import { SimulateCustomerReplyModal } from "@/components/SimulateCustomerReplyModal";
 import { AddCollaboratorModal } from "@/components/AddCollaboratorModal";
 import { CustomerTicketDetail } from "@/components/customer/CustomerTicketDetail";
+import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Textarea";
+import { Select } from "@/components/ui/Select";
 import {
   ArrowLeft,
   Clock,
@@ -17,25 +20,15 @@ import {
   MessageSquare,
   Users,
   UserPlus,
-  Shield,
-  AlertTriangle,
-  CheckCircle,
   Archive,
-  RotateCcw,
-  Sparkles,
-  HelpCircle,
-  AlertCircle,
-  History,
   Tag,
-  UserCheck,
-  User,
-  Paperclip,
-  Smile,
+  History,
   Copy,
-  ChevronRight,
-  MoreVertical,
+  Check,
   CheckCircle2,
-  XCircle,
+  AlertCircle,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 
 export default function TicketWorkspacePage() {
@@ -59,7 +52,7 @@ export default function TicketWorkspacePage() {
   const [isInternal, setIsInternal] = useState<boolean>(false);
   const [submittingReply, setSubmittingReply] = useState<boolean>(false);
 
-  // Modals & Popovers
+  // Modals & Actions
   const [simulateModalOpen, setSimulateModalOpen] = useState<boolean>(false);
   const [addCollabModalOpen, setAddCollabModalOpen] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
@@ -250,17 +243,14 @@ export default function TicketWorkspacePage() {
   if (error || !ticketData) {
     return (
       <div className="max-w-md mx-auto py-20 text-center">
-        <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">
-          <AlertCircle className="w-6 h-6" />
+        <div className="w-10 h-10 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">
+          <AlertCircle className="w-5 h-5" />
         </div>
-        <h2 className="text-base font-bold text-slate-900">Unable to access ticket</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Unable to access ticket</h2>
         <p className="text-xs text-slate-500 mt-1">{error || "Ticket not found or permission denied."}</p>
-        <button
-          onClick={() => router.push("/tickets")}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg shadow-sm"
-        >
+        <Button variant="secondary" size="sm" className="mt-4" onClick={() => router.push("/tickets")}>
           Return to Queue
-        </button>
+        </Button>
       </div>
     );
   }
@@ -293,88 +283,92 @@ export default function TicketWorkspacePage() {
   const collaboratorIds = collaboratorList.map((c: any) => c.userId);
 
   return (
-    <div className="space-y-4 pb-16 animate-fade-in">
-      {/* Breadcrumb Navigation & Top Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200/80 pb-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
+    <div className="space-y-4 pb-16">
+      {/* Breadcrumb & Action Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Button
+            variant="secondary"
+            size="xs"
             onClick={() => router.push("/tickets")}
-            className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition"
-            title="Back to Tickets Queue"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
+            icon={<ArrowLeft className="w-3.5 h-3.5" />}
+            aria-label="Back to queue"
+          />
 
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span>Tickets</span>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-mono font-bold text-slate-900">#{ticketData.ticketNumber}</span>
+              <span className="hover:text-slate-800 cursor-pointer" onClick={() => router.push("/tickets")}>
+                Tickets
+              </span>
+              <ChevronRight className="w-3 h-3 text-slate-400" />
+              <span className="font-mono font-medium text-slate-700">#{ticketData.ticketNumber}</span>
               <StatusBadge status={ticketData.status} size="sm" />
               <PriorityBadge priority={ticketData.priority} />
             </div>
-            <h1 className="text-lg font-bold text-slate-900 truncate mt-0.5">{ticketData.subject}</h1>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Created {new Date(ticketData.createdAt).toLocaleDateString()} by {ticketData.requesterName} • Updated{" "}
-              {new Date(ticketData.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </p>
+            <h1 className="text-base font-semibold text-slate-900 truncate mt-0.5 tracking-tight">
+              {ticketData.subject}
+            </h1>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button
+          <Button
+            variant="secondary"
+            size="xs"
             onClick={() => setSimulateModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+            icon={<Sparkles className="w-3.5 h-3.5 text-slate-500" />}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Simulate Customer Reply</span>
-          </button>
+            Simulate Inbound Reply
+          </Button>
 
           {permissions?.canManageCollaborators && (
-            <button
+            <Button
+              variant="secondary"
+              size="xs"
               onClick={() => setAddCollabModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold shadow-2xs transition"
+              icon={<UserPlus className="w-3.5 h-3.5 text-slate-500" />}
             >
-              <UserPlus className="w-3.5 h-3.5 text-blue-600" />
-              <span>Add Collaborators</span>
-            </button>
+              Collaborators
+            </Button>
           )}
 
           {ticketData.status === "RESOLVED" && permissions?.canClose && (
-            <button
+            <Button
+              variant="primary"
+              size="xs"
               onClick={() => handleStatusChange("CLOSED")}
-              disabled={actionLoading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg text-xs font-semibold shadow-sm transition"
+              loading={actionLoading}
             >
-              <span>Close Ticket</span>
-            </button>
+              Close Ticket
+            </Button>
           )}
 
           {permissions?.canArchive && (
-            <button
+            <Button
+              variant="secondary"
+              size="xs"
               onClick={handleToggleArchive}
-              disabled={actionLoading}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-medium transition"
-              title={ticketData.archivedAt ? "Restore Ticket" : "Archive Ticket"}
+              loading={actionLoading}
+              icon={<Archive className="w-3.5 h-3.5 text-slate-500" />}
             >
-              <Archive className="w-3.5 h-3.5 text-slate-400" />
-            </button>
+              {ticketData.archivedAt ? "Restore" : "Archive"}
+            </Button>
           )}
         </div>
       </div>
 
-      {/* 3-Column Workspace Layout */}
+      {/* 2-Column Workspace Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left 8 Columns: Conversation & Activity Stream */}
-        <div className="lg:col-span-8 space-y-4">
-          {/* Navigation Tabs (Conversation | Details | Collaborators | History) */}
-          <div className="flex items-center gap-6 border-b border-slate-200 text-xs font-semibold">
+        {/* Left Columns: Conversation & Timeline */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-5">
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-4 border-b border-slate-200 text-xs font-medium">
             <button
               onClick={() => setActiveTab("conversation")}
-              className={`pb-2.5 transition border-b-2 -mb-px flex items-center gap-1.5 ${
+              className={`pb-2.5 transition-colors border-b-2 -mb-px flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "conversation"
-                  ? "border-blue-600 text-blue-600"
+                  ? "border-slate-900 text-slate-900 font-semibold"
                   : "border-transparent text-slate-500 hover:text-slate-900"
               }`}
             >
@@ -384,9 +378,9 @@ export default function TicketWorkspacePage() {
 
             <button
               onClick={() => setActiveTab("details")}
-              className={`pb-2.5 transition border-b-2 -mb-px flex items-center gap-1.5 ${
+              className={`pb-2.5 transition-colors border-b-2 -mb-px flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "details"
-                  ? "border-blue-600 text-blue-600"
+                  ? "border-slate-900 text-slate-900 font-semibold"
                   : "border-transparent text-slate-500 hover:text-slate-900"
               }`}
             >
@@ -396,9 +390,9 @@ export default function TicketWorkspacePage() {
 
             <button
               onClick={() => setActiveTab("collaborators")}
-              className={`pb-2.5 transition border-b-2 -mb-px flex items-center gap-1.5 ${
+              className={`pb-2.5 transition-colors border-b-2 -mb-px flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "collaborators"
-                  ? "border-blue-600 text-blue-600"
+                  ? "border-slate-900 text-slate-900 font-semibold"
                   : "border-transparent text-slate-500 hover:text-slate-900"
               }`}
             >
@@ -408,9 +402,9 @@ export default function TicketWorkspacePage() {
 
             <button
               onClick={() => setActiveTab("history")}
-              className={`pb-2.5 transition border-b-2 -mb-px flex items-center gap-1.5 ${
+              className={`pb-2.5 transition-colors border-b-2 -mb-px flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "history"
-                  ? "border-blue-600 text-blue-600"
+                  ? "border-slate-900 text-slate-900 font-semibold"
                   : "border-transparent text-slate-500 hover:text-slate-900"
               }`}
             >
@@ -422,23 +416,23 @@ export default function TicketWorkspacePage() {
           {/* TAB 1: CONVERSATION */}
           {activeTab === "conversation" && (
             <div className="space-y-4">
-              {/* Initial Customer Ticket Body */}
-              <div className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs">
+              {/* Initial Customer Description */}
+              <div className="bg-white p-5 rounded-md border border-slate-200 shadow-xs">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200">
+                    <div className="w-7 h-7 rounded bg-slate-100 text-slate-700 font-medium text-xs flex items-center justify-center border border-slate-200 flex-shrink-0">
                       {getInitials(ticketData.requesterName)}
                     </div>
                     <div>
                       <span className="font-semibold text-xs text-slate-900">{ticketData.requesterName}</span>
-                      <span className="text-[11px] text-slate-400 ml-1.5">(Customer)</span>
+                      <span className="text-[11px] text-slate-400 ml-1.5">Requester</span>
                     </div>
                   </div>
-                  <span className="text-[11px] text-slate-400">
-                    {new Date(ticketData.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  <span className="text-[11px] text-slate-400 tabular-nums">
+                    {new Date(ticketData.createdAt).toLocaleDateString()} {new Date(ticketData.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
-                <div className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
+                <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
                   {ticketData.description}
                 </div>
               </div>
@@ -448,50 +442,43 @@ export default function TicketWorkspacePage() {
                 {timeline.map((item) => {
                   if (item.type === "REPLY" && item.reply) {
                     const isNote = item.reply.isInternal;
-                    const isCustomer = item.reply.authorType === "CUSTOMER";
 
                     return (
                       <div
                         key={item.id}
-                        className={`p-4 rounded-xl border transition ${
+                        className={`p-4 sm:p-5 rounded-md border text-sm shadow-xs ${
                           isNote
-                            ? "internal-note-box shadow-xs"
-                            : isCustomer
-                            ? "bg-white border-slate-200/90 shadow-2xs"
-                            : "bg-blue-50/50 border-blue-200/80 shadow-2xs"
+                            ? "bg-amber-50/40 border-amber-200 border-l-[3px] border-l-amber-500"
+                            : "bg-white border-slate-200"
                         }`}
                       >
-                        {/* Header */}
-                        <div className="flex items-center justify-between pb-2 border-b border-black/5 mb-2">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-2.5">
+                          <div className="flex items-center gap-2.5">
                             <div
-                              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-2xs ${
-                                isNote ? "bg-amber-600" : isCustomer ? "bg-slate-600" : "bg-blue-600"
+                              className={`w-7 h-7 rounded font-medium text-xs flex items-center justify-center flex-shrink-0 ${
+                                isNote
+                                  ? "bg-amber-100 text-amber-900 border border-amber-200"
+                                  : "bg-slate-900 text-white"
                               }`}
                             >
-                              {getInitials(item.reply.authorName)}
+                              {item.reply.authorName ? getInitials(item.reply.authorName) : "C"}
                             </div>
                             <div>
                               <span className="font-semibold text-xs text-slate-900">
-                                {item.reply.authorName}
+                                {item.reply.authorName || "Customer"}
                               </span>
-                              <span className="text-[11px] text-slate-500 ml-1">
-                                {isNote ? "(Internal Note)" : isCustomer ? "(Customer)" : "(Agent)"}
-                              </span>
+                              {isNote && (
+                                <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-100/70 border border-amber-200 px-1.5 py-0.2 rounded">
+                                  <Lock className="w-2.5 h-2.5" /> Staff Internal Note
+                                </span>
+                              )}
                             </div>
-                            {isNote && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full ml-1">
-                                <Lock className="w-2.5 h-2.5" /> Team Note
-                              </span>
-                            )}
                           </div>
-                          <span className="text-[10px] text-slate-400">
-                            {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          <span className="text-[11px] text-slate-400 tabular-nums">
+                            {new Date(item.createdAt).toLocaleDateString()} {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
-
-                        {/* Body */}
-                        <div className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
+                        <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
                           {item.reply.body}
                         </div>
                       </div>
@@ -500,37 +487,23 @@ export default function TicketWorkspacePage() {
 
                   if (item.type === "AUDIT" && item.audit) {
                     return (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] text-slate-500 bg-slate-50 rounded-lg border border-slate-200/60"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
-                        <span className="font-semibold text-slate-700">{item.audit.actorName}</span>
-                        <span className="text-slate-500 truncate">
-                          {item.audit.eventType === "STATUS_CHANGED" && (
-                            <span>
-                              changed status from <strong>{item.audit.oldValue?.status}</strong> to{" "}
-                              <strong className="text-blue-600">{item.audit.newValue?.status}</strong>
-                            </span>
-                          )}
-                          {item.audit.eventType === "REASSIGNED" && (
-                            <span>
-                              reassigned ticket to{" "}
-                              <strong className="text-blue-600">{item.audit.newValue?.assigneeName || "Unassigned"}</strong>
-                            </span>
-                          )}
-                          {item.audit.eventType === "COLLABORATOR_ADDED" && (
-                            <span>added collaborator {item.audit.newValue?.userName}</span>
-                          )}
-                          {item.audit.eventType === "COLLABORATOR_REMOVED" && (
-                            <span>removed collaborator {item.audit.oldValue?.userName}</span>
-                          )}
-                          {item.audit.eventType === "TICKET_CREATED" && <span>created ticket</span>}
-                          {item.audit.eventType === "REPLY_ADDED" && (
-                            <span>posted a {item.audit.metadata?.isInternal ? "team note" : "customer reply"}</span>
-                          )}
+                      <div key={item.id} className="py-1.5 px-3 text-xs text-slate-500 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />
+                        <span className="truncate">
+                          <strong className="text-slate-700 font-medium">{item.audit.actorName}</strong>:{" "}
+                          {item.audit.eventType === "STATUS_CHANGED" &&
+                            `changed status to ${item.audit.newValue?.status}`}
+                          {item.audit.eventType === "REASSIGNED" &&
+                            `reassigned ticket to ${item.audit.newValue?.assigneeName || "Unassigned"}`}
+                          {item.audit.eventType === "COLLABORATOR_ADDED" &&
+                            `added collaborator ${item.audit.newValue?.userName}`}
+                          {item.audit.eventType === "COLLABORATOR_REMOVED" &&
+                            `removed collaborator ${item.audit.oldValue?.userName}`}
+                          {item.audit.eventType === "TICKET_CREATED" && "created this ticket"}
+                          {item.audit.eventType === "TICKET_ARCHIVED" && "archived this ticket"}
+                          {item.audit.eventType === "TICKET_RESTORED" && "restored this ticket"}
                         </span>
-                        <span className="ml-auto text-[10px] text-slate-400 flex-shrink-0">
+                        <span className="text-slate-400 tabular-nums ml-auto flex-shrink-0 text-[11px]">
                           {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
@@ -541,85 +514,64 @@ export default function TicketWorkspacePage() {
                 })}
               </div>
 
-              {/* Reply Composer Box */}
+              {/* Reply Composer */}
               {permissions?.canReply && (
-                <div
-                  className={`p-4 rounded-xl border transition shadow-2xs ${
-                    isInternal ? "internal-note-box" : "bg-white border-slate-200/90"
-                  }`}
-                >
-                  {/* Segmented Composer Header */}
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsInternal(false)}
-                        className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
-                          !isInternal
-                            ? "bg-blue-600 text-white shadow-2xs"
-                            : "text-slate-600 hover:bg-slate-100"
-                        }`}
-                      >
-                        Public Reply
-                      </button>
-
-                      {permissions.canAddInternalNote && (
-                        <button
-                          type="button"
-                          onClick={() => setIsInternal(true)}
-                          className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition ${
-                            isInternal
-                              ? "bg-amber-600 text-white shadow-2xs"
-                              : "text-slate-600 hover:bg-slate-100"
-                          }`}
-                        >
-                          <Lock className="w-3 h-3" />
-                          <span>Internal Note</span>
-                        </button>
-                      )}
-                    </div>
-
-                    <span className="text-[11px] text-slate-400">
-                      {isInternal ? "Visible only to team agents" : "Visible to customer"}
-                    </span>
+                <div className="bg-white rounded-md border border-slate-200 shadow-xs overflow-hidden mt-6">
+                  <div className="flex items-center gap-4 px-4 pt-3 border-b border-slate-100 text-xs font-medium">
+                    <button
+                      type="button"
+                      onClick={() => setIsInternal(false)}
+                      className={`pb-2.5 border-b-2 -mb-px transition-colors cursor-pointer ${
+                        !isInternal
+                          ? "border-slate-900 text-slate-900 font-semibold"
+                          : "border-transparent text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      Public Reply
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsInternal(true)}
+                      className={`pb-2.5 border-b-2 -mb-px transition-colors flex items-center gap-1.5 cursor-pointer ${
+                        isInternal
+                          ? "border-amber-600 text-amber-800 font-semibold"
+                          : "border-transparent text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Internal Note</span>
+                    </button>
                   </div>
 
-                  <form onSubmit={handleSendReply} className="mt-3 space-y-3">
-                    <textarea
-                      rows={3}
+                  <form onSubmit={handleSendReply} className="p-4 space-y-3">
+                    <Textarea
+                      rows={5}
                       value={replyBody}
                       onChange={(e) => setReplyBody(e.target.value)}
                       placeholder={
                         isInternal
-                          ? "Type internal note for team collaboration..."
-                          : "Type your public reply to the customer..."
+                          ? "Write an internal note (visible to team only)..."
+                          : "Type your reply to the customer..."
                       }
-                      className="w-full text-xs p-3 bg-transparent border-0 outline-none resize-y placeholder-slate-400 text-slate-800"
-                      required
+                      className={`min-h-[130px] ${isInternal ? "bg-amber-50/20 border-amber-200" : ""}`}
                     />
 
-                    <div className="flex items-center justify-between pt-2 border-t border-black/5">
-                      <div className="flex items-center gap-2 text-slate-400">
-                        <button type="button" className="p-1 hover:text-slate-600 rounded">
-                          <Paperclip className="w-4 h-4" />
-                        </button>
-                        <button type="button" className="p-1 hover:text-slate-600 rounded">
-                          <Smile className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <button
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1">
+                      <span className="text-xs text-slate-400">
+                        {isInternal
+                          ? "Internal notes are private and never sent to the customer."
+                          : "Customer will receive an email notification."}
+                      </span>
+                      <Button
                         type="submit"
-                        disabled={submittingReply || !replyBody.trim()}
-                        className={`inline-flex items-center gap-1.5 px-4 py-2 text-white rounded-lg text-xs font-semibold shadow-sm transition disabled:opacity-50 ${
-                          isInternal
-                            ? "bg-amber-600 hover:bg-amber-700"
-                            : "bg-blue-600 hover:bg-blue-700"
-                        }`}
+                        variant={isInternal ? "secondary" : "primary"}
+                        size="sm"
+                        loading={submittingReply}
+                        disabled={!replyBody.trim()}
+                        icon={isInternal ? <Lock className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
                       >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>{submittingReply ? "Posting..." : isInternal ? "Add Note" : "Send Reply"}</span>
-                      </button>
+                        {isInternal ? "Add Internal Note" : "Send Reply"}
+                      </Button>
                     </div>
                   </form>
                 </div>
@@ -629,12 +581,12 @@ export default function TicketWorkspacePage() {
 
           {/* TAB 2: DETAILS */}
           {activeTab === "details" && (
-            <div className="bg-white p-6 rounded-xl border border-slate-200/90 shadow-2xs space-y-4">
-              <h3 className="text-sm font-bold text-slate-900">Ticket Specifications</h3>
+            <div className="bg-white p-5 rounded-md border border-slate-200 shadow-xs space-y-4">
+              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Ticket Specifications</h3>
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <span className="text-slate-400 block mb-1">Ticket Number</span>
-                  <span className="font-mono font-bold text-slate-900">#{ticketData.ticketNumber}</span>
+                  <span className="font-mono font-medium text-slate-900">#{ticketData.ticketNumber}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block mb-1">Category</span>
@@ -645,16 +597,16 @@ export default function TicketWorkspacePage() {
                   <PriorityBadge priority={ticketData.priority} />
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-1">Current Status</span>
+                  <span className="text-slate-400 block mb-1">Status</span>
                   <StatusBadge status={ticketData.status} />
                 </div>
                 <div>
                   <span className="text-slate-400 block mb-1">Created At</span>
-                  <span className="text-slate-800">{new Date(ticketData.createdAt).toLocaleString()}</span>
+                  <span className="text-slate-800 tabular-nums">{new Date(ticketData.createdAt).toLocaleString()}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block mb-1">Last Updated</span>
-                  <span className="text-slate-800">{new Date(ticketData.updatedAt).toLocaleString()}</span>
+                  <span className="text-slate-800 tabular-nums">{new Date(ticketData.updatedAt).toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -662,33 +614,30 @@ export default function TicketWorkspacePage() {
 
           {/* TAB 3: COLLABORATORS */}
           {activeTab === "collaborators" && (
-            <div className="bg-white p-6 rounded-xl border border-slate-200/90 shadow-2xs space-y-4">
+            <div className="bg-white p-5 rounded-md border border-slate-200 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Ticket Collaborators</h3>
+                  <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Collaborators</h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Team members who can view, reply, and add internal notes to this ticket.
+                    Team members with full access to view, reply, and add internal notes.
                   </p>
                 </div>
                 {permissions?.canManageCollaborators && (
-                  <button
-                    onClick={() => setAddCollabModalOpen(true)}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition"
-                  >
+                  <Button variant="secondary" size="xs" onClick={() => setAddCollabModalOpen(true)}>
                     + Add Collaborator
-                  </button>
+                  </Button>
                 )}
               </div>
 
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 mt-2">
                 {/* Primary Assignee */}
-                <div className="py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center">
+                <div className="py-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded bg-slate-900 text-white font-medium text-xs flex items-center justify-center">
                       {ticketData.primaryAssignee ? getInitials(ticketData.primaryAssignee.name) : "U"}
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-900">
+                      <p className="text-xs font-medium text-slate-900">
                         {ticketData.primaryAssignee?.name || "Unassigned"}
                       </p>
                       <p className="text-[11px] text-slate-500">
@@ -696,32 +645,32 @@ export default function TicketWorkspacePage() {
                       </p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                     Primary Assignee
                   </span>
                 </div>
 
                 {/* Secondary Collaborators */}
                 {collaboratorList.map((c: any) => (
-                  <div key={c.id} className="py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-700 text-white font-bold text-xs flex items-center justify-center">
+                  <div key={c.id} className="py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded bg-slate-100 border border-slate-200 text-slate-700 font-medium text-xs flex items-center justify-center">
                         {getInitials(c.user.name)}
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-slate-900">{c.user.name}</p>
+                        <p className="text-xs font-medium text-slate-900">{c.user.name}</p>
                         <p className="text-[11px] text-slate-500">{c.user.email}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-50 text-slate-600 border border-slate-200">
                         Collaborator
                       </span>
                       {permissions?.canManageCollaborators && (
                         <button
                           onClick={() => handleRemoveCollaborator(c.userId)}
-                          className="text-xs text-rose-600 hover:text-rose-800 font-semibold"
+                          className="text-xs text-rose-600 hover:text-rose-800 font-medium cursor-pointer"
                         >
                           Remove
                         </button>
@@ -733,37 +682,37 @@ export default function TicketWorkspacePage() {
             </div>
           )}
 
-          {/* TAB 4: HISTORY (AUDIT LOGS) */}
+          {/* TAB 4: HISTORY */}
           {activeTab === "history" && (
-            <div className="bg-white p-6 rounded-xl border border-slate-200/90 shadow-2xs space-y-3">
-              <h3 className="text-sm font-bold text-slate-900">Immutable Audit Trail</h3>
+            <div className="bg-white p-5 rounded-md border border-slate-200 shadow-xs space-y-3">
+              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Audit History</h3>
               <p className="text-xs text-slate-500">
-                Append-only ledger recording all state changes, reassignments, and replies.
+                Immutable chronological log of all ticket events and state transitions.
               </p>
 
-              <div className="divide-y divide-slate-100 mt-4">
+              <div className="divide-y divide-slate-100 mt-2">
                 {timeline
                   .filter((t) => t.type === "AUDIT" && t.audit)
                   .map((item) => (
-                    <div key={item.id} className="py-3 flex items-start justify-between text-xs">
+                    <div key={item.id} className="py-2 flex items-start justify-between text-xs">
                       <div>
-                        <p className="font-semibold text-slate-900">{item.audit?.actorName}</p>
-                        <p className="text-slate-600 mt-0.5">
+                        <span className="font-medium text-slate-900">{item.audit?.actorName}</span>
+                        <span className="text-slate-600 ml-1.5">
                           {item.audit?.eventType === "STATUS_CHANGED" &&
-                            `Changed status from ${item.audit.oldValue?.status} to ${item.audit.newValue?.status}`}
+                            `changed status from ${item.audit.oldValue?.status} to ${item.audit.newValue?.status}`}
                           {item.audit?.eventType === "REASSIGNED" &&
-                            `Reassigned ticket to ${item.audit.newValue?.assigneeName || "Unassigned"}`}
+                            `reassigned ticket to ${item.audit.newValue?.assigneeName || "Unassigned"}`}
                           {item.audit?.eventType === "COLLABORATOR_ADDED" &&
-                            `Added collaborator ${item.audit.newValue?.userName}`}
+                            `added collaborator ${item.audit.newValue?.userName}`}
                           {item.audit?.eventType === "COLLABORATOR_REMOVED" &&
-                            `Removed collaborator ${item.audit.oldValue?.userName}`}
-                          {item.audit?.eventType === "TICKET_CREATED" && "Ticket created"}
-                          {item.audit?.eventType === "REPLY_ADDED" && "Posted a reply or internal note"}
-                          {item.audit?.eventType === "TICKET_ARCHIVED" && "Archived ticket"}
-                          {item.audit?.eventType === "TICKET_RESTORED" && "Restored ticket"}
-                        </p>
+                            `removed collaborator ${item.audit.oldValue?.userName}`}
+                          {item.audit?.eventType === "TICKET_CREATED" && "created this ticket"}
+                          {item.audit?.eventType === "REPLY_ADDED" && "added a comment"}
+                          {item.audit?.eventType === "TICKET_ARCHIVED" && "archived this ticket"}
+                          {item.audit?.eventType === "TICKET_RESTORED" && "restored this ticket"}
+                        </span>
                       </div>
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-[11px] text-slate-400 tabular-nums">
                         {new Date(item.createdAt).toLocaleString()}
                       </span>
                     </div>
@@ -773,12 +722,12 @@ export default function TicketWorkspacePage() {
           )}
         </div>
 
-        {/* Right 4 Columns: Ticket Information & Quick Actions Sidebar */}
-        <div className="lg:col-span-4 space-y-4">
-          {/* Ticket Information Card */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-              Ticket Information
+        {/* Right Columns: Inspector & Lifecycle Controls */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-5 lg:sticky lg:top-4">
+          {/* Metadata Inspector Card */}
+          <div className="bg-white p-5 rounded-md border border-slate-200 shadow-xs space-y-4">
+            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2.5">
+              Ticket Details
             </h3>
 
             {/* Requester */}
@@ -786,20 +735,20 @@ export default function TicketWorkspacePage() {
               <span className="text-[11px] text-slate-400 block mb-1">Requester</span>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200">
+                  <div className="w-6 h-6 rounded bg-slate-100 text-slate-700 font-medium text-[11px] flex items-center justify-center border border-slate-200">
                     {getInitials(ticketData.requesterName)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-900 truncate">{ticketData.requesterName}</p>
+                    <p className="text-xs font-medium text-slate-900 truncate">{ticketData.requesterName}</p>
                     <p className="text-[11px] text-slate-500 truncate">{ticketData.requesterEmail}</p>
                   </div>
                 </div>
                 <button
                   onClick={copyEmailToClipboard}
                   title="Copy email"
-                  className="p-1 text-slate-400 hover:text-slate-600 rounded transition"
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors"
                 >
-                  <Copy className="w-3.5 h-3.5" />
+                  {copiedEmail ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </div>
@@ -819,24 +768,18 @@ export default function TicketWorkspacePage() {
             {/* Status */}
             <div className="pt-2 border-t border-slate-100">
               <span className="text-[11px] text-slate-400 block mb-1">Status</span>
-              <StatusBadge status={ticketData.status} />
+              <StatusBadge status={ticketData.status} size="md" />
             </div>
 
             {/* Primary Assignee */}
             <div className="pt-2 border-t border-slate-100">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] text-slate-400">Primary Assignee</span>
-                {permissions?.canReassign && (
-                  <span className="text-[10px] text-blue-600 font-semibold">(Supervisor Reassign)</span>
-                )}
-              </div>
-
+              <span className="text-[11px] text-slate-400 block mb-1">Primary Assignee</span>
               {permissions?.canReassign ? (
-                <select
+                <Select
                   value={ticketData.primaryAssigneeId || ""}
                   onChange={(e) => handleReassign(e.target.value)}
                   disabled={actionLoading}
-                  className="w-full text-xs py-1.5 px-2.5 border border-slate-200 rounded-lg bg-slate-50 hover:bg-white text-slate-800 outline-none cursor-pointer"
+                  className="w-full"
                 >
                   <option value="">Unassigned</option>
                   {agents.map((a) => (
@@ -844,162 +787,151 @@ export default function TicketWorkspacePage() {
                       {a.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               ) : (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center">
+                <div className="flex items-center gap-2 p-1.5 rounded bg-slate-50 border border-slate-200 text-xs">
+                  <div className="w-5 h-5 rounded bg-slate-200 text-slate-700 font-medium text-[10px] flex items-center justify-center">
                     {ticketData.primaryAssignee ? getInitials(ticketData.primaryAssignee.name) : "U"}
                   </div>
-                  <span className="font-semibold text-slate-800">
+                  <span className="font-medium text-slate-800">
                     {ticketData.primaryAssignee?.name || "Unassigned"}
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Collaborators Overlapping Avatars */}
-            <div className="pt-2 border-t border-slate-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] text-slate-400">Collaborators</span>
-                {permissions?.canManageCollaborators && (
-                  <button
-                    onClick={() => setAddCollabModalOpen(true)}
-                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800"
-                  >
-                    + Add
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                {collaboratorList.length === 0 ? (
-                  <span className="text-xs text-slate-400 italic">No secondary collaborators</span>
-                ) : (
-                  collaboratorList.map((c: any) => (
-                    <div
-                      key={c.id}
-                      title={c.user.name}
-                      className="w-7 h-7 rounded-full bg-slate-700 text-white font-bold text-[10px] flex items-center justify-center border-2 border-white shadow-2xs"
-                    >
-                      {getInitials(c.user.name)}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
             {/* SLA Clock Widget */}
             <div className="pt-2 border-t border-slate-100 space-y-1.5">
-              <span className="text-[11px] text-slate-400 block">SLA Response Countdown</span>
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <span className="text-[11px] text-slate-400 block">SLA Target</span>
+              <div className="p-2 rounded bg-slate-50 border border-slate-200 flex items-center justify-between">
                 <SlaCountdown
                   slaDueAt={ticketData.slaDueAt}
                   status={ticketData.status}
                   slaPausedRemainingSeconds={ticketData.slaPausedRemainingSeconds}
-                  size="md"
+                  size="sm"
                 />
+                <span className="text-[10px] text-slate-400 font-mono">Cycle #{ticketData.slaCycle}</span>
               </div>
               {activeAlert && permissions?.canAcknowledgeAlert && (
-                <button
+                <Button
+                  variant="danger"
+                  size="xs"
+                  className="w-full mt-1.5"
                   onClick={() => handleAcknowledgeAlert(activeAlert.id)}
-                  disabled={actionLoading}
-                  className="w-full mt-2 py-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1"
+                  loading={actionLoading}
+                  icon={<CheckCircle2 className="w-3 h-3" />}
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Acknowledge SLA Alert</span>
-                </button>
+                  Acknowledge SLA Alert
+                </Button>
               )}
             </div>
           </div>
 
-          {/* Quick Actions Card */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs space-y-3">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-              Lifecycle State Controls
+          {/* Lifecycle State Controls */}
+          <div className="bg-white p-5 rounded-md border border-slate-200 shadow-xs space-y-3">
+            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2.5">
+              Lifecycle Transitions
             </h3>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {ticketData.status === "NEW" && (
-                <button
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
                   onClick={() => handleStatusChange("OPEN")}
-                  disabled={actionLoading}
-                  className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition"
+                  loading={actionLoading}
                 >
                   Move to Open
-                </button>
+                </Button>
               )}
 
               {ticketData.status === "OPEN" && (
                 <>
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
                     onClick={() => handleStatusChange("PENDING")}
-                    disabled={actionLoading}
-                    className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg shadow-sm transition"
+                    loading={actionLoading}
                   >
-                    Pause SLA (Mark Pending on Customer)
-                  </button>
-                  <button
+                    Pause SLA (Pending Customer)
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full"
                     onClick={() => handleStatusChange("RESOLVED")}
-                    disabled={actionLoading}
-                    className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition"
+                    loading={actionLoading}
                   >
                     Mark as Resolved
-                  </button>
+                  </Button>
                 </>
               )}
 
               {ticketData.status === "PENDING" && (
                 <>
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
                     onClick={() => handleStatusChange("OPEN")}
-                    disabled={actionLoading}
-                    className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition"
+                    loading={actionLoading}
                   >
                     Resume SLA (Move to Open)
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full"
                     onClick={() => handleStatusChange("RESOLVED")}
-                    disabled={actionLoading}
-                    className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition"
+                    loading={actionLoading}
                   >
                     Mark as Resolved
-                  </button>
+                  </Button>
                 </>
               )}
 
               {ticketData.status === "RESOLVED" && (
                 <>
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
                     onClick={() => handleStatusChange("OPEN")}
-                    disabled={actionLoading}
-                    className="w-full py-2 px-3 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-sm transition"
+                    loading={actionLoading}
                   >
                     Reopen Ticket
-                  </button>
+                  </Button>
                   {permissions?.canClose && (
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="w-full"
                       onClick={() => handleStatusChange("CLOSED")}
-                      disabled={actionLoading}
-                      className="w-full py-2 px-3 bg-slate-900 hover:bg-black text-white text-xs font-semibold rounded-lg shadow-sm transition"
+                      loading={actionLoading}
                     >
                       Close Ticket (Supervisor)
-                    </button>
+                    </Button>
                   )}
                 </>
               )}
 
               {ticketData.status === "CLOSED" && (
                 <div>
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
                     onClick={() => handleStatusChange("OPEN")}
                     disabled={actionLoading || !permissions?.canReopen}
-                    className="w-full py-2 px-3 bg-slate-800 hover:bg-black disabled:opacity-40 text-white text-xs font-semibold rounded-lg shadow-sm transition"
+                    loading={actionLoading}
                   >
-                    {permissions?.canReopen ? "Reopen Ticket (Supervisor)" : "Reopen Expired (Closed > 7 days)"}
-                  </button>
+                    {permissions?.canReopen ? "Reopen Ticket (Supervisor)" : "Reopen Expired (> 7 days)"}
+                  </Button>
                   {!permissions?.canReopen && (
                     <p className="text-[10px] text-rose-600 mt-1">
-                      7-day reopen window expired.
+                      7-day supervisor reopen window expired.
                     </p>
                   )}
                 </div>

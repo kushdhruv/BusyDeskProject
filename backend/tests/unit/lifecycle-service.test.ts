@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Role, Status } from "@prisma/client";
-import { LifecycleService } from "../../lib/services/LifecycleService";
-import { SessionUser } from "../../lib/types";
-import { REOPEN_WINDOW_DAYS, REOPEN_WINDOW_MS } from "../../lib/constants";
+import { LifecycleController as LifecycleService } from "@/controllers/lifecycle.controller";
+import { SessionUser } from "@/models/types.model";
+import { REOPEN_WINDOW_DAYS, REOPEN_WINDOW_MS } from "@/utils/constants.util";
 
 describe("Unit Tests: LifecycleService State Machine Validation", () => {
   const supervisor: SessionUser = {

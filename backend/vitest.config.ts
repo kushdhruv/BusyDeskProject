@@ -24,9 +24,13 @@ export default defineConfig({
     globals: true,
   },
   resolve: {
-    alias: [
-      { find: "@", replacement: path.resolve(__dirname, "./") },
-      { find: /^(\.\.\/)+lib\/(.*)$/, replacement: path.resolve(__dirname, "./lib/$2") },
-    ],
+    alias: {
+      "@": path.resolve(__dirname, "./"),
+      "@/controllers": path.resolve(__dirname, "./controllers"),
+      "@/middlewares": path.resolve(__dirname, "./middlewares"),
+      "@/models": path.resolve(__dirname, "./models"),
+      "@/db": path.resolve(__dirname, "./db"),
+      "@/utils": path.resolve(__dirname, "./utils"),
+    },
   },
 });

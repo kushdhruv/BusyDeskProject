@@ -4,22 +4,17 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, DashboardMetrics, Status } from "@/lib/types";
 import { CustomerDashboard } from "@/components/customer/CustomerDashboard";
+import { Button } from "@/components/ui/Button";
 import {
   Inbox,
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Users,
-  BarChart3,
-  TrendingUp,
   ArrowUpRight,
-  ShieldCheck,
-  Headphones,
   Calendar,
-  AlertCircle,
-  ExternalLink,
   Loader2,
   Star,
+  ExternalLink,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -60,9 +55,9 @@ export default function DashboardPage() {
 
   if (loading || !user) {
     return (
-      <div className="py-20 flex flex-col items-center justify-center text-slate-400 text-xs">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-2" />
-        Loading Dashboard...
+      <div className="py-24 flex flex-col items-center justify-center text-slate-400 text-xs">
+        <Loader2 className="w-5 h-5 animate-spin text-slate-600 mb-2" />
+        <span>Loading dashboard metrics...</span>
       </div>
     );
   }
@@ -74,9 +69,9 @@ export default function DashboardPage() {
 
   if (!metrics || !metrics.statusBreakdown) {
     return (
-      <div className="py-20 flex flex-col items-center justify-center text-slate-400 text-xs">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-2" />
-        Loading Dashboard metrics...
+      <div className="py-24 flex flex-col items-center justify-center text-slate-400 text-xs">
+        <Loader2 className="w-5 h-5 animate-spin text-slate-600 mb-2" />
+        <span>Loading dashboard metrics...</span>
       </div>
     );
   }
@@ -99,151 +94,151 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="space-y-6 pb-12 animate-fade-in">
+    <div className="space-y-5 pb-12">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-base font-semibold text-slate-900 tracking-tight">
             {isSupervisor ? "Supervisor Dashboard" : "Agent Dashboard"}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {isSupervisor
-              ? "Comprehensive overview of queue health, agent workloads, and SLA metrics."
-              : "Here's a quick overview of your assigned and collaborative tickets."}
+              ? "Department-wide queue throughput, agent capacity, and SLA compliance metrics."
+              : "Overview of your assigned workload and active customer requests."}
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 shadow-2xs">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 shadow-xs">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <span>This Week</span>
           </div>
-          <a
-            href="/tickets"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition"
-          >
-            <span>View All Queue</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
+          <a href="/tickets">
+            <Button variant="primary" size="sm" icon={<ArrowUpRight className="w-3.5 h-3.5" />}>
+              View Queue
+            </Button>
           </a>
         </div>
       </div>
 
       {/* 4 Headline Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Card 1: Open Tickets */}
         <a
           href="/tickets?status=OPEN"
-          className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs hover:border-blue-300 hover:shadow-md transition card-hover block"
+          className="bg-white p-4 rounded-md border border-slate-200 shadow-xs hover:border-slate-300 transition-colors block"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="text-xs font-medium text-slate-500">
               {isSupervisor ? "Open Tickets" : "My Open Tickets"}
             </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Inbox className="w-4 h-4" />
-            </div>
+            <Inbox className="w-4 h-4 text-slate-400" />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
-            <div className="text-2xl font-bold text-slate-900">{metrics.openTicketsCount}</div>
-            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+            <div className="text-2xl font-semibold text-slate-900 tabular-nums tracking-tight">
+              {metrics.openTicketsCount}
+            </div>
+            <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
               Active
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Active tickets in progress</p>
+          <p className="text-[11px] text-slate-400 mt-1">Tickets in progress</p>
         </a>
 
         {/* Card 2: Pending on Customer */}
         <a
           href="/tickets?scope=awaiting_customer"
-          className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs hover:border-amber-300 hover:shadow-md transition card-hover block"
+          className="bg-white p-4 rounded-md border border-slate-200 shadow-xs hover:border-slate-300 transition-colors block"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Pending</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Clock className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-slate-500">Pending Customer</span>
+            <Clock className="w-4 h-4 text-slate-400" />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
-            <div className="text-2xl font-bold text-slate-900">{metrics.pendingOnCustomerCount}</div>
-            <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+            <div className="text-2xl font-semibold text-slate-900 tabular-nums tracking-tight">
+              {metrics.pendingOnCustomerCount}
+            </div>
+            <span className="text-[11px] font-medium text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
               Awaiting
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Waiting on customer reply</p>
+          <p className="text-[11px] text-slate-400 mt-1">Waiting on customer response</p>
         </a>
 
         {/* Card 3: Resolved This Week */}
         <a
           href="/tickets?status=RESOLVED"
-          className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs hover:border-emerald-300 hover:shadow-md transition card-hover block"
+          className="bg-white p-4 rounded-md border border-slate-200 shadow-xs hover:border-slate-300 transition-colors block"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Resolved</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-slate-500">Resolved This Week</span>
+            <CheckCircle2 className="w-4 h-4 text-slate-400" />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
-            <div className="text-2xl font-bold text-slate-900">{metrics.resolvedThisWeekCount}</div>
-            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+            <div className="text-2xl font-semibold text-slate-900 tabular-nums tracking-tight">
+              {metrics.resolvedThisWeekCount}
+            </div>
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
               Resolved
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Closed or resolved this week</p>
+          <p className="text-[11px] text-slate-400 mt-1">Successfully closed</p>
         </a>
 
         {/* Card 4: Breaching SLA */}
         <a
           href="/alerts"
-          className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs hover:border-rose-300 hover:shadow-md transition card-hover block"
+          className="bg-white p-4 rounded-md border border-slate-200 shadow-xs hover:border-slate-300 transition-colors block"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Breaching SLA</span>
-            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-slate-500">SLA Breaches</span>
+            <AlertTriangle className="w-4 h-4 text-rose-500" />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
-            <div className="text-2xl font-bold text-rose-600">{metrics.breachingSlaCount}</div>
-            <span className="text-[11px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
-              {metrics.breachingSlaCount > 0 ? "Action Required" : "Healthy"}
+            <div className={`text-2xl font-semibold tabular-nums tracking-tight ${metrics.breachingSlaCount > 0 ? "text-rose-600" : "text-slate-900"}`}>
+              {metrics.breachingSlaCount}
+            </div>
+            <span
+              className={`text-[11px] font-medium px-1.5 py-0.2 rounded border ${
+                metrics.breachingSlaCount > 0
+                  ? "text-rose-700 bg-rose-50 border-rose-200"
+                  : "text-slate-600 bg-slate-100 border-slate-200"
+              }`}
+            >
+              {metrics.breachingSlaCount > 0 ? "Action required" : "Healthy"}
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Tickets overdue past response target</p>
+          <p className="text-[11px] text-slate-400 mt-1">Overdue response commitments</p>
         </a>
       </div>
 
       {/* Supervisor CSAT Card */}
       {isSupervisor && metrics.csatResponseCount !== undefined && (
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-md border border-indigo-500/20">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-1.5">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[11px] font-semibold">
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                <span>Customer Satisfaction (CSAT)</span>
-              </div>
-              <h2 className="text-base font-bold">Overall Customer CSAT Score</h2>
-              <p className="text-xs text-slate-300">
-                Aggregated from {metrics.csatResponseCount} customer ratings on resolved tickets.
+        <div className="bg-white rounded-md p-4 border border-slate-200 shadow-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                Customer Satisfaction (CSAT)
+              </span>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Based on <span className="font-semibold text-slate-800">{metrics.csatResponseCount}</span> customer ratings submitted upon ticket resolution.
               </p>
             </div>
 
-            <div className="flex items-center gap-8">
-              <div className="text-center">
-                <div className="flex items-center gap-1">
-                  <span className="text-3xl font-extrabold text-white">
-                    {metrics.averageCsatRating > 0 ? metrics.averageCsatRating.toFixed(1) : "N/A"}
-                  </span>
-                  <span className="text-xs text-amber-400 font-bold">/ 5.0</span>
-                </div>
-                <div className="flex items-center justify-center gap-0.5 mt-1">
+            <div className="flex items-center gap-6">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
+                  {metrics.averageCsatRating > 0 ? metrics.averageCsatRating.toFixed(1) : "N/A"}
+                </span>
+                <span className="text-xs text-slate-400 font-medium">/ 5.0</span>
+                <div className="flex items-center gap-0.5 ml-2">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <Star
                       key={s}
                       className={`w-3.5 h-3.5 ${
                         s <= Math.round(metrics.averageCsatRating || 0)
-                          ? "text-amber-400 fill-amber-400"
-                          : "text-slate-600"
+                          ? "text-amber-500 fill-amber-500"
+                          : "text-slate-200"
                       }`}
                     />
                   ))}
@@ -252,21 +247,21 @@ export default function DashboardPage() {
 
               {/* Rating Distribution Bar */}
               {metrics.csatRatingDistribution && (
-                <div className="hidden sm:flex flex-col gap-1 w-48 border-l border-white/10 pl-6 text-[10px]">
+                <div className="hidden sm:flex flex-col gap-1 w-44 border-l border-slate-200 pl-4 text-[10px]">
                   {metrics.csatRatingDistribution.map((item: any) => {
                     const pct = metrics.csatResponseCount
                       ? Math.round((item.count / metrics.csatResponseCount) * 100)
                       : 0;
                     return (
                       <div key={item.rating} className="flex items-center gap-2">
-                        <span className="w-5 text-slate-400 font-medium">{item.rating} ★</span>
-                        <div className="flex-1 bg-white/10 rounded-full h-1.5 overflow-hidden">
+                        <span className="w-4 text-slate-500 font-mono">{item.rating}★</span>
+                        <div className="flex-1 bg-slate-100 rounded h-1.5 overflow-hidden">
                           <div
                             style={{ width: `${pct}%` }}
-                            className="bg-amber-400 h-1.5 rounded-full"
+                            className="bg-slate-700 h-1.5 rounded"
                           />
                         </div>
-                        <span className="w-6 text-right font-medium text-slate-300">{item.count}</span>
+                        <span className="w-5 text-right font-medium text-slate-600 tabular-nums">{item.count}</span>
                       </div>
                     );
                   })}
@@ -277,25 +272,25 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Mid Row: Tickets by Status Donut & Tickets by Agent Horizontal Bars */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Status Distribution with SVG Donut */}
-        <div className="lg:col-span-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-slate-900">Tickets by Status</h2>
-            <span className="text-xs text-slate-400 font-medium">{totalTicketsCount} Total</span>
+      {/* Mid Row: Tickets by Status & Workload */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Status Distribution */}
+        <div className="lg:col-span-6 bg-white p-4 rounded-md border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Queue by Status</h2>
+            <span className="text-xs text-slate-500 tabular-nums font-medium">{totalTicketsCount} total</span>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-8 py-2">
-            {/* SVG Donut Visual */}
-            <div className="relative w-40 h-40 flex-shrink-0 flex items-center justify-center">
+          <div className="flex flex-col sm:flex-row items-center gap-6 py-2">
+            {/* Minimal SVG Donut */}
+            <div className="relative w-32 h-32 flex-shrink-0 flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <circle
                   cx="50"
                   cy="50"
                   r="38"
                   className="text-slate-100"
-                  strokeWidth="12"
+                  strokeWidth="8"
                   stroke="currentColor"
                   fill="transparent"
                 />
@@ -303,8 +298,8 @@ export default function DashboardPage() {
                   cx="50"
                   cy="50"
                   r="38"
-                  className="text-blue-500"
-                  strokeWidth="12"
+                  className="text-slate-800"
+                  strokeWidth="8"
                   strokeDasharray="238.76"
                   strokeDashoffset={238.76 * (1 - (metrics.openTicketsCount / totalTicketsCount || 0.4))}
                   strokeLinecap="round"
@@ -315,8 +310,8 @@ export default function DashboardPage() {
                   cx="50"
                   cy="50"
                   r="38"
-                  className="text-amber-400"
-                  strokeWidth="12"
+                  className="text-amber-500"
+                  strokeWidth="8"
                   strokeDasharray="238.76"
                   strokeDashoffset={238.76 * (1 - (metrics.pendingOnCustomerCount / totalTicketsCount || 0.15))}
                   strokeLinecap="round"
@@ -325,32 +320,30 @@ export default function DashboardPage() {
                 />
               </svg>
               <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-2xl font-extrabold text-slate-900">{totalTicketsCount}</span>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                  Total
-                </span>
+                <span className="text-xl font-bold text-slate-900 tabular-nums">{totalTicketsCount}</span>
+                <span className="text-[10px] text-slate-400 font-medium">Tickets</span>
               </div>
             </div>
 
             {/* Status Legend Breakdown */}
-            <div className="flex-1 w-full space-y-2.5">
+            <div className="flex-1 w-full space-y-2">
               {metrics.statusBreakdown.map((s: any) => {
-                const statusColors: Record<Status, { dot: string; label: string }> = {
-                  NEW: { dot: "bg-cyan-500", label: "New" },
-                  OPEN: { dot: "bg-blue-600", label: "Open" },
+                const statusLabels: Record<Status, { dot: string; label: string }> = {
+                  NEW: { dot: "bg-blue-500", label: "New" },
+                  OPEN: { dot: "bg-slate-800", label: "Open" },
                   PENDING: { dot: "bg-amber-500", label: "Pending" },
-                  RESOLVED: { dot: "bg-emerald-500", label: "Resolved" },
+                  RESOLVED: { dot: "bg-emerald-600", label: "Resolved" },
                   CLOSED: { dot: "bg-slate-400", label: "Closed" },
                 };
-                const config = statusColors[s.status as Status] || { dot: "bg-slate-400", label: s.status };
+                const config = statusLabels[s.status as Status] || { dot: "bg-slate-400", label: s.status };
 
                 return (
                   <div key={s.status} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${config.dot}`} />
-                      <span className="font-medium text-slate-700">{config.label}</span>
+                      <span className={`w-2 h-2 rounded-full ${config.dot}`} />
+                      <span className="text-slate-700">{config.label}</span>
                     </div>
-                    <span className="font-bold text-slate-900">{s.count}</span>
+                    <span className="font-semibold text-slate-900 tabular-nums">{s.count}</span>
                   </div>
                 );
               })}
@@ -359,26 +352,26 @@ export default function DashboardPage() {
         </div>
 
         {/* Tickets by Agent Horizontal Bars */}
-        <div className="lg:col-span-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-slate-900">Tickets by Agent</h2>
-            <span className="text-xs text-slate-400">Assigned Open Workload</span>
+        <div className="lg:col-span-6 bg-white p-4 rounded-md border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Agent Workload</h2>
+            <span className="text-xs text-slate-500">Active tickets</span>
           </div>
 
-          <div className="space-y-4 pt-1">
+          <div className="space-y-3 pt-1">
             {metrics.agentBreakdown.map((agent: any) => {
-              const widthPct = Math.max(8, Math.round((agent.activeTicketsCount / maxAgentTickets) * 100));
+              const widthPct = Math.max(6, Math.round((agent.activeTicketsCount / maxAgentTickets) * 100));
 
               return (
-                <div key={agent.agentId} className="space-y-1.5">
+                <div key={agent.agentId} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-800">{agent.agentName}</span>
-                    <span className="font-bold text-slate-900">{agent.activeTicketsCount}</span>
+                    <span className="font-medium text-slate-800">{agent.agentName}</span>
+                    <span className="font-mono font-medium text-slate-900 tabular-nums">{agent.activeTicketsCount}</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-slate-100 rounded h-2 overflow-hidden">
                     <div
                       style={{ width: `${widthPct}%` }}
-                      className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500"
+                      className="bg-slate-800 h-2 rounded transition-all duration-300"
                     />
                   </div>
                 </div>
@@ -389,47 +382,44 @@ export default function DashboardPage() {
       </div>
 
       {/* Lower Row: 8-Week Historical Trend & SLA Performance Gauge */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* 8-Week Historical Resolution Trend Chart */}
-        <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between mb-6">
+        <div className="lg:col-span-7 bg-white p-4 rounded-md border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
             <div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-indigo-600" />
-                <span>Tickets Resolved per Week</span>
+              <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                Weekly Resolution Volume
               </h2>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Weekly resolution volume over the past 8 continuous cohorts
+                8-week rolling volume of resolved support tickets
               </p>
             </div>
-            <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
-              8-Week Total:{" "}
+            <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 tabular-nums">
+              Total:{" "}
               {metrics.weeklyResolutionTrend.reduce((acc: number, curr: any) => acc + curr.resolvedCount, 0)}
             </span>
           </div>
 
-          {/* Bar Chart Visualization */}
-          <div className="grid grid-cols-8 gap-3 items-end h-44 pt-6 pb-2 border-b border-slate-100">
+          {/* Minimal Bar Chart */}
+          <div className="grid grid-cols-8 gap-2.5 items-end h-40 pt-4 pb-1 border-b border-slate-100">
             {metrics.weeklyResolutionTrend.map((week: any, idx: number) => {
-              const heightPct = Math.max(10, Math.round((week.resolvedCount / maxWeeklyResolved) * 100));
+              const heightPct = Math.max(8, Math.round((week.resolvedCount / maxWeeklyResolved) * 100));
               const isLatest = idx === metrics.weeklyResolutionTrend.length - 1;
 
               return (
                 <div key={week.weekStart} className="flex flex-col items-center h-full justify-end group">
-                  <div className="text-[11px] font-bold text-slate-700 mb-1 opacity-0 group-hover:opacity-100 transition">
+                  <div className="text-[10px] font-mono text-slate-700 mb-1 opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
                     {week.resolvedCount}
                   </div>
-                  <div className="w-full max-w-[36px] bg-slate-100 rounded-t-md overflow-hidden flex items-end h-full">
+                  <div className="w-full max-w-[28px] bg-slate-100 rounded-t overflow-hidden flex items-end h-full">
                     <div
                       style={{ height: `${heightPct}%` }}
-                      className={`w-full rounded-t-md transition-all duration-300 ${
-                        isLatest
-                          ? "bg-indigo-600 group-hover:bg-indigo-700"
-                          : "bg-indigo-400/80 group-hover:bg-indigo-500"
+                      className={`w-full rounded-t transition-all ${
+                        isLatest ? "bg-slate-900" : "bg-slate-400 group-hover:bg-slate-600"
                       }`}
                     />
                   </div>
-                  <div className="text-[10px] font-medium text-slate-500 mt-2 text-center whitespace-nowrap">
+                  <div className="text-[10px] text-slate-500 mt-1.5 text-center truncate w-full">
                     {week.weekLabel}
                   </div>
                 </div>
@@ -438,23 +428,28 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* SLA Performance Gauge */}
-        <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+        {/* SLA Performance Compliance */}
+        <div className="lg:col-span-5 bg-white p-4 rounded-md border border-slate-200 shadow-xs flex flex-col justify-between">
           <div>
-            <h2 className="text-sm font-bold text-slate-900 mb-1">SLA Performance</h2>
-            <p className="text-[11px] text-slate-500">Live response time target compliance</p>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+              <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">SLA Compliance</h2>
+              <span className="text-xs text-slate-500">Live commitments</span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Percentage of tickets currently meeting SLA response time targets.
+            </p>
           </div>
 
-          <div className="flex items-center justify-around py-4">
-            {/* Donut Gauge */}
-            <div className="relative w-32 h-32 flex items-center justify-center">
+          <div className="flex items-center justify-around py-3">
+            {/* Minimal Donut Gauge */}
+            <div className="relative w-28 h-28 flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <circle
                   cx="50"
                   cy="50"
                   r="38"
                   className="text-slate-100"
-                  strokeWidth="10"
+                  strokeWidth="8"
                   stroke="currentColor"
                   fill="transparent"
                 />
@@ -462,8 +457,8 @@ export default function DashboardPage() {
                   cx="50"
                   cy="50"
                   r="38"
-                  className="text-emerald-500"
-                  strokeWidth="10"
+                  className="text-emerald-600"
+                  strokeWidth="8"
                   strokeDasharray="238.76"
                   strokeDashoffset={238.76 * (1 - onTimePercentage / 100)}
                   strokeLinecap="round"
@@ -472,31 +467,29 @@ export default function DashboardPage() {
                 />
               </svg>
               <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-xl font-bold text-slate-900">{onTimePercentage}%</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">On Time</span>
+                <span className="text-lg font-bold text-slate-900 tabular-nums">{onTimePercentage}%</span>
+                <span className="text-[10px] text-emerald-700 font-medium">On time</span>
               </div>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-2 text-xs">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
                 <span className="text-slate-600">On Time</span>
-                <span className="font-bold text-slate-900 ml-auto">{onTimePercentage}%</span>
+                <span className="font-semibold text-slate-900 ml-3 tabular-nums">{onTimePercentage}%</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-rose-500" />
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                 <span className="text-slate-600">Breached</span>
-                <span className="font-bold text-slate-900 ml-auto">{breachedPercentage}%</span>
+                <span className="font-semibold text-slate-900 ml-3 tabular-nums">{breachedPercentage}%</span>
               </div>
             </div>
           </div>
 
-          <a
-            href="/alerts"
-            className="w-full text-center py-2 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 rounded-lg border border-slate-200 transition flex items-center justify-center gap-1.5"
-          >
-            <span>View All SLA Alerts</span>
-            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+          <a href="/alerts">
+            <Button variant="secondary" size="sm" className="w-full" icon={<ExternalLink className="w-3 h-3 text-slate-400" />}>
+              View SLA Alerts
+            </Button>
           </a>
         </div>
       </div>

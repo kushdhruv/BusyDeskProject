@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Priority, Status } from "@prisma/client";
-import { SlaService } from "../../lib/services/SlaService";
-import { SLA_TARGETS_MINUTES } from "../../lib/constants";
+import { SlaController as SlaService } from "@/controllers/sla.controller";
+import { SLA_TARGETS_MINUTES } from "@/utils/constants.util";
 
 describe("Unit Tests: SlaService Calculations and State Transitions", () => {
   describe("SlaService.getTargetMinutes", () => {

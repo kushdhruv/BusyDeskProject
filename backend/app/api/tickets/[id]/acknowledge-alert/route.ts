@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { SlaService } from "@/lib/services/SlaService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { SlaController } from "@/controllers/sla.controller";
 
 interface RouteParams {
   params: { id: string };
@@ -20,7 +20,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "alertId is required in request body." }, { status: 400 });
     }
 
-    const alert = await SlaService.acknowledgeAlert(params.id, alertId, user);
+    const alert = await SlaController.acknowledgeAlert(params.id, alertId, user);
     return NextResponse.json({ alert });
   } catch (error: any) {
     const status = error.message.includes("permission") ? 403 : 400;

@@ -6,15 +6,15 @@ import { User as SessionUser } from "@/lib/types";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SlaCountdown } from "@/components/SlaCountdown";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   AlertTriangle,
   Clock,
   CheckCircle2,
   ArrowRight,
-  ShieldAlert,
-  Inbox,
   User,
-  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function AlertsPage() {
@@ -73,24 +73,25 @@ export default function AlertsPage() {
   const isSupervisor = user?.role === "SUPERVISOR";
 
   return (
-    <div className="space-y-6 pb-16 animate-fade-in">
+    <div className="space-y-4 pb-16">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-rose-500" />
-            <span>SLA Breach & Risk Alerts</span>
+          <h1 className="text-base font-semibold text-slate-900 tracking-tight flex items-center gap-2">
+            <span>SLA Response Alerts</span>
+            <span className="text-xs font-normal text-slate-500 tabular-nums">({alerts.length})</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {isSupervisor
-              ? "All active tickets across the organization that have breached or are at risk of breaching customer response commitments."
-              : "Active tickets assigned to you requiring immediate customer response."}
+              ? "All active tickets across the organization with breached or imminent response deadlines."
+              : "Tickets assigned to you requiring immediate response action."}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 shadow-2xs">
-            {alerts.length} Active Alert{alerts.length !== 1 ? "s" : ""}
+          <span className="text-xs font-medium text-slate-600 bg-white border border-slate-200 px-2.5 py-1 rounded-md shadow-xs tabular-nums">
+            {alerts.filter((a) => a.type === "BREACHED").length} Breached ·{" "}
+            {alerts.filter((a) => a.type === "IMMINENT").length} Imminent
           </span>
         </div>
       </div>
@@ -99,23 +100,20 @@ export default function AlertsPage() {
       {loading ? (
         <div className="text-center py-24 text-slate-400 text-xs">Loading active SLA alerts...</div>
       ) : alerts.length === 0 ? (
-        <div className="bg-white p-12 rounded-2xl border border-slate-200/90 text-center space-y-3 shadow-2xs">
-          <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-          <h3 className="text-sm font-bold text-slate-900">All Queue SLAs Healthy</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            All tickets in your queue are currently within safe response target windows.
-          </p>
-          <button
-            onClick={() => router.push("/tickets")}
-            className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
-          >
-            View Full Queue
-          </button>
+        <div className="bg-white rounded-md border border-slate-200 shadow-xs">
+          <EmptyState
+            icon={<CheckCircle2 className="w-8 h-8 text-emerald-600" />}
+            title="All Queue SLAs Healthy"
+            description="All active tickets in the queue are currently within their response commitment windows."
+            action={
+              <Button variant="secondary" size="xs" onClick={() => router.push("/tickets")}>
+                View Ticket Queue
+              </Button>
+            }
+          />
         </div>
       ) : (
-        <div className="space-y-3.5">
+        <div className="bg-white rounded-md border border-slate-200 shadow-xs divide-y divide-slate-100 overflow-hidden">
           {alerts.map((a) => {
             const isBreached = a.type === "BREACHED";
             const t = a.ticket;
@@ -123,101 +121,81 @@ export default function AlertsPage() {
             return (
               <div
                 key={a.id}
-                className={`p-5 rounded-2xl border transition shadow-2xs ${
-                  isBreached
-                    ? "bg-rose-50/40 border-rose-200/90 hover:border-rose-300"
-                    : "bg-amber-50/40 border-amber-200/90 hover:border-amber-300"
-                }`}
+                className="p-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 hover:bg-slate-50/70 transition-colors"
               >
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  {/* Left: Ticket Info */}
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-slate-500">
-                        #{t.ticketNumber}
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${
-                          isBreached
-                            ? "bg-rose-100 text-rose-800 border border-rose-300"
-                            : "bg-amber-100 text-amber-800 border border-amber-300"
-                        }`}
-                      >
-                        {isBreached ? (
-                          <>
-                            <AlertTriangle className="w-3 h-3 text-rose-600" />
-                            <span>Breached Target</span>
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-3 h-3 text-amber-600" />
-                            <span>Due Soon (1h)</span>
-                          </>
-                        )}
-                      </span>
-                      <PriorityBadge priority={t.priority} />
-                      <StatusBadge status={t.status} size="sm" />
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        Cycle #{t.slaCycle}
-                      </span>
-                    </div>
-
-                    <a
-                      href={`/tickets/${t.id}`}
-                      className="block font-bold text-sm text-slate-900 hover:text-blue-600 transition"
+                {/* Left: Ticket Info */}
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-xs font-medium text-slate-500">
+                      #{t.ticketNumber}
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[11px] font-medium ${
+                        isBreached
+                          ? "bg-rose-50 text-rose-700 border border-rose-200"
+                          : "bg-amber-50 text-amber-800 border border-amber-200"
+                      }`}
                     >
-                      {t.subject}
-                    </a>
-
-                    <div className="flex items-center gap-4 text-xs text-slate-600">
-                      <div className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span>
-                          Assignee:{" "}
-                          <strong className="text-slate-800 font-semibold">
-                            {t.primaryAssignee?.name || "Unassigned"}
-                          </strong>
-                        </span>
-                      </div>
-                      <span>•</span>
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>
-                          Target:{" "}
-                          <strong className="text-slate-800 font-semibold">
-                            {t.slaDueAt ? new Date(t.slaDueAt).toLocaleTimeString() : "N/A"}
-                          </strong>
-                        </span>
-                      </div>
-                    </div>
+                      {isBreached ? (
+                        <>
+                          <AlertTriangle className="w-3 h-3 text-rose-600" />
+                          <span>Breached</span>
+                        </>
+                      ) : (
+                        <>
+                          <Clock className="w-3 h-3 text-amber-600" />
+                          <span>Due Soon</span>
+                        </>
+                      )}
+                    </span>
+                    <PriorityBadge priority={t.priority} />
+                    <StatusBadge status={t.status} size="sm" />
+                    <span className="text-[10px] text-slate-400 font-mono">Cycle #{t.slaCycle}</span>
                   </div>
 
-                  {/* Right: Countdown & Acknowledge */}
-                  <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200">
-                    <SlaCountdown
-                      slaDueAt={t.slaDueAt}
-                      status={t.status}
-                      size="md"
-                    />
+                  <a
+                    href={`/tickets/${t.id}`}
+                    className="block font-medium text-xs text-slate-900 hover:underline truncate"
+                  >
+                    {t.subject}
+                  </a>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleAcknowledge(a.id, t.id)}
-                        disabled={actionLoading}
-                        className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition"
-                      >
-                        Acknowledge
-                      </button>
-
-                      <a
-                        href={`/tickets/${t.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition"
-                      >
-                        <span>Open Ticket</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </a>
+                  <div className="flex items-center gap-3 text-[11px] text-slate-500">
+                    <div className="flex items-center gap-1">
+                      <User className="w-3 h-3 text-slate-400" />
+                      <span>
+                        Assignee: <strong className="text-slate-700 font-medium">{t.primaryAssignee?.name || "Unassigned"}</strong>
+                      </span>
+                    </div>
+                    <span>·</span>
+                    <div>
+                      Requester: <span className="text-slate-700">{t.requesterName}</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Right: Countdown & Actions */}
+                <div className="flex items-center gap-2.5 flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                  <SlaCountdown
+                    slaDueAt={t.slaDueAt}
+                    status={t.status}
+                    size="sm"
+                  />
+
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    onClick={() => handleAcknowledge(a.id, t.id)}
+                    loading={actionLoading}
+                  >
+                    Acknowledge
+                  </Button>
+
+                  <a href={`/tickets/${t.id}`}>
+                    <Button variant="primary" size="xs" icon={<ArrowRight className="w-3 h-3" />}>
+                      Open
+                    </Button>
+                  </a>
                 </div>
               </div>
             );

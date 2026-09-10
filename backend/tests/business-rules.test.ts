@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient, Role, Priority, Category, Status, AuthorType, AuditEventType, SlaAlertStatus } from "@prisma/client";
-import { TicketPolicy, ReplyPolicy, CollaboratorPolicy, AlertPolicy } from "@/lib/policies";
-import { LifecycleService } from "@/lib/services/LifecycleService";
-import { SlaService } from "@/lib/services/SlaService";
-import { ReplyService } from "@/lib/services/ReplyService";
-import { TicketService } from "@/lib/services/TicketService";
-import { BulkService } from "@/lib/services/BulkService";
-import { AuditService } from "@/lib/services/AuditService";
-import { SessionUser } from "@/lib/types";
-import { REOPEN_WINDOW_DAYS } from "@/lib/constants";
+import { TicketPolicy, ReplyPolicy, CollaboratorPolicy, AlertPolicy } from "@/models/policies";
+import { LifecycleController as LifecycleService } from "@/controllers/lifecycle.controller";
+import { SlaController as SlaService } from "@/controllers/sla.controller";
+import { ReplyController as ReplyService } from "@/controllers/reply.controller";
+import { TicketController as TicketService } from "@/controllers/ticket.controller";
+import { BulkController as BulkService } from "@/controllers/bulk.controller";
+import { AuditController as AuditService } from "@/controllers/audit.controller";
+import { SessionUser } from "@/models/types.model";
+import { REOPEN_WINDOW_DAYS } from "@/utils/constants.util";
 
 const prisma = new PrismaClient();
 

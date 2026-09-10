@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Status } from "@/lib/types";
-import { Clock, AlertTriangle, AlertCircle, PauseCircle, CheckCircle2 } from "lucide-react";
+import { Clock, AlertTriangle, PauseCircle, CheckCircle2 } from "lucide-react";
 
 interface SlaCountdownProps {
   slaDueAt: string | Date | null;
@@ -15,7 +15,7 @@ export function SlaCountdown({
   slaDueAt,
   status,
   slaPausedRemainingSeconds,
-  size = "md",
+  size = "sm",
 }: SlaCountdownProps) {
   const [now, setNow] = useState<number>(Date.now());
 
@@ -29,7 +29,7 @@ export function SlaCountdown({
     return () => clearInterval(interval);
   }, [status]);
 
-  const sizeClass = size === "sm" ? "text-xs px-2 py-0.5" : "text-sm px-2.5 py-1 font-medium";
+  const sizeClass = size === "sm" ? "text-[11px] px-1.5 py-0.5" : "text-xs px-2 py-1";
 
   // 1. Paused in PENDING status
   if (status === "PENDING") {
@@ -39,10 +39,10 @@ export function SlaCountdown({
 
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 ${sizeClass}`}
+        className={`inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50/70 text-amber-800 font-medium tabular-nums ${sizeClass}`}
       >
-        <PauseCircle className="w-3.5 h-3.5 text-amber-600" />
-        <span>SLA Paused ({hours > 0 ? `${hours}h ` : ""}{mins}m left)</span>
+        <PauseCircle className="w-3 h-3 text-amber-600 flex-shrink-0" />
+        <span>Paused ({hours > 0 ? `${hours}h ` : ""}{mins}m left)</span>
       </span>
     );
   }
@@ -51,10 +51,10 @@ export function SlaCountdown({
   if (status === "RESOLVED" || status === "CLOSED") {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-md bg-slate-50 text-slate-600 border border-slate-200 ${sizeClass}`}
+        className={`inline-flex items-center gap-1 rounded border border-slate-200 bg-slate-50 text-slate-600 font-medium ${sizeClass}`}
       >
-        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-        <span>SLA Completed</span>
+        <CheckCircle2 className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+        <span>Completed</span>
       </span>
     );
   }
@@ -62,9 +62,9 @@ export function SlaCountdown({
   // 3. No deadline set
   if (!slaDueAt) {
     return (
-      <span className={`inline-flex items-center gap-1.5 rounded-md bg-gray-50 text-gray-500 ${sizeClass}`}>
-        <Clock className="w-3.5 h-3.5" />
-        <span>No SLA target</span>
+      <span className={`inline-flex items-center gap-1 rounded text-slate-400 font-medium ${sizeClass}`}>
+        <Clock className="w-3 h-3 flex-shrink-0" />
+        <span>No SLA</span>
       </span>
     );
   }
@@ -81,9 +81,9 @@ export function SlaCountdown({
 
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-md bg-rose-100 text-rose-800 border border-rose-300 font-bold ${sizeClass} animate-pulse`}
+        className={`inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 text-rose-700 font-medium tabular-nums ${sizeClass}`}
       >
-        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+        <AlertTriangle className="w-3 h-3 text-rose-600 flex-shrink-0" />
         <span>
           Breached ({hours > 0 ? `-${hours}h ` : "-"}{mins}m {secs}s)
         </span>
@@ -100,11 +100,11 @@ export function SlaCountdown({
   if (diffMs <= 60 * 60 * 1000) {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-md bg-orange-100 text-orange-800 border border-orange-300 font-semibold ${sizeClass}`}
+        className={`inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 text-amber-800 font-medium tabular-nums ${sizeClass}`}
       >
-        <AlertCircle className="w-3.5 h-3.5 text-orange-600" />
+        <Clock className="w-3 h-3 text-amber-600 flex-shrink-0" />
         <span>
-          Due Soon ({hours > 0 ? `${hours}h ` : ""}{mins}m {secs}s)
+          Due soon ({hours > 0 ? `${hours}h ` : ""}{mins}m {secs}s)
         </span>
       </span>
     );
@@ -113,11 +113,11 @@ export function SlaCountdown({
   // 6. Healthy Active Clock
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 ${sizeClass}`}
+      className={`inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50/70 text-emerald-800 font-medium tabular-nums ${sizeClass}`}
     >
-      <Clock className="w-3.5 h-3.5 text-emerald-600" />
+      <Clock className="w-3 h-3 text-emerald-600 flex-shrink-0" />
       <span>
-        {hours > 0 ? `${hours}h ` : ""}{mins}m {secs}s remaining
+        {hours > 0 ? `${hours}h ` : ""}{mins}m {secs}s left
       </span>
     </span>
   );

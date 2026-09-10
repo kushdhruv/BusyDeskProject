@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { AuthService } from "@/lib/services/AuthService";
-import { setSessionCookie } from "@/lib/auth";
+import { AuthController } from "@/controllers/auth.controller";
+import { setSessionCookie } from "@/middlewares/auth.middleware";
 
 export async function POST(req: Request) {
   try {
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const user = await AuthService.authenticate(email, password);
+    const user = await AuthController.authenticate(email, password);
     await setSessionCookie(user);
 
     return NextResponse.json({ user });

@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { Role, Status } from "@prisma/client";
-import { TicketPolicy, TicketAccessContext } from "../../lib/policies/TicketPolicy";
-import { ReplyPolicy } from "../../lib/policies/ReplyPolicy";
-import { CollaboratorPolicy } from "../../lib/policies/CollaboratorPolicy";
-import { AlertPolicy } from "../../lib/policies/AlertPolicy";
-import { SessionUser } from "../../lib/types";
-import { REOPEN_WINDOW_MS } from "../../lib/constants";
+import { TicketPolicy, TicketAccessContext } from "@/models/policies/ticket.policy";
+import { ReplyPolicy } from "@/models/policies/reply.policy";
+import { CollaboratorPolicy } from "@/models/policies/collaborator.policy";
+import { AlertPolicy } from "@/models/policies/alert.policy";
+import { SessionUser } from "@/models/types.model";
+import { REOPEN_WINDOW_MS } from "@/utils/constants.util";
 
 describe("Unit Tests: 3-Role Policy & Permission Layer (SUPERVISOR, AGENT, CUSTOMER)", () => {
   const supervisorUser: SessionUser = {

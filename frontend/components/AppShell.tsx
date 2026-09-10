@@ -6,6 +6,7 @@ import { User as SessionUser } from "@/lib/types";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { CustomerPortalLayout } from "./customer/CustomerPortalLayout";
+import { Loader2 } from "lucide-react";
 
 export function AppShell({
   children,
@@ -16,7 +17,56 @@ export function AppShell({
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(240);
+  const [mobileOpen, setMobileOpen] = useState<boolean>(false);
+
   const isAuthPage = pathname === "/login" || pathname === "/register";
+
+  // Restore user preferences for sidebar width and collapse state
+  useEffect(() => {
+    try {
+      const savedCollapsed = localStorage.getItem("supportdesk_sidebar_collapsed");
+      if (savedCollapsed !== null) {
+        setSidebarCollapsed(savedCollapsed === "true");
+      }
+      const savedWidth = localStorage.getItem("supportdesk_sidebar_width");
+      if (savedWidth) {
+        const parsed = parseInt(savedWidth, 10);
+        if (!isNaN(parsed) && parsed >= 200 && parsed <= 380) {
+          setSidebarWidth(parsed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleToggleCollapse = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("supportdesk_sidebar_collapsed", String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const handleWidthChange = (w: number) => {
+    setSidebarWidth(w);
+    try {
+      localStorage.setItem("supportdesk_sidebar_width", String(w));
+    } catch {
+      // ignore
+    }
+  };
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (isAuthPage) {
@@ -44,15 +94,15 @@ export function AppShell({
   }, [pathname, isAuthPage, router]);
 
   if (isAuthPage) {
-    return <div className="min-h-screen bg-slate-100 flex flex-col justify-center">{children}</div>;
+    return <div className="min-h-screen bg-slate-50 flex flex-col justify-center">{children}</div>;
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-semibold text-slate-500">Loading SupportDesk...</span>
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="w-5 h-5 text-slate-500 animate-spin" />
+          <span className="text-xs font-medium text-slate-500">Loading SupportDesk...</span>
         </div>
       </div>
     );
@@ -69,14 +119,24 @@ export function AppShell({
 
   // Render Staff (Agent & Supervisor) Layout
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
-      {/* Dark Navy Sidebar */}
-      <Sidebar user={user} />
-
-      {/* Main Content Area with TopBar */}
+    <div className="flex h-screen overflow-hidden bg-white text-slate-900 font-sans">
+      <Sidebar
+        user={user}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleCollapse}
+        width={sidebarWidth}
+        onWidthChange={handleWidthChange}
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
+      />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <TopBar user={user} />
-        <main className="flex-1 overflow-y-auto p-6 bg-[#F8FAFC]">
+        <TopBar
+          user={user}
+          onToggleMobile={() => setMobileOpen((prev) => !prev)}
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleCollapse={handleToggleCollapse}
+        />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50">
           <div className="max-w-[1600px] mx-auto w-full">{children}</div>
         </main>
       </div>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { DashboardService } from "@/lib/services/DashboardService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { DashboardController } from "@/controllers/dashboard.controller";
 
 export async function GET() {
   try {
@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const metrics = await DashboardService.getMetrics(user);
+    const metrics = await DashboardController.getMetrics(user);
     return NextResponse.json(metrics);
   } catch (error: any) {
     return NextResponse.json(

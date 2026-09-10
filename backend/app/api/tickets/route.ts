@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { TicketService, GetQueueParams } from "@/lib/services/TicketService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { TicketController, GetQueueParams } from "@/controllers/ticket.controller";
 import { Priority, Category, Status } from "@prisma/client";
 
 export async function GET(req: Request) {
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 15,
     };
 
-    const queueData = await TicketService.getQueue(params, user);
+    const queueData = await TicketController.getQueue(params, user);
     return NextResponse.json(queueData);
   } catch (error: any) {
     return NextResponse.json(
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const ticket = await TicketService.createTicket(body, user);
+    const ticket = await TicketController.createTicket(body, user);
     return NextResponse.json({ ticket }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json(

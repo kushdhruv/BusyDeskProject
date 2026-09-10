@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { BulkService } from "@/lib/services/BulkService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { BulkController } from "@/controllers/bulk.controller";
 
 export async function POST(req: Request) {
   try {
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await BulkService.executeBulkAction(
+    const result = await BulkController.executeBulkAction(
       ticketIds,
       action,
       { targetAssigneeId },

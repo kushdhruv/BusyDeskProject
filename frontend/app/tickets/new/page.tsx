@@ -3,22 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Priority, Category, User as SessionUser } from "@/lib/types";
-import {
-  ArrowLeft,
-  Plus,
-  AlertCircle,
-  Sparkles,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  ListOrdered,
-  Link,
-  Code,
-  User,
-  ShieldCheck,
-  Send,
-} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Select } from "@/components/ui/Select";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 
 export default function NewTicketPage() {
   const router = useRouter();
@@ -54,7 +43,6 @@ export default function NewTicketPage() {
   }, []);
 
   const isCustomer = user?.role === "CUSTOMER";
-  const isSupervisor = user?.role === "SUPERVISOR";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,270 +86,192 @@ export default function NewTicketPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-16 animate-fade-in">
+    <div className="max-w-4xl mx-auto space-y-4 pb-16">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <button
+      <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
+        <Button
+          variant="secondary"
+          size="xs"
           onClick={() => router.push(isCustomer ? "/dashboard" : "/tickets")}
-          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition shadow-2xs cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
+          icon={<ArrowLeft className="w-3.5 h-3.5" />}
+          aria-label="Back"
+        />
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            {isCustomer ? "Submit a Support Request" : "Create New Ticket"}
+          <h1 className="text-base font-semibold text-slate-900 tracking-tight">
+            {isCustomer ? "Submit Support Request" : "Create New Ticket"}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {isCustomer
-              ? "Describe your question or issue, and our support team will respond promptly."
-              : "Fill in the details to log a new customer support ticket."}
+              ? "Describe your question or issue, and our team will respond shortly."
+              : "Log a customer issue and assign it to an available support agent."}
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium flex items-center gap-2">
+        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md font-medium flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* 2-Column Responsive Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Subject & Rich Description */}
-          <div className="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-5">
-            {/* Subject */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Left Column: Subject & Description */}
+          <div className="lg:col-span-8 bg-white p-5 rounded-md border border-slate-200 shadow-xs space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Subject <span className="text-rose-500">*</span>
               </label>
-              <input
-                type="text"
+              <Input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder={
-                  isCustomer
-                    ? "e.g. Need assistance with invoice or export bug"
-                    : "e.g. Unable to access account or checkout failure"
-                }
+                placeholder="Brief summary of the inquiry or problem..."
                 required
-                className="w-full text-xs border border-slate-200 rounded-lg p-3 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition text-slate-800"
               />
             </div>
 
-            {/* Description */}
             <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Description & Details <span className="text-rose-500">*</span>
               </label>
-              <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50 focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition">
-                {/* Formatting Tools */}
-                <div className="flex items-center gap-1 p-2 border-b border-slate-200 bg-slate-100/50 text-slate-500">
-                  <button type="button" className="p-1 hover:bg-slate-200 rounded">
-                    <Bold className="w-3.5 h-3.5" />
-                  </button>
-                  <button type="button" className="p-1 hover:bg-slate-200 rounded">
-                    <Italic className="w-3.5 h-3.5" />
-                  </button>
-                  <button type="button" className="p-1 hover:bg-slate-200 rounded">
-                    <Underline className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="w-px h-3.5 bg-slate-300 mx-1" />
-                  <button type="button" className="p-1 hover:bg-slate-200 rounded">
-                    <List className="w-3.5 h-3.5" />
-                  </button>
-                  <button type="button" className="p-1 hover:bg-slate-200 rounded">
-                    <ListOrdered className="w-3.5 h-3.5" />
-                  </button>
-                  <button type="button" className="p-1 hover:bg-slate-200 rounded">
-                    <Link className="w-3.5 h-3.5" />
-                  </button>
-                  <button type="button" className="p-1 hover:bg-slate-200 rounded">
-                    <Code className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <textarea
-                  rows={8}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={
-                    isCustomer
-                      ? "Please describe what happened, steps to reproduce, or what you need help with..."
-                      : "Provide full description, customer reproduction steps, or relevant error logs..."
-                  }
-                  required
-                  className="w-full text-xs p-3 bg-transparent border-0 outline-none resize-y text-slate-800 leading-relaxed"
-                />
-              </div>
+              <Textarea
+                rows={10}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Provide detailed information, context, or reproduction steps..."
+                required
+              />
             </div>
           </div>
 
-          {/* Right Column */}
-          <div className="lg:col-span-4 space-y-5">
-            {/* Customer view: identity & Urgency */}
-            {isCustomer ? (
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-                  Request Info
-                </h3>
+          {/* Right Column: Routing & Metadata */}
+          <div className="lg:col-span-4 bg-white p-4 rounded-md border border-slate-200 shadow-xs space-y-3.5">
+            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
+              Routing & Properties
+            </h3>
 
-                <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 space-y-1">
-                  <span className="text-[11px] font-semibold text-indigo-900 block">Submitting As</span>
-                  <p className="text-xs font-bold text-slate-900">{user?.name}</p>
-                  <p className="text-[11px] text-slate-500">{user?.email}</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as Category)}
-                    className="w-full text-xs py-2 px-2.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 outline-none cursor-pointer"
-                  >
-                    <option value="QUESTION">General Question</option>
-                    <option value="BUG">Bug or Error</option>
-                    <option value="BILLING">Billing & Account</option>
-                    <option value="FEATURE">Feature Suggestion</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Urgency Level
-                  </label>
-                  <select
-                    value={customerUrgency}
-                    onChange={(e) => setCustomerUrgency(e.target.value as any)}
-                    className="w-full text-xs py-2 px-2.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 outline-none cursor-pointer"
-                  >
-                    <option value="NORMAL">Normal — Standard response</option>
-                    <option value="HIGH">High — Impaired workflow or blocking bug</option>
-                    <option value="LOW">Low — Non-urgent question</option>
-                  </select>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Our team prioritizes requests based on urgency and SLA commitments.
-                  </p>
-                </div>
-              </div>
-            ) : (
+            {/* If staff: Requester Fields */}
+            {!isCustomer && (
               <>
-                {/* Staff view: Requester Details */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-                    Requester Details
-                  </h3>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Customer Name <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={requesterName}
-                      onChange={(e) => setRequesterName(e.target.value)}
-                      placeholder="e.g. John Doe"
-                      required
-                      className="w-full text-xs p-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-indigo-500 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Customer Email <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      value={requesterEmail}
-                      onChange={(e) => setRequesterEmail(e.target.value)}
-                      placeholder="john@example.com"
-                      required
-                      className="w-full text-xs p-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-indigo-500 outline-none"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Requester Name <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    value={requesterName}
+                    onChange={(e) => setRequesterName(e.target.value)}
+                    placeholder="e.g. Alice Henderson"
+                    required
+                  />
                 </div>
 
-                {/* Staff view: Ticket Attributes */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-                    Attributes & SLA
-                  </h3>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Requester Email <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    type="email"
+                    value={requesterEmail}
+                    onChange={(e) => setRequesterEmail(e.target.value)}
+                    placeholder="alice@example.com"
+                    required
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Priority</label>
-                    <select
-                      value={priority}
-                      onChange={(e) => setPriority(e.target.value as Priority)}
-                      className="w-full text-xs py-2 px-2.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 outline-none cursor-pointer"
-                    >
-                      <option value="URGENT">Urgent (2h SLA)</option>
-                      <option value="HIGH">High (8h SLA)</option>
-                      <option value="MEDIUM">Medium (24h SLA)</option>
-                      <option value="LOW">Low (72h SLA)</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Priority Target
+                  </label>
+                  <Select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value as Priority)}
+                    className="w-full"
+                  >
+                    <option value="URGENT">Urgent (2h SLA)</option>
+                    <option value="HIGH">High (8h SLA)</option>
+                    <option value="MEDIUM">Medium (24h SLA)</option>
+                    <option value="LOW">Low (72h SLA)</option>
+                  </Select>
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value as Category)}
-                      className="w-full text-xs py-2 px-2.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 outline-none cursor-pointer"
-                    >
-                      <option value="BUG">Bug</option>
-                      <option value="BILLING">Billing</option>
-                      <option value="FEATURE">Feature</option>
-                      <option value="QUESTION">Question</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Primary Assignee
-                    </label>
-                    {isSupervisor ? (
-                      <select
-                        value={assigneeId}
-                        onChange={(e) => setAssigneeId(e.target.value)}
-                        className="w-full text-xs py-2 px-2.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 outline-none cursor-pointer"
-                      >
-                        <option value="">Leave Unassigned (Shared Queue)</option>
-                        {agents.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <div className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-[11px] text-slate-600">
-                        Auto-assigning to you (<strong>{user?.name}</strong>)
-                      </div>
-                    )}
-                  </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Primary Assignee
+                  </label>
+                  <Select
+                    value={assigneeId}
+                    onChange={(e) => setAssigneeId(e.target.value)}
+                    className="w-full"
+                  >
+                    <option value="">Unassigned</option>
+                    {agents.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
               </>
             )}
-          </div>
-        </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-          <button
-            type="button"
-            onClick={() => router.push(isCustomer ? "/dashboard" : "/tickets")}
-            className="px-4 py-2 text-slate-700 hover:bg-slate-100 text-xs font-semibold rounded-lg transition cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#0F172A] hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>{loading ? "Submitting..." : isCustomer ? "Submit Request" : "Create Ticket"}</span>
-          </button>
+            {/* If Customer: Urgency */}
+            {isCustomer && (
+              <div>
+                <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                  Urgency Level
+                </label>
+                <Select
+                  value={customerUrgency}
+                  onChange={(e) => setCustomerUrgency(e.target.value as any)}
+                  className="w-full"
+                >
+                  <option value="LOW">Low — general question</option>
+                  <option value="NORMAL">Normal — standard issue</option>
+                  <option value="HIGH">High — blocking workflow</option>
+                </Select>
+              </div>
+            )}
+
+            {/* Category for both */}
+            <div>
+              <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                Category
+              </label>
+              <Select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as Category)}
+                className="w-full"
+              >
+                <option value="QUESTION">Question</option>
+                <option value="BUG">Bug</option>
+                <option value="BILLING">Billing</option>
+                <option value="FEATURE">Feature Request</option>
+              </Select>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                loading={loading}
+                className="w-full"
+              >
+                {isCustomer ? "Submit Request" : "Create Ticket"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={() => router.push(isCustomer ? "/dashboard" : "/tickets")}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
         </div>
       </form>
     </div>

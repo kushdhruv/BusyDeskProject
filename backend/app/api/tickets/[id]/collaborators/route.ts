@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { CollaborationService } from "@/lib/services/CollaborationService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { CollaborationController } from "@/controllers/collaboration.controller";
 
 interface RouteParams {
   params: { id: string };
@@ -20,7 +20,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Target userId is required." }, { status: 400 });
     }
 
-    const collab = await CollaborationService.addCollaborator(params.id, userId, user);
+    const collab = await CollaborationController.addCollaborator(params.id, userId, user);
     return NextResponse.json({ collaborator: collab }, { status: 201 });
   } catch (error: any) {
     const status = error.message.includes("permission") || error.message.includes("Only") ? 403 : 400;
@@ -42,7 +42,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Target userId is required." }, { status: 400 });
     }
 
-    await CollaborationService.removeCollaborator(params.id, userId, user);
+    await CollaborationController.removeCollaborator(params.id, userId, user);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     const status = error.message.includes("permission") || error.message.includes("Only") ? 403 : 400;

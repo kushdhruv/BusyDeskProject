@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { CsatService } from "@/lib/services/CsatService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { CsatController } from "@/controllers/csat.controller";
 
 interface RouteParams {
   params: { id: string };
@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       );
     }
 
-    const csat = await CsatService.submitCsat(
+    const csat = await CsatController.submitCsat(
       params.id,
       { rating, comment },
       user

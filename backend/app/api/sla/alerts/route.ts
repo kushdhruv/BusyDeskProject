@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { SlaService } from "@/lib/services/SlaService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { SlaController } from "@/controllers/sla.controller";
 
 export async function GET() {
   try {
@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const data = await SlaService.getActiveAlerts(user);
+    const data = await SlaController.getActiveAlerts(user);
     return NextResponse.json(data);
   } catch (error: any) {
     return NextResponse.json(

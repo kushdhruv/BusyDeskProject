@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Role, Priority, Category, Status } from "@prisma/client";
-import { prisma } from "../../lib/prisma";
-import { TicketService } from "../../lib/services/TicketService";
-import { SessionUser } from "../../lib/types";
+import { prisma } from "@/db/prisma.db";
+import { TicketController as TicketService } from "@/controllers/ticket.controller";
+import { SessionUser } from "@/models/types.model";
 
 describe("Integration Tests: Queue Search, Multi-Filters, Pagination & Archive Rule", () => {
   let supervisor: SessionUser;

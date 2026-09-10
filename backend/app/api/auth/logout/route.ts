@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clearSessionCookie } from "@/lib/auth";
+import { clearSessionCookie } from "@/middlewares/auth.middleware";
 
 export async function POST() {
   await clearSessionCookie();

@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Role, Priority, Category, Status } from "@prisma/client";
-import { prisma } from "../../lib/prisma";
-import { TicketService } from "../../lib/services/TicketService";
-import { CollaborationService } from "../../lib/services/CollaborationService";
-import { ReplyService } from "../../lib/services/ReplyService";
-import { SessionUser } from "../../lib/types";
+import { prisma } from "@/db/prisma.db";
+import { TicketController as TicketService } from "@/controllers/ticket.controller";
+import { CollaborationController as CollaborationService } from "@/controllers/collaboration.controller";
+import { ReplyController as ReplyService } from "@/controllers/reply.controller";
+import { SessionUser } from "@/models/types.model";
 
 describe("Integration Tests: Collaborators, Shared Queues & Access Control", () => {
   let supervisor: SessionUser;

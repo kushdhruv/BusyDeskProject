@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
-import { ExportService } from "@/lib/services/ExportService";
-import { GetQueueParams } from "@/lib/services/TicketService";
+import { getSessionUser } from "@/middlewares/auth.middleware";
+import { ExportController } from "@/controllers/export.controller";
+import { GetQueueParams } from "@/controllers/ticket.controller";
 import { Priority, Category, Status } from "@prisma/client";
 
 export async function GET(req: Request) {
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       scope: (searchParams.get("scope") as GetQueueParams["scope"]) || "all",
     };
 
-    const csvData = await ExportService.exportToCsv(params, user);
+    const csvData = await ExportController.exportToCsv(params, user);
 
     const filename = `tickets-export-${new Date().toISOString().split("T")[0]}.csv`;
 

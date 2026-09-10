@@ -1,41 +1,53 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { User as SessionUser } from "@/lib/types";
 import {
   LayoutDashboard,
   Inbox,
   AlertTriangle,
-  Users,
-  BarChart3,
-  LogOut,
   User,
   Users2,
   Clock,
   AlertCircle,
-  ShieldAlert,
   Archive,
-  ChevronRight,
+  LogOut,
   Headphones,
-  ShieldCheck,
-  CheckCircle2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  X,
 } from "lucide-react";
+
+interface SidebarProps {
+  user: SessionUser | null;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  width: number;
+  onWidthChange: (w: number) => void;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
+}
 
 export function Sidebar({
   user,
-  collapsed = false,
-}: {
-  user: SessionUser | null;
-  collapsed?: boolean;
-}) {
+  collapsed,
+  onToggleCollapse,
+  width,
+  onWidthChange,
+  mobileOpen,
+  onCloseMobile,
+}: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [alertCount, setAlertCount] = useState<number>(0);
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  const sidebarRef = useRef<HTMLElement>(null);
 
   const currentScope = searchParams.get("scope") || "all";
 
+  // Alert count polling
   useEffect(() => {
     if (!user) return;
 
@@ -56,6 +68,36 @@ export function Sidebar({
     return () => clearInterval(interval);
   }, [user]);
 
+  // Drag resize handler
+  const startResizing = useCallback(
+    (e: React.MouseEvent) => {
+      if (collapsed) return;
+      e.preventDefault();
+      setIsResizing(true);
+    },
+    [collapsed]
+  );
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.min(380, Math.max(200, e.clientX));
+      onWidthChange(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing, onWidthChange]);
+
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
@@ -66,7 +108,6 @@ export function Sidebar({
 
   const isSupervisor = user.role === "SUPERVISOR";
 
-  // Helper to get initials
   const initials = user.name
     .split(" ")
     .map((n) => n[0])
@@ -74,72 +115,127 @@ export function Sidebar({
     .toUpperCase()
     .slice(0, 2);
 
-  return (
-    <aside className="w-64 bg-[#0F172A] text-slate-300 flex flex-col flex-shrink-0 border-r border-slate-800 select-none h-screen sticky top-0">
+  const isTicketsActive =
+    pathname.startsWith("/tickets") && pathname !== "/tickets/new" && currentScope === "all";
+
+  const navItemClass = (isActive: boolean) =>
+    `flex items-center ${
+      collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-1.5"
+    } rounded-md text-xs font-medium transition-colors ${
+      isActive
+        ? "bg-slate-200/90 text-slate-900 font-semibold shadow-2xs"
+        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+    }`;
+
+  const renderSidebarContent = (isMobile: boolean) => (
+    <div className="flex flex-col h-full select-none">
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-5 border-b border-slate-800/80 gap-3">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white font-bold shadow-md shadow-blue-500/20">
-          <Inbox className="w-4 h-4" />
+      <div
+        className={`h-14 flex items-center border-b border-slate-200 ${
+          !isMobile && collapsed ? "justify-center px-2" : "justify-between px-3.5"
+        }`}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-7 h-7 rounded-md bg-slate-900 flex items-center justify-center text-white flex-shrink-0 shadow-2xs">
+            <Headphones className="w-3.5 h-3.5" />
+          </div>
+          {(isMobile || !collapsed) && (
+            <div className="flex flex-col min-w-0">
+              <span className="font-semibold text-xs text-slate-900 tracking-tight leading-tight">
+                SupportDesk
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium truncate leading-tight">
+                {isSupervisor ? "Supervisor" : "Agent"}
+              </span>
+            </div>
+          )}
         </div>
-        <div className="flex flex-col">
-          <span className="font-bold text-base text-white tracking-tight">
-            SupportDesk
-          </span>
-          <span className="text-[11px] text-slate-400 font-medium">
-            {isSupervisor ? "Supervisor Workspace" : "Agent Workspace"}
-          </span>
-        </div>
+
+        {/* Mobile: Close Drawer Button */}
+        {isMobile && (
+          <button
+            onClick={onCloseMobile}
+            className="p-1 text-slate-400 hover:text-slate-700 rounded cursor-pointer"
+            aria-label="Close menu"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Desktop: Collapse/Expand Toggle Button */}
+        {!isMobile && (
+          !collapsed ? (
+            <button
+              onClick={onToggleCollapse}
+              title="Collapse sidebar (Go in)"
+              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+              aria-label="Collapse sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={onToggleCollapse}
+              title="Expand sidebar (Pop up)"
+              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+              aria-label="Expand sidebar"
+            >
+              <PanelLeftOpen className="w-4 h-4" />
+            </button>
+          )
+        )}
       </div>
 
       {/* Navigation Sections */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
         {/* Main Section */}
         <div>
-          <div className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            Navigation
-          </div>
-          <nav className="space-y-1">
+          {!collapsed && (
+            <div className="px-2.5 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Workspace
+            </div>
+          )}
+          <nav className="space-y-0.5">
             <a
               href="/dashboard"
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                pathname === "/dashboard"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-300 hover:bg-slate-800/70 hover:text-white"
-              }`}
+              title={collapsed ? "Dashboard" : undefined}
+              className={navItemClass(pathname === "/dashboard")}
             >
-              <LayoutDashboard className="w-4 h-4 text-blue-400" />
-              <span>{isSupervisor ? "Dashboard" : "My Dashboard"}</span>
+              <div className="flex items-center gap-2">
+                <LayoutDashboard className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                {!collapsed && <span>Dashboard</span>}
+              </div>
             </a>
 
             <a
               href="/tickets"
-              className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
-                pathname.startsWith("/tickets") && pathname !== "/tickets/new" && currentScope === "all"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-300 hover:bg-slate-800/70 hover:text-white"
-              }`}
+              title={collapsed ? (isSupervisor ? "All Tickets" : "My Tickets") : undefined}
+              className={navItemClass(isTicketsActive)}
             >
-              <div className="flex items-center gap-2.5">
-                <Inbox className="w-4 h-4 text-cyan-400" />
-                <span>{isSupervisor ? "All Tickets" : "My Tickets"}</span>
+              <div className="flex items-center gap-2">
+                <Inbox className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                {!collapsed && <span>{isSupervisor ? "All Tickets" : "My Tickets"}</span>}
               </div>
             </a>
 
             <a
               href="/alerts"
-              className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
-                pathname === "/alerts"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-300 hover:bg-slate-800/70 hover:text-white"
-              }`}
+              title={collapsed ? `SLA Alerts (${alertCount})` : undefined}
+              className={navItemClass(pathname === "/alerts")}
             >
-              <div className="flex items-center gap-2.5">
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
-                <span>SLA Alerts</span>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                {!collapsed && <span>SLA Alerts</span>}
               </div>
               {alertCount > 0 && (
-                <span className="px-1.5 py-0.5 text-xs font-bold text-white bg-rose-500 rounded-full animate-pulse">
-                  {alertCount}
+                <span
+                  className={`${
+                    collapsed
+                      ? "absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500"
+                      : "px-1.5 py-0.2 text-[10px] font-semibold text-rose-700 bg-rose-100 rounded border border-rose-200 tabular-nums"
+                  }`}
+                >
+                  {!collapsed && alertCount}
                 </span>
               )}
             </a>
@@ -148,91 +244,75 @@ export function Sidebar({
 
         {/* Filter Sub-views for Agents & Quick Views */}
         <div>
-          <div className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            {isSupervisor ? "Quick Queues" : "My Views"}
-          </div>
-          <nav className="space-y-1">
+          {!collapsed && (
+            <div className="px-2.5 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              {isSupervisor ? "Quick Queues" : "My Views"}
+            </div>
+          )}
+          <nav className="space-y-0.5">
             <a
               href="/tickets?scope=assigned_to_me"
-              className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                currentScope === "assigned_to_me"
-                  ? "bg-slate-800 text-white font-semibold"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-              }`}
+              title={collapsed ? "Assigned to Me" : undefined}
+              className={navItemClass(pathname.startsWith("/tickets") && currentScope === "assigned_to_me")}
             >
               <div className="flex items-center gap-2">
-                <User className="w-3.5 h-3.5 text-blue-400" />
-                <span>Assigned to Me</span>
+                <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                {!collapsed && <span>Assigned to Me</span>}
               </div>
             </a>
 
             <a
               href="/tickets?scope=collaborating"
-              className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                currentScope === "collaborating"
-                  ? "bg-slate-800 text-white font-semibold"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-              }`}
+              title={collapsed ? "Collaborating" : undefined}
+              className={navItemClass(pathname.startsWith("/tickets") && currentScope === "collaborating")}
             >
               <div className="flex items-center gap-2">
-                <Users2 className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Collaborating</span>
+                <Users2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                {!collapsed && <span>Collaborating</span>}
               </div>
             </a>
 
             <a
               href="/tickets?scope=awaiting_customer"
-              className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                currentScope === "awaiting_customer"
-                  ? "bg-slate-800 text-white font-semibold"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-              }`}
+              title={collapsed ? "Awaiting Customer" : undefined}
+              className={navItemClass(pathname.startsWith("/tickets") && currentScope === "awaiting_customer")}
             >
               <div className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Awaiting Customer</span>
+                <Clock className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                {!collapsed && <span>Awaiting Customer</span>}
               </div>
             </a>
 
             <a
               href="/tickets?scope=due_soon"
-              className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                currentScope === "due_soon"
-                  ? "bg-slate-800 text-white font-semibold"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-              }`}
+              title={collapsed ? "Due Soon" : undefined}
+              className={navItemClass(pathname.startsWith("/tickets") && currentScope === "due_soon")}
             >
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-orange-400" />
-                <span>Due Soon (1h)</span>
+                <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                {!collapsed && <span>Due Soon</span>}
               </div>
             </a>
 
             <a
               href="/tickets?scope=breached"
-              className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                currentScope === "breached"
-                  ? "bg-slate-800 text-white font-semibold"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-              }`}
+              title={collapsed ? "SLA Breached" : undefined}
+              className={navItemClass(pathname.startsWith("/tickets") && currentScope === "breached")}
             >
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-                <span>SLA Breached</span>
+                <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                {!collapsed && <span>SLA Breached</span>}
               </div>
             </a>
 
             <a
               href="/tickets?scope=archived"
-              className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                currentScope === "archived"
-                  ? "bg-slate-800 text-white font-semibold"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-              }`}
+              title={collapsed ? "Archived" : undefined}
+              className={navItemClass(pathname.startsWith("/tickets") && currentScope === "archived")}
             >
               <div className="flex items-center gap-2">
-                <Archive className="w-3.5 h-3.5 text-slate-400" />
-                <span>Archived Tickets</span>
+                <Archive className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                {!collapsed && <span>Archived</span>}
               </div>
             </a>
           </nav>
@@ -240,38 +320,83 @@ export function Sidebar({
       </div>
 
       {/* User Profile Footer */}
-      <div className="p-3 border-t border-slate-800/80 bg-[#090E1A]">
-        <div className="flex items-center justify-between p-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
-          <div className="flex items-center gap-2.5 min-w-0">
+      <div className="p-2 border-t border-slate-200 bg-slate-100/40">
+        <div
+          className={`flex items-center ${
+            collapsed ? "justify-center" : "justify-between"
+          } p-1.5 rounded-md hover:bg-slate-200/50 transition-colors`}
+        >
+          <div className="flex items-center gap-2 min-w-0">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shadow ${
-                isSupervisor ? "bg-indigo-600" : "bg-emerald-600"
-              }`}
+              title={user.name}
+              className="w-7 h-7 rounded bg-slate-900 text-white font-medium text-xs flex items-center justify-center flex-shrink-0"
             >
               {initials}
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white truncate">{user.name}</p>
-              <p className="text-[11px] text-slate-400 flex items-center gap-1 truncate">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    isSupervisor ? "bg-indigo-400" : "bg-emerald-400"
-                  }`}
-                />
-                {isSupervisor ? "Supervisor" : "Support Agent"}
-              </p>
-            </div>
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-800 truncate leading-tight">{user.name}</p>
+                <p className="text-[10px] text-slate-500 truncate leading-tight">
+                  {isSupervisor ? "Supervisor" : "Agent"}
+                </p>
+              </div>
+            )}
           </div>
 
-          <button
-            onClick={handleLogout}
-            title="Sign Out"
-            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition ml-1 flex-shrink-0"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          {!collapsed && (
+            <button
+              onClick={handleLogout}
+              title="Sign Out"
+              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded transition-colors ml-1 flex-shrink-0 cursor-pointer"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Mobile Drawer Backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-xs transition-opacity"
+          onClick={onCloseMobile}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile Slide-out Drawer */}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 shadow-xl transform transition-transform duration-200 ease-in-out lg:hidden ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {renderSidebarContent(true)}
+      </div>
+
+      {/* Desktop Sticky Sidebar */}
+      <aside
+        ref={sidebarRef}
+        style={{ width: collapsed ? "60px" : `${width}px` }}
+        className={`hidden lg:flex flex-col flex-shrink-0 bg-slate-50/70 border-r border-slate-200 h-screen sticky top-0 transition-[width] duration-150 ease-out relative group/sidebar ${
+          isResizing ? "select-none pointer-events-none" : ""
+        }`}
+      >
+        {renderSidebarContent(false)}
+
+        {/* Resizer Handle Bar (Desktop only, visible on hover) */}
+        {!collapsed && (
+          <div
+            onMouseDown={startResizing}
+            title="Drag to resize sidebar"
+            className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-slate-400/40 active:bg-slate-500 transition-colors z-20 flex items-center justify-center group-hover/sidebar:bg-slate-200/60"
+          />
+        )}
+      </aside>
+    </>
   );
 }
