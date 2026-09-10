@@ -42,3 +42,14 @@ This document records the key architectural choices made during the design and i
 - **Rejected:** A client-side "Role Switcher" dropdown in the header that switches between Supervisor and Agent personas without authenticating against the backend.
 - **Why:** Goal 1 explicitly requires that role permissions must be enforced on the server, not merely hidden in the interface. A client-side role toggle encourages insecure patterns (such as trusting `req.body.role` or `localStorage.role`). Real server-side authentication with distinct seeded accounts (`supervisor@busy.com`, `sarah@busy.com`, etc.) ensures the backend is the sole authority for identity and permissions on every request.
 - **Later reversed:** Early in the planning phase, we considered adding a fast client-side persona dropdown in the top navbar for convenience during manual testing. We reversed this decision to ensure the implementation strictly adheres to production security standards where identity is always resolved from a verified, server-side session cookie.
+
+---
+
+## Decision 6: Codebase Architecture (Decoupled Microservice Structure vs. Monolithic Directory)
+
+- **Chose:** Decoupled Microservice Architecture with strictly separated `frontend/` and `backend/` top-level directories. Each module contains its own `package.json`, isolated `node_modules/`, `tsconfig.json`, and `.env` configuration. CORS middleware (`backend/cors.ts`) and API proxy rewrites (`frontend/next.config.js`) enable independent local execution and separate production deployments.
+- **Rejected:** Keeping a single root-level `package.json`, shared `node_modules/`, or unified Next.js monolithic directory.
+- **Why:** 
+  1. **Strict Dependency & Bundle Isolation**: Separating `frontend/` and `backend/` guarantees that client UI bundles can never accidentally import server-only database code, Prisma ORM binaries, or backend secrets.
+  2. **Independent Deployability**: Allows the React frontend (Port 3000) and Next.js REST API backend (Port 3001) to be deployed on separate servers, containers, or serverless instances with zero cross-service deployment dependencies.
+  3. **Clean Developer Workflow**: Developers working on the frontend do not need to install database ORM dependencies, and backend engineers can run tests (`cd backend && npm test`) without compiling UI code.

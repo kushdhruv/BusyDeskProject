@@ -65,3 +65,16 @@ This document records the prompts used throughout the architecture planning, sch
 
 **Outcome:**
 - Generated `tests/business-rules.test.ts` with 11 automated test cases. All tests passed with 100% success on the initial run.
+
+---
+
+## 6. Decoupled Microservice Refactoring & Dependency Isolation
+
+### Prompt 6.1: Microservices Architecture & Directory Re-structure
+> *"Convert this codebase into a microservices-ready decoupled architecture with independent frontend and backend modules. Delete root package.json and node_modules. Move all client UI code into `frontend/` and REST API / domain services into `backend/`, keeping dependencies, package files, tsconfig, and env files strictly separated with independent run commands."*
+
+**Outcome:**
+- Separated project into top-level `frontend/` (Port 3000) and `backend/` (Port 3001) modules.
+- Created independent `frontend/package.json` and `backend/package.json` with zero root-level dependency coupling.
+- Implemented CORS middleware in `backend/cors.ts` and Next.js proxy rewrites in `frontend/next.config.js`.
+- Verified 100% test passing (104/104 tests inside `backend/`) and independent production compilation builds for both services.

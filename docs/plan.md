@@ -12,7 +12,8 @@ The project was executed across 6 focused build sessions structured to ensure co
 | **Session 4** | Next.js REST API endpoints, session auth, bulk processor, and CSV streaming | 2.0 hours | 2.0 hours | Complete `/app/api/...` route handlers |
 | **Session 5** | Frontend workspace UI, queue table, SLA countdowns, and dashboard charts | 2.5 hours | 2.5 hours | Next.js App Router UI, Tailwind CSS components, Recharts dashboard |
 | **Session 6** | Automated test suite (11 invariant tests), production build validation, and documentation | 1.5 hours | 1.5 hours | `tests/business-rules.test.ts`, `docs/`, `SUBMISSION.md` |
-| **Total** | | **12.0 hours** | **11.5 hours** | **Complete production-minded platform** |
+| **Session 7** | Decoupled Microservice Refactoring (Isolated `frontend/` & `backend/`, separate `node_modules`, CORS, push to GitHub) | 1.0 hours | 1.0 hours | `frontend/package.json`, `backend/package.json`, `backend/cors.ts`, GitHub push |
+| **Total** | | **13.0 hours** | **12.5 hours** | **Complete production-minded platform** |
 
 ---
 
@@ -34,7 +35,10 @@ The project was executed across 6 focused build sessions structured to ensure co
    - Built the user interface on top of stable backend contracts, implementing the queue table, conversation timeline, live SLA countdowns, and analytics dashboard.
 
 6. **Automated Testing & Documentation Sixth**:
-   - Validated all 16 core business invariants with Vitest integration tests and completed the 5 documentation files with genuine architectural trade-offs.
+   - Validated all 16 core business invariants with Vitest integration tests and completed the documentation files with genuine architectural trade-offs.
+
+7. **Decoupled Microservice Refactoring Seventh**:
+   - Separated the application into two independent modules (`frontend/` and `backend/`) with isolated `node_modules/`, separate `package.json` files, explicit CORS headers, proxy rewrites, and zero root-level dependency coupling. Verified full test suite execution inside `backend/` (104/104 tests passing) and independent production builds.
 
 ---
 

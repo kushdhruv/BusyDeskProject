@@ -19,38 +19,35 @@ This document serves as the **Version 1.0 Baseline Reference** prior to entering
 - **Authentication**: `jose` (Signed JWT sessions in secure HTTP-only cookies) + `bcryptjs` (Salted password hashing)
 - **Testing**: Vitest 2.1.9 (Unit, Integration, Fuzz, and Business Rules testing)
 
-### Architectural Pattern: Pragmatic Modular Monolith
+### Architectural Pattern: Decoupled Microservice Architecture
 ```
 takehome-04-support-ticketing/
-├── app/
-│   ├── api/                          # REST Route Handlers (HTTP parsing, session auth, JSON responses)
-│   │   ├── auth/                     # /api/auth/login, /logout, /me
-│   │   ├── tickets/                  # /api/tickets (CRUD, filtering, search, pagination)
-│   │   │   ├── bulk/                 # /api/tickets/bulk (isolated atomic transactions)
-│   │   │   ├── export/               # /api/tickets/export (RFC-4180 CSV streaming)
-│   │   │   └── [id]/                 # /status, /reassign, /collaborators, /replies, /customer-reply, /archive, /restore
-│   │   ├── dashboard/                # /api/dashboard (aggregations, workload, 8-week trend)
-│   │   ├── sla/alerts/               # /api/sla/alerts (breach & imminent risk detection)
-│   │   └── users/                    # /api/users (agent listing for assignment)
-│   ├── dashboard/                    # Analytics Dashboard Page
-│   ├── tickets/                      # High-density Ticket Queue Page
-│   │   ├── [id]/                     # 3-Column Ticket Detail & Workspace Page
-│   │   └── new/                      # Ticket Creation Page
-│   ├── alerts/                       # SLA Alerts Management Page
-│   └── login/                        # Branded Sign-in & Demo Account Picker Page
-├── lib/
-│   ├── policies/                     # Pure Authorization Predicates (TicketPolicy, ReplyPolicy, etc.)
-│   ├── services/                     # Business Logic Services (TicketService, SlaService, LifecycleService, etc.)
-│   ├── auth.ts                       # Cryptographic session handling
-│   ├── constants.ts                  # SLA constants, pagination thresholds
-│   └── prisma.ts                     # Prisma client singleton
-├── components/                       # UI Shell, Sidebar, TopBar, Modals (AppShell, AddCollaboratorModal, etc.)
-├── docs/                             # Architecture, schema, plan, decisions, ai-prompts documentation
-└── tests/                            # 104 Automated Tests
-    ├── unit/                         # Policy matrices, state machine, SLA math, CSV formatting, JWT auth
-    ├── integration/                  # Real PostgreSQL transactions, lifecycle, bulk, collaboration, alerts
-    ├── fuzz/                         # SQL injection, XSS, Unicode, pagination fuzzing, concurrency
-    └── business-rules.test.ts        # 11 Core Invariant Integration Tests
+├── frontend/                          # Pure Client/UI Application Layer (Port 3000)
+│   ├── app/                           # Next.js App Router (Pages: /tickets, /dashboard, /alerts, /login)
+│   ├── components/                    # Rich UI components (AppShell, Sidebar, TopBar, Modals)
+│   ├── lib/
+│   │   ├── api-client.ts              # Pure HTTP REST API Client (zero DB/ORM dependencies)
+│   │   └── types.ts                   # Frontend domain type interfaces
+│   ├── next.config.js                 # API Proxy Rewrites (/api/* -> backend:3001)
+│   ├── package.json                   # Frontend dependencies & scripts
+│   └── tsconfig.json
+│
+├── backend/                           # Pure REST API & Microservice Domain Layer (Port 3001)
+│   ├── app/api/                       # REST Controllers (/api/auth, /api/tickets, /api/dashboard, /api/sla)
+│   ├── lib/
+│   │   ├── services/                  # Business Logic Services (TicketService, SlaService, LifecycleService)
+│   │   ├── policies/                  # Declarative Authorization Policies (TicketPolicy, ReplyPolicy)
+│   │   ├── auth.ts                    # JWT Session Auth & Password Hashing
+│   │   └── prisma.ts                  # Database Access Layer
+│   ├── cors.ts                        # Pre-configured CORS Middleware Headers
+│   ├── prisma/                        # Database Schema (schema.prisma) & Seeder (seed.ts)
+│   ├── tests/                         # 104 Unit, Integration & Fuzzing Tests
+│   ├── package.json                   # Backend dependencies, scripts & vitest config
+│   └── tsconfig.json
+│
+├── docs/                              # Architecture Specs, Schema Docs, ADRs, & Version Logs
+├── README.md
+└── SUBMISSION.md
 ```
 
 ---
@@ -209,21 +206,24 @@ npm test
 ## 6. Verification & Run Commands
 
 ```bash
-# Install dependencies
-npm install
+# 1. Install dependencies in both modules
+cd frontend && npm install
+cd ../backend && npm install
 
-# Run database migrations / push
+# 2. Setup PostgreSQL database & seed demo accounts (in backend/)
+cd backend
 npx prisma db push
-
-# Seed demo database
 npm run seed
 
-# Run full test suite (104 tests)
+# 3. Run full automated test suite (104/104 tests passing in backend/)
+cd backend
 npm test
 
-# Run production build
-npm run build
+# 4. Start backend REST API service (Port 3001)
+cd backend
+npm run dev
 
-# Start local server
-npm run start
+# 5. Start frontend UI application (Port 3000 in a separate terminal)
+cd frontend
+npm run dev
 ```

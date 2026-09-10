@@ -25,10 +25,10 @@
 
 | Layer | What you used | Why |
 |-------|---------------|-----|
-| **Frontend** | React 18, Next.js App Router, Tailwind CSS, Lucide Icons, Recharts | Fast, responsive UI with server components, client-side live SLA countdowns, and rich activity timelines. |
-| **Backend** | Next.js API Routes, TypeScript, Modular Domain Services (`/lib/services/`), Central Policies (`/lib/policies/`) | Modular Monolith keeping business logic encapsulated, strictly enforcing server-side authorization and state machine transitions. |
-| **Database** | PostgreSQL (Docker locally / Supabase in production), Prisma ORM | Strongly relational data model with composite indexes, foreign key integrity, and atomic transactions. |
-| **Hosting** | Vercel (Frontend & Serverless API), Supabase (PostgreSQL) | Native Next.js deployment with zero-maintenance managed PostgreSQL. |
+| **Frontend** (`frontend/`) | Pure Client React 18, Next.js App Router, Tailwind CSS, Lucide Icons, Recharts | Self-contained UI layer with separate `package.json` and `node_modules`. Features live SLA countdowns, responsive queue workspace, and dynamic analytics dashboard. |
+| **Backend** (`backend/`) | Pure REST API & Microservice Layer, Next.js API Routes, TypeScript, Modular Domain Services (`/lib/services/`), Central Policies (`/lib/policies/`) | Decoupled domain service layer with separate `package.json`, `node_modules`, and CORS middleware. Strictly enforces server-side authorization and state transitions. |
+| **Database** | PostgreSQL (Docker locally / Supabase in production), Prisma ORM | Strongly relational data model housed inside `backend/prisma/` with composite indexes, foreign key integrity, and atomic transactions. |
+| **Hosting** | Vercel (Decoupled Frontend & Backend API Services), Supabase (PostgreSQL) | Independent microservice deployment with zero cross-service code leaking and managed PostgreSQL. |
 
 ## Goal checklist
 
