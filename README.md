@@ -1,189 +1,193 @@
-# Assignment 04 — Support Ticketing
+# SupportDesk — Enterprise Support Ticketing Platform
 
-## The scenario
+> A production-minded, modular-monolith support ticketing system with strict server-side authorization policies, deadline-based SLA lifecycle calculations, atomic per-ticket bulk operations, immutable audit history, and team collaboration.
 
-Picture a small software company fielding a growing stream of customer support requests — bug
-reports, billing questions, plain "how do I" questions — that currently arrive by email and get
-handled ad hoc. Whoever notices an email first replies to it, sometimes twice, sometimes not at all.
-
-The result is predictable. A customer emails three times about the same issue because nobody can
-tell it is already being worked on by someone else. A ticket sits untouched for two weeks because
-the one person who understood it went on leave and nobody else picked it up. Leadership cannot say
-how many requests are currently open, or which ones are about to breach the response time promised
-to the customer, because answering either question means opening every email and checking a
-timestamp by hand.
-
-They want one shared queue: agents pick up tickets, reply, and move them through a clear lifecycle,
-while a supervisor can reassign work and see the whole queue at once. Anyone should be able to tell
-which tickets are at risk of breaching their response commitment without scanning every open ticket
-by hand. Build the shared queue that replaces the group inbox.
-
-## What it must do
-
-Everything below is required. Several of the ten spell out exact rules — what happens on an illegal
-move, what a bulk action must report back, when a dismissed alert is allowed to reappear — and those
-specifics are the actual ask, not just the bold headline in front of them.
-
-1. **Accounts and roles.** People sign in with an email and password, and there are at least two
-   roles — a supervisor role and an agent role. Supervisors can reassign any ticket to any agent, close
-   tickets, and see the entire queue. Agents can only act on tickets where they are the primary
-   assignee or a collaborator, and cannot reassign a ticket away from themselves. The difference must
-   be enforced on the server, not just hidden in the interface.
-
-2. **Tickets.** Agents and supervisors create tickets with a subject, a description, a requester, a
-   priority and a category, and can edit them later. Tickets can be archived and restored. Archiving
-   removes a ticket from every default queue view without destroying its history.
-
-3. **Replies inside tickets.** Every reply belongs to exactly one ticket and carries a message body,
-   an author, a timestamp, and a flag marking it as an internal note or a customer-visible reply.
-   Replies can be added to a ticket at any time. Opening a ticket shows all of its replies in order.
-
-4. **Ticket lifecycle.** A ticket moves through _New → Open → Pending → Resolved → Closed_,
-   with its response clock measured against a target response time set by its priority. Pending
-   specifically means the ticket is waiting on a reply from the customer, and the clock pauses for as
-   long as a ticket sits in Pending rather than continuing to run against the agent; a customer reply
-   returns the ticket to Open and resumes the clock. A Closed ticket can only be reopened within a
-   fixed window afterward — once that window passes, it stays closed. Any other move must be rejected
-   by the server with a message explaining why.
-
-5. **Collaborators.** A ticket has one primary assignee, but any number of other agents can be added
-   to it as collaborators who can also reply and update it, and a single agent can collaborate on any
-   number of tickets. Every agent can see one list of every ticket where they are the primary assignee
-   or a collaborator.
-
-6. **Finding tickets.** One list shows the queue with a text search over subject and description,
-   filters for status, priority, category and assignee, sorting by created date, priority or last
-   update, and pagination showing the total number of matches. All of this must happen on the server —
-   do not load every ticket into the browser and filter there.
-
-7. **Acting on many tickets at once.** Select several tickets from the queue and bulk-reassign them
-   to a different agent, or bulk-close them, in one action. Because some tickets in the selection may
-   not be eligible for the move, the result must report per ticket what succeeded and what was refused
-   and why, not just fail the whole batch. Separately, export the currently filtered queue as a CSV
-   file.
-
-8. **A dashboard.** A landing view shows headline numbers — open tickets, tickets pending on the
-   customer, resolved this week, breaching their response time. It also breaks tickets down by status
-   and by agent, and charts tickets resolved per week over the last eight weeks.
-
-9. **History you cannot rewrite.** Every ticket has a timeline showing every status change with the
-   old and new status and who made it, every reassignment, and every reply, internal or
-   customer-visible. Nothing in this timeline can be edited or deleted after the fact, including by
-   supervisors.
-
-10. **SLA alerts.** Any ticket whose response clock has passed its target response time, or is
-    within a short window of doing so, appears in an alerts area, with a count badge visible in the
-    navigation. An agent can acknowledge an alert for a ticket assigned to them, clearing it from the
-    list. If the ticket is later reopened and breaches its target response time again, the alert
-    returns.
-
-## Stretch ideas (optional)
-
-None of these are required, and none substitute for a goal above. If you finish all ten with time
-left over, pick whichever of these sounds most useful and build it:
-
-- A canned-response library for common replies.
-- A post-resolution customer satisfaction rating.
-- A public status page for ongoing incidents.
-- Free-form tagging of tickets.
-- An internal knowledge base linked from tickets.
-- Automatic routing of new tickets by category.
-- Merging duplicate tickets.
-- SLA policies that vary by priority.
-- An email digest of the daily queue.
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
+[![Prisma ORM](https://img.shields.io/badge/Prisma-5.22.0-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
+[![Vitest](https://img.shields.io/badge/Tests-104%20Passing-brightgreen?style=flat-square&logo=vitest)](https://vitest.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 
 ---
 
-## What we are assessing
+## 🚀 Key Features
 
-A working application is table stakes. Almost every serious candidate will produce something that runs, has a login, and roughly does what was asked. That's the floor, not the differentiator.
+### 1. 🛡️ Strict Server-Side Role Enforcement
+- **Supervisors**: Full queue visibility, reassign any ticket to any agent, close tickets, reopen within a 7-day window, trigger bulk operations, export CSV, and view department analytics.
+- **Agents**: Can only view, reply to, add internal notes to, and resolve tickets where they are the **primary assignee** or an active **collaborator**. Strictly prohibited from closing tickets or reassigning tickets away from themselves.
+- **Enforcement**: Built with centralized domain policy classes ([`lib/policies/`](file:///c:/Users/dhruv/Downloads/takehome-04-support-ticketing/takehome-04-support-ticketing/lib/policies/)) evaluating cryptographically signed HTTP-only JWT cookies on every request.
 
-What actually separates submissions is the record of thinking behind the app: the decisions you made and why, the trade-offs you weighed, what you built first and what you deliberately left out, and whether you can explain any part of your own system when asked. We are hiring for judgement. The app is the evidence for that judgement, not the deliverable in itself.
+### 2. ⏱️ Deadline-Based SLA Lifecycle Engine (Zero DB Polling Writes)
+- **Deadlines over Counters**: Instead of decrementing countdown columns in the database every minute, active deadlines (`slaDueAt`) are mathematically calculated based on ticket priority:
+  - `URGENT`: 120 minutes (2 hours)
+  - `HIGH`: 480 minutes (8 hours)
+  - `MEDIUM`: 1440 minutes (24 hours)
+  - `LOW`: 4320 minutes (72 hours)
+- **State Machine**:
+  - `NEW` $\rightarrow$ `OPEN`: SLA deadline computed from creation timestamp.
+  - `OPEN` $\rightarrow$ `PENDING`: Waiting on customer. Remaining active seconds are frozen once into `slaPausedRemainingSeconds`; `slaDueAt` is set to `null`.
+  - `PENDING` $\rightarrow$ `OPEN` (Customer Reply): Resumes deadline mathematically: `slaDueAt = now() + slaPausedRemainingSeconds`.
+  - `RESOLVED` / `CLOSED`: SLA timer stopped; cycle completed.
+- **Re-breach Cycles**: Reopening increments `slaCycle`, establishing clean evaluation boundaries for recurring breach alerts.
+- **Live UI Countdown**: The client calculates 1-second interval countdown timers locally from `slaDueAt - Date.now()`.
 
-We also read the code itself for structure and readability, which counts for a small share of the overall score.
+### 3. 👥 Multi-Agent Collaboration
+- One primary assignee per ticket with support for any number of secondary collaborator agents via a normalized join table (`ticket_collaborators`).
+- Collaborators inherit full working rights to view, reply, add internal notes, and resolve tickets.
+- Dedicated queue scope tabs (`Assigned to Me`, `Collaborating`).
 
-## Time budget
+### 4. 📝 Unified Chronological Timeline & Immutable Audit Ledger
+- Interleaves public customer replies, agent replies, **warm amber staff-only internal notes**, and system lifecycle events into a single unified chronological feed.
+- Every state change, assignment, and collaborator update is committed atomically alongside an append-only `AuditEvent` record.
+- Audit history cannot be updated or deleted by anyone, including supervisors.
 
-Budget about 12 hours total, spent roughly 2 hours a day across a week.
+### 5. ⚡ Atomic Per-Ticket Bulk Operations & CSV Export
+- Bulk status transitions and reassignments execute in isolated per-ticket database transactions.
+- Provides partial success reporting (`{ totalRequested, successCount, failureCount, results: [...] }`) so an invalid or unauthorized ticket does not roll back valid updates.
+- Real-time RFC-4180 compliant CSV streaming export respecting active queue filters with formula injection sanitization.
 
-This is not a race. We are not timing you against other candidates, and submitting early scores nothing extra. Twelve hours is a size guide so you know how much to attempt — pace yourself, stop when you're tired, and spend some of that time thinking and documenting, not only typing code.
+### 6. 📊 Real-Time Analytics & SLA Alerts Center
+- **Supervisor Dashboard**: 4 headline metrics (Active, Breached, Pending Customer, Resolved This Week), SVG Donut Status Breakdown, horizontal Agent Workload bars, and an **8-Week Historical Resolution Trend** dual-axis chart.
+- **SLA Alerts**: Imminent ($<30\text{m}$) and breached tickets appear in the alert navigation center with live badge counts and 1-click acknowledgement.
 
-## Pick any stack you like
+---
 
-Use any language, any framework, any UI library, any ORM, and any database access approach you want. We have no house stack, and no stack scores better than another — this round is not a test of whether you know particular tools.
+## 🏗️ Architecture & Project Structure
 
-Use whatever you are fastest and most confident in. Time spent learning something new to impress us is time not spent on the ten goals above, and it will show.
+```
+takehome-04-support-ticketing/
+├── app/
+│   ├── api/                          # REST API Route Handlers (HTTP parsing & error handling)
+│   │   ├── auth/                     # Session authentication (login, logout, me)
+│   │   ├── tickets/                  # Ticket CRUD, bulk operations, CSV export
+│   │   │   └── [id]/                 # Status, reassign, replies, customer-reply, collaborators, archive
+│   │   ├── dashboard/                # Aggregation queries for dashboard metrics
+│   │   ├── sla/alerts/               # SLA breach detection and acknowledgement
+│   │   └── users/                    # Agent roster listing
+│   ├── dashboard/                    # Analytics Dashboard Page
+│   ├── tickets/                      # High-density Ticket Queue & Bulk Toolbar
+│   │   ├── [id]/                     # 3-Column Ticket Detail Workspace
+│   │   └── new/                      # Ticket Creation Form
+│   ├── alerts/                       # SLA Alerts Center
+│   └── login/                        # Clean Branded Login with Demo Personas
+├── lib/
+│   ├── policies/                     # Declarative Authorization Policies (TicketPolicy, ReplyPolicy, etc.)
+│   ├── services/                     # Domain Business Services (TicketService, SlaService, LifecycleService, etc.)
+│   ├── auth.ts                       # Cryptographic JWT signing and cookie verification (jose, bcryptjs)
+│   ├── constants.ts                  # System constants (SLA targets, pagination boundaries)
+│   └── prisma.ts                     # Prisma Client Singleton
+├── components/                       # UI Shell, Dark Navy Sidebar, TopBar, Modals (AppShell, etc.)
+├── docs/                             # Architecture, Schema, ADRs, and Version Documentation
+│   ├── architecture.md               # System design, data flow, component boundaries
+│   ├── schema.md                     # Relational schema, indexes, and scale considerations
+│   ├── decisions.md                  # Architectural Decision Records (ADRs) and trade-offs
+│   ├── plan.md                       # Phased execution log, estimates vs actuals
+│   ├── ai-prompts.md                 # Prompts log and iteration history
+│   └── version1/                     # Version 1.0 Complete System Snapshot
+└── tests/                            # 104 Automated Tests (Unit, Integration, Fuzz)
+```
 
-## Using AI is allowed and encouraged
+---
 
-Use AI tools however you want — to scaffold code, debug a stuck problem, write tests, draft documentation, or anything else that helps you move faster. A few things to know about how we treat it:
+## 🧪 Comprehensive Test Suite (104 Tests, 100% Passing)
 
-- We do not penalise AI use, and we make no attempt to detect it.
-- We care about whether you understood, directed and verified the output — not about who or what produced the first draft of it.
-- `docs/ai-prompts.md` must contain the prompts you actually used, including the ones that produced bad output and what you changed afterwards. If you used no AI at all, say so here and describe how you worked instead — that is assessed the same way.
-- Submitting generated code you cannot explain is the single most common way candidates fail this round.
+The project includes an automated test suite structured across 4 distinct testing tiers:
 
-You are accountable for everything in your submission. If a reviewer points at a piece of code and asks why it's there, or why it works the way it does, "the AI wrote it" is not an answer.
+```bash
+npm test
+```
 
-## Use git properly
+### Test Suite Breakdown
+| Test Category | Test File | Count | Focus Areas |
+|---|---|---|---|
+| **Unit Testing** | `tests/unit/policies.test.ts` | 29 | Complete role $\times$ permission matrix, boundary conditions |
+| **Unit Testing** | `tests/unit/lifecycle-service.test.ts` | 26 | Valid/invalid state machine transitions, 7-day reopen window |
+| **Unit Testing** | `tests/unit/sla-service.test.ts` | 10 | Target minutes calculation, pause math, resume math, cycle increments |
+| **Unit Testing** | `tests/unit/export-service.test.ts` | 5 | RFC-4180 CSV escaping, quotes/commas/newlines, formula injection |
+| **Unit Testing** | `tests/unit/auth.test.ts` | 3 | JWT signing, verification, tampering, expiration |
+| **Unit Testing** | `tests/unit/timeline-service.test.ts` | 1 | Interleaving of public replies, internal notes, and audit events |
+| **Integration** | `tests/integration/lifecycle.integration.test.ts` | 3 | Real PostgreSQL transactions for status changes & atomic audit logs |
+| **Integration** | `tests/integration/collaboration.integration.test.ts` | 1 | Multi-agent collaborator assignment & duplicate prevention |
+| **Integration** | `tests/integration/bulk-operations.integration.test.ts` | 3 | Isolated per-ticket atomicity & partial success reporting |
+| **Integration** | `tests/integration/queue-and-filters.integration.test.ts` | 3 | Multi-field filtering, text search, pagination, archive isolation |
+| **Integration** | `tests/integration/dashboard-and-metrics.integration.test.ts` | 1 | Headline metric cards, status distribution, 8-week trend buckets |
+| **Integration** | `tests/integration/sla-alerts.integration.test.ts` | 1 | Breach detection, alert sync, 1-click acknowledgement |
+| **Business Rules**| `tests/business-rules.test.ts` | 11 | End-to-end invariant validation of all 10 core requirements |
+| **Fuzz Testing** | `tests/fuzz/input-fuzzing.test.ts` | 3 | SQL injection, XSS payloads, 10KB+ strings, Unicode/RTL, null bytes |
+| **Fuzz Testing** | `tests/fuzz/query-fuzzing.test.ts` | 2 | Out-of-bounds pagination (`page=-10`, `limit=999999`), negative integers |
+| **Fuzz Testing** | `tests/fuzz/bulk-and-concurrency-fuzzing.test.ts` | 2 | Chaotic ID arrays, non-existent UUIDs, 10 concurrent parallel replies |
 
-Publish to a public GitHub repository, and commit incrementally as the work actually happens — after each meaningful step, not in one pass at the end.
+---
 
-A repository whose entire history is a single "initial commit" containing a finished app scores zero on git history, and it colours how we read everything else in your submission, however good the app itself is. Your history is how we see the order you built in, where you got stuck, and how the design changed along the way. If it isn't there, we can't assess it, and we won't assume the best.
+## 👥 Pre-configured Demo Accounts
 
-## What you must commit
+The login screen includes 1-click credential auto-fill cards for testing across all role permissions:
 
-Alongside your code, commit these five files under `docs/`. Your zip includes a stub for each with the questions it needs to answer — fill them in as you go, not from memory at the end.
+| Role | Name | Email | Password | Primary Capabilities |
+|---|---|---|---|---|
+| **Supervisor** | Suresh Menon | `supervisor@busy.com` | `password123` | Full access, Close/Reopen, Reassign, Bulk Operations, CSV Export, Metrics |
+| **Senior Agent** | Sarah Jenkins | `sarah@busy.com` | `password123` | Assigned urgent breached tickets, collaborators, pending customer replies |
+| **Support Agent** | Alex Rivera | `alex@busy.com` | `password123` | High priority due-soon tickets, team collaborations, ticket resolution |
+| **Tier 1 Agent** | Jordan Lee | `jordan@busy.com` | `password123` | Low/medium tickets, resolved incident tickets |
 
-| File                   | What it must answer                                                                                                                                                                                                                       |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/architecture.md` | What the moving pieces are, how they talk to each other, where each one runs, the request path for one representative user action end to end, and what you decided not to build.                                                          |
-| `docs/schema.md`       | Every table's columns and types, which relationships are one-to-many versus many-to-many, which constraints live in the database versus the application, what you deliberately denormalised, and what would break first at 100x the data. |
-| `docs/plan.md`         | How you split the work into sessions, what order you built in and why, what you estimated versus what it actually took, and what you cut when you ran short.                                                                              |
-| `docs/decisions.md`    | At least five real decisions — what you chose, what you rejected, and why — including at least one you later reversed.                                                                                                                    |
-| `docs/ai-prompts.md`   | The prompts you actually used, in order, grouped by what you were trying to do, including at least one that produced something wrong and what you did about it.                                                                           |
+---
 
-## Host it for free
+## 🛠️ Quick Start & Local Setup
 
-Deploy the whole thing somewhere reachable by URL, using free tiers only.
+### Prerequisites
+- Node.js `>= 18.17.0` (Node 20+ recommended)
+- PostgreSQL database (or Docker)
 
-One combination that works, if you would rather not decide:
+### 1. Clone & Install Dependencies
+```bash
+git clone https://github.com/kushdhruv/BusyDeskProject.git
+cd BusyDeskProject
+npm install
+```
 
-- **Database** — a managed service such as Supabase.
-- **Server-side code** — Render.
-- **Browser-side code** — Vercel.
+### 2. Configure Environment Variables
+Create a `.env` file in the project root:
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ticketing?schema=public"
+JWT_SECRET="super-secret-jwt-key-for-session-tokens"
+NODE_ENV="development"
+PORT=3000
+```
 
-Deploy in that order: create the database first, give the server its connection details as environment variables, then point the browser-side part at the server's public URL.
+### 3. Run Database Migrations & Seed Data
+```bash
+# Push schema to database
+npx prisma db push
 
-This is one option, not a requirement. Any free host is equally acceptable — everything on a single provider, one virtual machine, a container platform, a static host with serverless functions. The choice earns and loses nothing.
+# Seed 8 weeks of historical tickets, SLA breach scenarios, and demo accounts
+npm run seed
+```
 
-Requirements:
+### 4. Run Test Suite
+```bash
+npm test
+```
 
-- A working live URL.
-- Seeded with enough demo data to show the system doing something, not an empty shell.
-- Demo credentials for every role recorded in `SUBMISSION.md`.
-- Connection strings, keys and passwords kept in environment variables, never in the repository.
-- Free tiers often sleep when idle and can take a minute or more to wake. Note it in `SUBMISSION.md` if yours does, so a slow first load is not read as a broken deployment.
-- If you cannot get it hosted, submit anyway and record in `SUBMISSION.md` what you tried and where it broke.
+### 5. Start Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## How to submit
+---
 
-Send us:
+## 📚 Architectural Documentation
 
-- The URL of your public GitHub repository.
-- The URL of your live, deployed application.
-- Your completed `SUBMISSION.md`, committed to the repository.
+All architectural records and design justifications are documented under [`docs/`](file:///c:/Users/dhruv/Downloads/takehome-04-support-ticketing/takehome-04-support-ticketing/docs/):
+- **[`docs/architecture.md`](file:///c:/Users/dhruv/Downloads/takehome-04-support-ticketing/takehome-04-support-ticketing/docs/architecture.md)** — System architecture, request lifecycles, and deliberate omissions.
+- **[`docs/schema.md`](file:///c:/Users/dhruv/Downloads/takehome-04-support-ticketing/takehome-04-support-ticketing/docs/schema.md)** — Relational data model, composite indexing, and 100x scale analysis.
+- **[`docs/decisions.md`](file:///c:/Users/dhruv/Downloads/takehome-04-support-ticketing/takehome-04-support-ticketing/docs/decisions.md)** — Architectural Decision Records (ADRs), trade-offs, and reversals.
+- **[`docs/plan.md`](file:///c:/Users/dhruv/Downloads/takehome-04-support-ticketing/takehome-04-support-ticketing/docs/plan.md)** — Build session breakdown, estimates vs actuals.
+- **[`docs/ai-prompts.md`](file:///c:/Users/dhruv/Downloads/takehome-04-support-ticketing/takehome-04-support-ticketing/docs/ai-prompts.md)** — Prompt log, corrections, and iteration history.
+- **[`docs/version1/VERSION_1_SYSTEM_DOCUMENTATION.md`](file:///c:/Users/dhruv/Downloads/takehome-04-support-ticketing/takehome-04-support-ticketing/docs/version1/VERSION_1_SYSTEM_DOCUMENTATION.md)** — Complete Version 1.0 baseline system reference.
 
-That's the whole submission. Nothing else to prepare, no separate form.
+---
 
-## What happens next
-
-If your submission clears the bar, we'll set up a short call. We will ask about specific decisions we can see in your repository and its history — why you modelled something a particular way, what a certain commit was fixing, what you'd change if you kept going.
-
-We're telling you this now because it should change how carefully you document as you go. Write `docs/decisions.md` for a version of yourself who has to explain it three weeks from now.
-
-## Scope
-
-The 10 goals stated in this brief are the cutoff. Meet all 10, solidly, and you have a complete submission.
-
-Stretch ideas are optional. They exist for candidates who finish the 10 with time left and want to keep building — they are never required, and they do not make up for a goal you didn't hit. Doing 8 goals well beats doing 10 goals badly. If time is short, finish fewer goals properly rather than leaving all ten half-done.
+## 📄 License
+MIT
