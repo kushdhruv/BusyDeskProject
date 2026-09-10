@@ -1,4 +1,31 @@
-import { GetQueueParams, BulkOperationDTO, CreateTicketDTO } from "@/packages/contracts/src";
+export interface GetQueueParams {
+  search?: string;
+  status?: string;
+  priority?: string;
+  category?: string;
+  assigneeId?: string;
+  scope?: string;
+  sort?: string;
+  order?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateTicketDTO {
+  subject: string;
+  description: string;
+  requesterName: string;
+  requesterEmail: string;
+  priority?: string;
+  category?: string;
+  primaryAssigneeId?: string;
+}
+
+export interface BulkOperationDTO {
+  ticketIds: string[];
+  action: "REASSIGN" | "CLOSE";
+  targetAssigneeId?: string;
+}
 
 /**
  * Pure HTTP REST API Client for Decoupled Frontend Layer

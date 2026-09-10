@@ -1,13 +1,7 @@
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { Role } from "@prisma/client";
-
-export interface SessionUser {
-  id: string;
-  email: string;
-  name: string;
-  role: Role;
-}
+import { SessionUser } from "../../../types";
 
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-jwt-key-for-session-tokens";
 const encodedKey = new TextEncoder().encode(JWT_SECRET);

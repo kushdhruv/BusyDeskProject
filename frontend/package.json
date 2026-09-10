@@ -1,15 +1,12 @@
 {
-  "name": "busydesk-platform",
+  "name": "busydesk-frontend",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && npm run dev",
-    "dev": "npm run dev:frontend",
-    "build:frontend": "cd frontend && npm run build",
-    "build:backend": "cd backend && npm run build",
-    "build": "npm run build:frontend",
-    "test": "cd backend && npm test"
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint"
   },
   "dependencies": {
     "lucide-react": "^0.378.0",
