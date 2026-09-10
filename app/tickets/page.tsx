@@ -19,10 +19,14 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageSquare,
-  Shield,
+  Clock,
+  AlertTriangle,
   Layers,
   ArrowUpDown,
   RotateCcw,
+  CheckCircle2,
+  X,
+  UserCheck,
 } from "lucide-react";
 
 interface TicketItem {
@@ -82,7 +86,7 @@ function TicketsQueueContent() {
   const [bulkModalOpen, setBulkModalOpen] = useState<boolean>(false);
   const [bulkResultData, setBulkResultData] = useState<BulkActionResponse | null>(null);
 
-  // Fetch Current User
+  // Fetch Current User & Agents
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : { user: null }))
@@ -144,10 +148,10 @@ function TicketsQueueContent() {
   };
 
   // Execute Bulk Action
-  const handleExecuteBulk = async () => {
-    if (!bulkAction || selectedIds.length === 0) return;
-    if (bulkAction === "REASSIGN" && !bulkTargetAssignee) {
-      alert("Please select a target agent to reassign to.");
+  const handleExecuteBulk = async (actionType: "REASSIGN" | "CLOSE", targetAssignee?: string) => {
+    if (selectedIds.length === 0) return;
+    if (actionType === "REASSIGN" && !targetAssignee) {
+      alert("Please select an agent to reassign to.");
       return;
     }
 
@@ -158,8 +162,8 @@ function TicketsQueueContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ticketIds: selectedIds,
-          action: bulkAction,
-          targetAssigneeId: bulkAction === "REASSIGN" ? bulkTargetAssignee : undefined,
+          action: actionType,
+          targetAssigneeId: targetAssignee,
         }),
       });
 
@@ -167,8 +171,6 @@ function TicketsQueueContent() {
       setBulkResultData(data);
       setBulkModalOpen(true);
       setSelectedIds([]);
-      setBulkAction("");
-      setBulkTargetAssignee("");
       loadQueue();
     } catch (err: any) {
       alert(err.message || "Bulk action failed.");
@@ -192,147 +194,171 @@ function TicketsQueueContent() {
 
   const isSupervisor = user?.role === Role.SUPERVISOR;
 
+  const formatRelativeTime = (isoDate: string) => {
+    const ms = Date.now() - new Date(isoDate).getTime();
+    const minutes = Math.floor(ms / 60000);
+    if (minutes < 60) return `${Math.max(1, minutes)}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
   return (
-    <div className="space-y-6 pb-12">
-      {/* Top Header */}
+    <div className="space-y-4 pb-12 animate-fade-in">
+      {/* Top Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Support Ticket Queue</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            {isSupervisor ? "All Tickets" : "My Tickets"}
+          </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {isSupervisor
-              ? "Global company queue — filter, reassign, and manage support workloads"
-              : "Your active ticket assignments and collaborations"}
+              ? "View and manage all support tickets across the organization."
+              : "Tickets assigned to you or where you are a collaborator."}
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <button
             onClick={handleExportCsv}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5 text-slate-500" />
             <span>Export CSV</span>
           </button>
           <a
             href="/tickets/new"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
           >
-            <Plus className="w-4 h-4" />
-            <span>Create Ticket</span>
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>New Ticket</span>
           </a>
         </div>
       </div>
 
-      {/* Scope Filter Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200">
+      {/* Scope Filter Tabs (All, Open, Pending, Breaching, Resolved, Closed, Archived) */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-slate-200 text-xs">
         <button
           onClick={() => {
             setScope("all");
+            setStatus("");
             setPage(1);
           }}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-            scope === "all"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:bg-slate-200/60"
+          className={`px-3 py-1.5 font-semibold transition border-b-2 -mb-px whitespace-nowrap ${
+            scope === "all" && !status
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-600 hover:text-slate-900"
           }`}
         >
-          {isSupervisor ? "All Active Tickets" : "All My Work"}
+          All
         </button>
 
-        {!isSupervisor && (
-          <>
-            <button
-              onClick={() => {
-                setScope("assigned_to_me");
-                setPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-                scope === "assigned_to_me"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-200/60"
-              }`}
-            >
-              Assigned to Me
-            </button>
-            <button
-              onClick={() => {
-                setScope("collaborating");
-                setPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-                scope === "collaborating"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-200/60"
-              }`}
-            >
-              Collaborating
-            </button>
-          </>
-        )}
+        <button
+          onClick={() => {
+            setScope("all");
+            setStatus(Status.OPEN);
+            setPage(1);
+          }}
+          className={`px-3 py-1.5 font-semibold transition border-b-2 -mb-px whitespace-nowrap ${
+            status === Status.OPEN
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          Open
+        </button>
 
         <button
           onClick={() => {
             setScope("awaiting_customer");
+            setStatus("");
             setPage(1);
           }}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
+          className={`px-3 py-1.5 font-semibold transition border-b-2 -mb-px whitespace-nowrap ${
             scope === "awaiting_customer"
-              ? "bg-amber-600 text-white shadow-sm"
-              : "text-slate-600 hover:bg-slate-200/60"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-600 hover:text-slate-900"
           }`}
         >
-          Awaiting Customer (Pending)
-        </button>
-
-        <button
-          onClick={() => {
-            setScope("due_soon");
-            setPage(1);
-          }}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-            scope === "due_soon"
-              ? "bg-orange-600 text-white shadow-sm"
-              : "text-slate-600 hover:bg-slate-200/60"
-          }`}
-        >
-          SLA Due Soon
+          Pending
         </button>
 
         <button
           onClick={() => {
             setScope("breached");
+            setStatus("");
             setPage(1);
           }}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
+          className={`px-3 py-1.5 font-semibold transition border-b-2 -mb-px whitespace-nowrap ${
             scope === "breached"
-              ? "bg-rose-600 text-white shadow-sm"
-              : "text-slate-600 hover:bg-slate-200/60"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-600 hover:text-slate-900"
           }`}
         >
-          SLA Breached
+          Breaching SLA
+        </button>
+
+        <button
+          onClick={() => {
+            setScope("all");
+            setStatus(Status.RESOLVED);
+            setPage(1);
+          }}
+          className={`px-3 py-1.5 font-semibold transition border-b-2 -mb-px whitespace-nowrap ${
+            status === Status.RESOLVED
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          Resolved
+        </button>
+
+        <button
+          onClick={() => {
+            setScope("all");
+            setStatus(Status.CLOSED);
+            setPage(1);
+          }}
+          className={`px-3 py-1.5 font-semibold transition border-b-2 -mb-px whitespace-nowrap ${
+            status === Status.CLOSED
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          Closed
         </button>
 
         <button
           onClick={() => {
             setScope("archived");
+            setStatus("");
             setPage(1);
           }}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
+          className={`px-3 py-1.5 font-semibold transition border-b-2 -mb-px whitespace-nowrap ${
             scope === "archived"
-              ? "bg-slate-700 text-white shadow-sm"
-              : "text-slate-500 hover:bg-slate-200/60"
+              ? "border-slate-800 text-slate-900"
+              : "border-transparent text-slate-400 hover:text-slate-700"
           }`}
         >
-          Archived Tickets
+          Archived
         </button>
       </div>
 
       {/* Filter Toolbar & Search */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-          {/* Search Box */}
-          <div className="lg:col-span-2 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+      <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs space-y-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Search Field */}
+          <div className="flex-1 min-w-[220px] relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
@@ -340,228 +366,192 @@ function TicketsQueueContent() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search subject, description, customer..."
-              className="w-full text-xs pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="Search tickets (subject, requester, ID)..."
+              className="w-full text-xs pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
             />
           </div>
 
-          {/* Status Filter */}
-          <div>
-            <select
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value);
-                setPage(1);
-              }}
-              className="w-full text-xs py-2 px-2.5 border border-slate-300 rounded-lg bg-white text-slate-700 outline-none"
-            >
-              <option value="">All Statuses</option>
-              <option value={Status.NEW}>New</option>
-              <option value={Status.OPEN}>Open</option>
-              <option value={Status.PENDING}>Pending</option>
-              <option value={Status.RESOLVED}>Resolved</option>
-              <option value={Status.CLOSED}>Closed</option>
-            </select>
-          </div>
+          {/* Priority Pill Filter */}
+          <select
+            value={priority}
+            onChange={(e) => {
+              setPriority(e.target.value);
+              setPage(1);
+            }}
+            className="text-xs py-1.5 px-2.5 border border-slate-200 rounded-lg bg-slate-50 hover:bg-white text-slate-700 outline-none cursor-pointer"
+          >
+            <option value="">Priority: All</option>
+            <option value={Priority.URGENT}>Urgent (2h)</option>
+            <option value={Priority.HIGH}>High (8h)</option>
+            <option value={Priority.MEDIUM}>Medium (24h)</option>
+            <option value={Priority.LOW}>Low (72h)</option>
+          </select>
 
-          {/* Priority Filter */}
-          <div>
-            <select
-              value={priority}
-              onChange={(e) => {
-                setPriority(e.target.value);
-                setPage(1);
-              }}
-              className="w-full text-xs py-2 px-2.5 border border-slate-300 rounded-lg bg-white text-slate-700 outline-none"
-            >
-              <option value="">All Priorities</option>
-              <option value={Priority.URGENT}>Urgent (2h SLA)</option>
-              <option value={Priority.HIGH}>High (8h SLA)</option>
-              <option value={Priority.MEDIUM}>Medium (24h SLA)</option>
-              <option value={Priority.LOW}>Low (72h SLA)</option>
-            </select>
-          </div>
-
-          {/* Category Filter */}
-          <div>
-            <select
-              value={category}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                setPage(1);
-              }}
-              className="w-full text-xs py-2 px-2.5 border border-slate-300 rounded-lg bg-white text-slate-700 outline-none"
-            >
-              <option value="">All Categories</option>
-              <option value={Category.BUG}>Bug</option>
-              <option value={Category.BILLING}>Billing</option>
-              <option value={Category.FEATURE}>Feature</option>
-              <option value={Category.QUESTION}>Question</option>
-            </select>
-          </div>
+          {/* Category Pill Filter */}
+          <select
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setPage(1);
+            }}
+            className="text-xs py-1.5 px-2.5 border border-slate-200 rounded-lg bg-slate-50 hover:bg-white text-slate-700 outline-none cursor-pointer"
+          >
+            <option value="">Category: All</option>
+            <option value={Category.BUG}>Bug</option>
+            <option value={Category.BILLING}>Billing</option>
+            <option value={Category.FEATURE}>Feature</option>
+            <option value={Category.QUESTION}>Question</option>
+          </select>
 
           {/* Assignee Filter */}
-          <div>
-            <select
-              value={assigneeId}
-              onChange={(e) => {
-                setAssigneeId(e.target.value);
-                setPage(1);
-              }}
-              className="w-full text-xs py-2 px-2.5 border border-slate-300 rounded-lg bg-white text-slate-700 outline-none"
-            >
-              <option value="">All Assignees</option>
-              {agents.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Sorting controls */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
-            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-            <span>Sort by:</span>
-            <button
-              onClick={() => setSort("createdAt")}
-              className={`font-semibold hover:text-indigo-600 ${
-                sort === "createdAt" ? "text-indigo-600 underline" : ""
-              }`}
-            >
-              Created Date
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => setSort("updatedAt")}
-              className={`font-semibold hover:text-indigo-600 ${
-                sort === "updatedAt" ? "text-indigo-600 underline" : ""
-              }`}
-            >
-              Last Updated
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => setSort("slaDueAt")}
-              className={`font-semibold hover:text-indigo-600 ${
-                sort === "slaDueAt" ? "text-indigo-600 underline" : ""
-              }`}
-            >
-              SLA Deadline
-            </button>
-          </div>
-
-          <button
-            onClick={() => setOrder(order === "asc" ? "desc" : "asc")}
-            className="hover:text-indigo-600 font-semibold uppercase"
+          <select
+            value={assigneeId}
+            onChange={(e) => {
+              setAssigneeId(e.target.value);
+              setPage(1);
+            }}
+            className="text-xs py-1.5 px-2.5 border border-slate-200 rounded-lg bg-slate-50 hover:bg-white text-slate-700 outline-none cursor-pointer"
           >
-            Order: {order}
-          </button>
+            <option value="">Assignee: All</option>
+            {agents.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Sort Controller */}
+          <div className="flex items-center gap-1.5 border-l border-slate-200 pl-2 text-xs text-slate-500 ml-auto">
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="text-xs py-1 px-2 border-0 bg-transparent text-slate-700 font-semibold outline-none cursor-pointer"
+            >
+              <option value="createdAt">Created Date</option>
+              <option value="updatedAt">Last Updated</option>
+              <option value="slaDueAt">SLA Deadline</option>
+            </select>
+            <button
+              onClick={() => setOrder(order === "asc" ? "desc" : "asc")}
+              className="text-[11px] font-bold text-blue-600 hover:text-blue-800 uppercase px-1 py-0.5"
+            >
+              {order}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Bulk Action Bar (Visible when tickets are selected) */}
+      {/* Bulk Operations Sticky Toolbar */}
       {selectedIds.length > 0 && (
-        <div className="bg-indigo-900 text-white px-5 py-3 rounded-xl shadow-lg flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+        <div className="bg-[#0F172A] text-white px-5 py-3 rounded-xl shadow-xl flex flex-wrap items-center justify-between gap-3 animate-fade-in border border-slate-700">
           <div className="flex items-center gap-3 text-xs font-semibold">
-            <span className="bg-indigo-800 px-2.5 py-1 rounded-md">
-              {selectedIds.length} tickets selected
+            <span className="bg-blue-600 px-2.5 py-1 rounded-md text-white">
+              {selectedIds.length} selected
             </span>
-            <span>Choose bulk operation:</span>
+            <span>Bulk actions:</span>
           </div>
 
           <div className="flex items-center gap-2">
             {isSupervisor && (
               <>
-                <select
-                  value={bulkAction}
-                  onChange={(e) => setBulkAction(e.target.value as any)}
-                  className="text-xs py-1.5 px-3 rounded-lg bg-indigo-800 text-white border border-indigo-700 outline-none"
-                >
-                  <option value="">Select Action...</option>
-                  <option value="REASSIGN">Bulk Reassign Agent</option>
-                  <option value="CLOSE">Bulk Close Tickets</option>
-                </select>
-
-                {bulkAction === "REASSIGN" && (
+                <div className="relative flex items-center gap-1.5">
                   <select
-                    value={bulkTargetAssignee}
-                    onChange={(e) => setBulkTargetAssignee(e.target.value)}
-                    className="text-xs py-1.5 px-3 rounded-lg bg-indigo-800 text-white border border-indigo-700 outline-none"
+                    id="bulk-target-agent-select"
+                    className="text-xs py-1.5 px-3 rounded-lg bg-slate-800 text-white border border-slate-700 outline-none"
+                    defaultValue=""
                   >
-                    <option value="">Select Target Agent...</option>
+                    <option value="" disabled>
+                      Assign to...
+                    </option>
                     {agents.map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.name}
                       </option>
                     ))}
                   </select>
-                )}
+
+                  <button
+                    onClick={() => {
+                      const select = document.getElementById(
+                        "bulk-target-agent-select"
+                      ) as HTMLSelectElement;
+                      if (select?.value) {
+                        handleExecuteBulk("REASSIGN", select.value);
+                      } else {
+                        alert("Please pick an agent first.");
+                      }
+                    }}
+                    disabled={bulkLoading}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition"
+                  >
+                    Reassign
+                  </button>
+                </div>
 
                 <button
-                  onClick={handleExecuteBulk}
-                  disabled={bulkLoading || !bulkAction}
-                  className="px-3.5 py-1.5 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 text-white font-bold text-xs rounded-lg transition"
+                  onClick={() => handleExecuteBulk("CLOSE")}
+                  disabled={bulkLoading}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg transition"
                 >
-                  {bulkLoading ? "Executing..." : "Apply Bulk Action"}
+                  Close Tickets
                 </button>
               </>
             )}
 
             {!isSupervisor && (
-              <span className="text-xs text-indigo-200">
-                Bulk reassignments and closures require Supervisor role permissions.
+              <span className="text-xs text-slate-400">
+                Bulk reassignments & closures require Supervisor role.
               </span>
             )}
 
             <button
               onClick={() => setSelectedIds([])}
-              className="text-xs text-indigo-300 hover:text-white underline pl-2"
+              className="text-xs text-slate-400 hover:text-white underline pl-2"
             >
-              Clear Selection
+              Clear
             </button>
           </div>
         </div>
       )}
 
-      {/* Tickets Queue Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* High-Density Data Grid */}
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
+            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wider">
               <tr>
                 <th className="p-3 w-10 text-center">
-                  <button onClick={toggleSelectAll} className="text-slate-400 hover:text-indigo-600">
+                  <button onClick={toggleSelectAll} className="text-slate-400 hover:text-blue-600">
                     {selectedIds.length > 0 && selectedIds.length === tickets.length ? (
-                      <CheckSquare className="w-4 h-4 text-indigo-600" />
+                      <CheckSquare className="w-4 h-4 text-blue-600" />
                     ) : (
                       <Square className="w-4 h-4" />
                     )}
                   </button>
                 </th>
-                <th className="py-3 px-3 w-20"># Number</th>
-                <th className="py-3 px-4">Subject & Requester</th>
+                <th className="py-3 px-3 w-16">#</th>
+                <th className="py-3 px-4">Subject</th>
+                <th className="py-3 px-3">Requester</th>
                 <th className="py-3 px-3">Priority</th>
                 <th className="py-3 px-3">Status</th>
                 <th className="py-3 px-4">Assignee</th>
-                <th className="py-3 px-4">Response SLA Clock</th>
-                <th className="py-3 px-3 text-right">Replies</th>
+                <th className="py-3 px-4">SLA Clock</th>
+                <th className="py-3 px-3 text-right">Updated</th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 font-normal">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400">
-                    Loading queue tickets...
+                  <td colSpan={9} className="text-center py-16 text-slate-400">
+                    Loading support tickets...
                   </td>
                 </tr>
               ) : tickets.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400">
-                    No tickets match the selected filters.
+                  <td colSpan={9} className="text-center py-16 text-slate-400">
+                    No tickets found matching current view parameters.
                   </td>
                 </tr>
               ) : (
@@ -571,12 +561,12 @@ function TicketsQueueContent() {
                   return (
                     <tr
                       key={t.id}
-                      className={`hover:bg-indigo-50/40 transition cursor-pointer ${
-                        isSelected ? "bg-indigo-50/60" : ""
+                      className={`hover:bg-blue-50/40 transition cursor-pointer ${
+                        isSelected ? "bg-blue-50/60" : ""
                       }`}
                       onClick={() => router.push(`/tickets/${t.id}`)}
                     >
-                      {/* Checkbox column */}
+                      {/* Checkbox */}
                       <td
                         className="p-3 text-center"
                         onClick={(e) => {
@@ -584,31 +574,38 @@ function TicketsQueueContent() {
                           toggleSelectOne(t.id);
                         }}
                       >
-                        <button className="text-slate-400 hover:text-indigo-600">
+                        <button className="text-slate-400 hover:text-blue-600">
                           {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-indigo-600" />
+                            <CheckSquare className="w-4 h-4 text-blue-600" />
                           ) : (
                             <Square className="w-4 h-4" />
                           )}
                         </button>
                       </td>
 
-                      {/* Ticket Number */}
-                      <td className="py-3 px-3 font-mono font-bold text-slate-900">
-                        #{t.ticketNumber}
+                      {/* Number */}
+                      <td className="py-3 px-3 font-mono font-semibold text-slate-500">
+                        {t.ticketNumber}
                       </td>
 
-                      {/* Subject & Requester */}
-                      <td className="py-3 px-4 max-w-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-slate-900 line-clamp-1 hover:text-indigo-600">
+                      {/* Subject */}
+                      <td className="py-3 px-4 max-w-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-slate-900 truncate hover:text-blue-600">
                             {t.subject}
                           </span>
-                          <CategoryBadge category={t.category} />
+                          {t._count.replies > 0 && (
+                            <span className="text-[10px] text-slate-400 flex items-center gap-0.5 flex-shrink-0">
+                              <MessageSquare className="w-3 h-3" />
+                              {t._count.replies}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          From: <span className="text-slate-700 font-medium">{t.requesterName}</span> ({t.requesterEmail})
-                        </div>
+                      </td>
+
+                      {/* Requester */}
+                      <td className="py-3 px-3 text-slate-600 max-w-[140px] truncate">
+                        {t.requesterName}
                       </td>
 
                       {/* Priority */}
@@ -621,22 +618,23 @@ function TicketsQueueContent() {
                         <StatusBadge status={t.status} size="sm" />
                       </td>
 
-                      {/* Primary Assignee & Collaborators stack */}
+                      {/* Assignee */}
                       <td className="py-3 px-4">
-                        <div className="font-medium text-slate-800">
-                          {t.primaryAssignee?.name || (
-                            <span className="text-slate-400 italic">Unassigned</span>
-                          )}
-                        </div>
-                        {t.collaborators.length > 0 && (
-                          <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
-                            <Users className="w-3 h-3 text-slate-400" />
-                            <span>+{t.collaborators.length} collaborators</span>
+                        {t.primaryAssignee ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                              {getInitials(t.primaryAssignee.name)}
+                            </div>
+                            <span className="truncate text-slate-800 font-medium">
+                              {t.primaryAssignee.name}
+                            </span>
                           </div>
+                        ) : (
+                          <span className="text-slate-400 italic">Unassigned</span>
                         )}
                       </td>
 
-                      {/* SLA Countdown widget */}
+                      {/* SLA Clock */}
                       <td className="py-3 px-4">
                         <SlaCountdown
                           slaDueAt={t.slaDueAt}
@@ -646,12 +644,9 @@ function TicketsQueueContent() {
                         />
                       </td>
 
-                      {/* Reply Count */}
-                      <td className="py-3 px-3 text-right">
-                        <span className="inline-flex items-center gap-1 text-slate-500 font-medium text-xs">
-                          <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{t._count.replies}</span>
-                        </span>
+                      {/* Updated Relative */}
+                      <td className="py-3 px-3 text-right text-slate-400 whitespace-nowrap">
+                        {formatRelativeTime(t.updatedAt)}
                       </td>
                     </tr>
                   );
@@ -661,30 +656,30 @@ function TicketsQueueContent() {
           </table>
         </div>
 
-        {/* Server Pagination Toolbar */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
+        {/* Pagination Footer */}
+        <div className="p-3.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
           <div>
-            Showing <span className="font-bold">{tickets.length}</span> of{" "}
-            <span className="font-bold">{pagination.totalCount}</span> tickets (Page{" "}
-            {pagination.page} of {pagination.totalPages || 1})
+            Showing <span className="font-semibold text-slate-800">{tickets.length}</span> of{" "}
+            <span className="font-semibold text-slate-800">{pagination.totalCount}</span> tickets
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={pagination.page <= 1}
-              className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-xs font-semibold flex items-center gap-1 transition"
+              className="p-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 transition"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>Previous</span>
+              <ChevronLeft className="w-4 h-4" />
             </button>
+            <span className="px-2 text-xs font-semibold text-slate-700">
+              {pagination.page} / {pagination.totalPages || 1}
+            </span>
             <button
               onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
               disabled={pagination.page >= pagination.totalPages}
-              className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-xs font-semibold flex items-center gap-1 transition"
+              className="p-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 transition"
             >
-              <span>Next</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -707,4 +702,3 @@ export default function TicketsQueuePage() {
     </Suspense>
   );
 }
-
