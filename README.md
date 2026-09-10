@@ -42,7 +42,7 @@ takehome-04-support-ticketing/
 │
 ├── docs/                              # Architecture Specs, Schema Docs, ADRs, & Version Logs
 ├── README.md
-└── package.json                       # Root script orchestrator
+└── SUBMISSION.md
 ```
 
 ### CORS & Independent Deployability
@@ -156,14 +156,18 @@ npx prisma db push
 npm run seed
 ```
 
-### 4. Run Services
-From the root directory:
-```bash
-# Start Backend REST Service (Port 3001)
-npm run dev:backend
+### 4. Run Services (Independently in Separate Terminals)
 
-# Start Frontend UI Application (Port 3000)
-npm run dev:frontend
+**Start Backend REST Service (Port 3001)**:
+```bash
+cd backend
+npm run dev
+```
+
+**Start Frontend UI Application (Port 3000)**:
+```bash
+cd frontend
+npm run dev
 ```
 
 ---
