@@ -92,23 +92,23 @@ export class SlaService {
       where: { id: ticketId },
       include: {
         slaAlerts: {
-          where: { status: { in: [SlaAlertStatus.ACTIVE, SlaAlertStatus.ACKNOWLEDGED] } },
+          where: { breachCycle: { gte: 1 } },
         },
       },
     });
 
-    if (!ticket || ticket.archivedAt || !ticket.slaDueAt) {
-      // If ticket is archived, resolved, closed, or pending, resolve active alerts
+    const isActiveStatus = ticket && (ticket.status === Status.NEW || ticket.status === Status.OPEN);
+    if (!ticket || ticket.archivedAt || !ticket.slaDueAt || !isActiveStatus) {
+      // If ticket is archived, resolved, closed, or pending, resolve any active or acknowledged alerts
       if (ticket && ticket.slaAlerts.length > 0) {
         await tx.slaAlert.updateMany({
-          where: { ticketId, status: SlaAlertStatus.ACTIVE },
+          where: {
+            ticketId,
+            status: { in: [SlaAlertStatus.ACTIVE, SlaAlertStatus.ACKNOWLEDGED] },
+          },
           data: { status: SlaAlertStatus.RESOLVED },
         });
       }
-      return;
-    }
-
-    if (ticket.status !== Status.NEW && ticket.status !== Status.OPEN) {
       return;
     }
 
@@ -134,12 +134,16 @@ export class SlaService {
           },
         });
       } else if (
-        existingAlert.type !== SlaAlertType.BREACHED &&
-        existingAlert.status === SlaAlertStatus.ACTIVE
+        existingAlert.type !== SlaAlertType.BREACHED ||
+        existingAlert.status !== SlaAlertStatus.ACTIVE
       ) {
+        // Escalate acknowledged or DUE_SOON warning to active BREACHED alert
         await tx.slaAlert.update({
           where: { id: existingAlert.id },
-          data: { type: SlaAlertType.BREACHED },
+          data: {
+            type: SlaAlertType.BREACHED,
+            status: SlaAlertStatus.ACTIVE,
+          },
         });
       }
     } else if (isDueSoon) {
@@ -160,10 +164,21 @@ export class SlaService {
     const ticketWhere: Prisma.TicketWhereInput = {
       archivedAt: null,
       status: { in: [Status.NEW, Status.OPEN] },
+      slaDueAt: { not: null },
     };
 
     if (user.role !== Role.SUPERVISOR) {
       ticketWhere.primaryAssigneeId = user.id;
+    }
+
+    const candidateTickets = await prisma.ticket.findMany({
+      where: ticketWhere,
+      select: { id: true },
+    });
+
+    // Evaluate dynamic SLA breaches for candidate tickets
+    for (const t of candidateTickets) {
+      await this.syncAlertForTicket(t.id);
     }
 
     const alerts = await prisma.slaAlert.findMany({
@@ -197,12 +212,12 @@ export class SlaService {
     };
   }
 
-  static async acknowledgeAlert(alertId: string, user: SessionUser) {
+  static async acknowledgeAlert(ticketId: string, alertId: string, user: SessionUser) {
     const alert = await prisma.slaAlert.findUnique({
       where: { id: alertId },
       include: {
         ticket: {
-          select: { id: true, primaryAssigneeId: true, status: true },
+          select: { id: true, primaryAssigneeId: true, status: true, slaDueAt: true, slaCycle: true },
         },
       },
     });
@@ -211,19 +226,25 @@ export class SlaService {
       throw new Error("SLA alert not found.");
     }
 
-    if (!AlertPolicy.canAcknowledge(user, alert.ticket)) {
+    if (alert.ticketId !== ticketId) {
+      throw new Error("SLA alert does not belong to the specified ticket.");
+    }
+
+    if (alert.breachCycle !== alert.ticket.slaCycle) {
+      throw new Error("SLA alert does not belong to the ticket's current SLA cycle.");
+    }
+
+    if (!alert.ticket || !AlertPolicy.canAcknowledge(user, alert.ticket)) {
       throw new Error("You do not have permission to acknowledge this SLA alert.");
     }
 
-    const updated = await prisma.slaAlert.update({
-      where: { id: alertId },
+    return prisma.slaAlert.update({
+      where: { id: alert.id },
       data: {
         status: SlaAlertStatus.ACKNOWLEDGED,
         acknowledgedById: user.id,
         acknowledgedAt: new Date(),
       },
     });
-
-    return updated;
   }
 }

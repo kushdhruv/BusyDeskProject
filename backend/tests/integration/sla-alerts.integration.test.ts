@@ -47,7 +47,7 @@ describe("Integration Tests: SLA Breach Detection, Alerts & Acknowledgement", ()
     expect(alert?.status).toBe(SlaAlertStatus.ACTIVE);
 
     // 3. Acknowledge alert
-    const acked = await SlaService.acknowledgeAlert(alert!.id, agent1);
+    const acked = await SlaService.acknowledgeAlert(ticket.id, alert!.id, agent1);
     expect(acked.status).toBe(SlaAlertStatus.ACKNOWLEDGED);
     expect(acked.acknowledgedById).toBe(agent1.id);
 

@@ -224,7 +224,7 @@ describe("Support Ticketing System — Core Business Invariants", () => {
     expect(activeAlerts[0].breachCycle).toBe(1);
 
     // Sarah acknowledges the alert
-    await SlaService.acknowledgeAlert(activeAlerts[0].id, agentSarahUser);
+    await SlaService.acknowledgeAlert(breachedTicket.id, activeAlerts[0].id, agentSarahUser);
 
     const acknowledgedAlert = await prisma.slaAlert.findUnique({
       where: { id: activeAlerts[0].id },

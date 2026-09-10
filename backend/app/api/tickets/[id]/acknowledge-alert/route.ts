@@ -17,10 +17,10 @@ export async function POST(req: Request, { params }: RouteParams) {
     const { alertId } = body;
 
     if (!alertId) {
-      return NextResponse.json({ error: "alertId is required." }, { status: 400 });
+      return NextResponse.json({ error: "alertId is required in request body." }, { status: 400 });
     }
 
-    const alert = await SlaService.acknowledgeAlert(alertId, user);
+    const alert = await SlaService.acknowledgeAlert(params.id, alertId, user);
     return NextResponse.json({ alert });
   } catch (error: any) {
     const status = error.message.includes("permission") ? 403 : 400;

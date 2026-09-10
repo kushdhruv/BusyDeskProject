@@ -44,8 +44,13 @@ export class TicketService {
 
     // Default primary assignee: If Agent creates ticket, auto-assign to creator so they immediately have working permissions
     let primaryAssigneeId = data.primaryAssigneeId;
-    if (actor.role === Role.AGENT && !primaryAssigneeId) {
-      primaryAssigneeId = actor.id;
+    if (actor.role === Role.AGENT) {
+      if (primaryAssigneeId && primaryAssigneeId !== actor.id) {
+        throw new Error("Agents cannot assign tickets to other agents upon creation. Only Supervisors can assign tickets to other agents.");
+      }
+      if (!primaryAssigneeId) {
+        primaryAssigneeId = actor.id;
+      }
     }
 
     const now = new Date();
@@ -143,11 +148,17 @@ export class TicketService {
       updateData.priority = data.priority;
 
       // Update SLA target if priority changes
+      const oldTarget = ticket.slaTargetMinutes;
       const newTarget = SlaService.getTargetMinutes(data.priority);
       updateData.slaTargetMinutes = newTarget;
 
-      if (ticket.status === Status.NEW || ticket.status === Status.OPEN) {
-        updateData.slaDueAt = new Date(ticket.createdAt.getTime() + newTarget * 60 * 1000);
+      const targetDeltaMinutes = newTarget - oldTarget;
+
+      if ((ticket.status === Status.NEW || ticket.status === Status.OPEN) && ticket.slaDueAt) {
+        updateData.slaDueAt = new Date(new Date(ticket.slaDueAt).getTime() + targetDeltaMinutes * 60 * 1000);
+      } else if (ticket.status === Status.PENDING && ticket.slaPausedRemainingSeconds !== null) {
+        const newRemaining = Math.max(0, ticket.slaPausedRemainingSeconds + targetDeltaMinutes * 60);
+        updateData.slaPausedRemainingSeconds = newRemaining;
       }
     }
 

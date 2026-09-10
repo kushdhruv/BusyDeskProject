@@ -38,6 +38,11 @@ export class TimelineService {
     }
 
     for (const a of auditLogs) {
+      // Skip REPLY_ADDED audit logs in unified feed to prevent duplicate entries
+      if (a.eventType === "REPLY_ADDED") {
+        continue;
+      }
+
       items.push({
         id: `audit-${a.id}`,
         type: "AUDIT",

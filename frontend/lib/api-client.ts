@@ -109,15 +109,15 @@ export class ApiClient {
 
   static async updateStatus(ticketId: string, status: string) {
     return this.request<{ ticket: any }>(`/api/tickets/${ticketId}/status`, {
-      method: "PATCH",
+      method: "POST",
       body: JSON.stringify({ status }),
     });
   }
 
   static async reassign(ticketId: string, assigneeId: string | null) {
     return this.request<{ ticket: any }>(`/api/tickets/${ticketId}/reassign`, {
-      method: "PATCH",
-      body: JSON.stringify({ assigneeId }),
+      method: "POST",
+      body: JSON.stringify({ primaryAssigneeId: assigneeId }),
     });
   }
 
@@ -150,28 +150,26 @@ export class ApiClient {
 
   static async archiveTicket(ticketId: string) {
     return this.request<{ ticket: any }>(`/api/tickets/${ticketId}/archive`, {
-      method: "PATCH",
+      method: "POST",
     });
   }
 
   static async restoreTicket(ticketId: string) {
     return this.request<{ ticket: any }>(`/api/tickets/${ticketId}/restore`, {
-      method: "PATCH",
+      method: "POST",
     });
   }
 
   // Dashboard Metrics
   static async getDashboard() {
     return this.request<{
-      headline: {
-        openCount: number;
-        pendingCustomerCount: number;
-        resolvedThisWeekCount: number;
-        breachedCount: number;
-      };
-      byStatus: { status: string; count: number }[];
-      byAgent: { agentId: string; agentName: string; count: number }[];
-      resolvedWeeklyHistory: { weekLabel: string; resolvedCount: number; avgResolutionHours: number }[];
+      openTicketsCount: number;
+      pendingOnCustomerCount: number;
+      resolvedThisWeekCount: number;
+      breachingSlaCount: number;
+      statusBreakdown: { status: string; count: number }[];
+      agentBreakdown: { agentId: string; agentName: string; activeTicketsCount: number }[];
+      weeklyResolutionTrend: { weekLabel: string; resolvedCount: number }[];
     }>("/api/dashboard");
   }
 
@@ -180,9 +178,10 @@ export class ApiClient {
     return this.request<{ count: number; alerts: any[] }>("/api/sla/alerts");
   }
 
-  static async acknowledgeAlert(ticketId: string) {
-    return this.request<{ success: boolean }>(`/api/tickets/${ticketId}/acknowledge-alert`, {
+  static async acknowledgeAlert(ticketId: string, alertId: string) {
+    return this.request<{ alert: any }>(`/api/tickets/${ticketId}/acknowledge-alert`, {
       method: "POST",
+      body: JSON.stringify({ alertId }),
     });
   }
 }
