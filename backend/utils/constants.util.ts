@@ -1,6 +1,6 @@
 /**
  * Application Constants
- * Defines SLA targets, thresholds, pagination bounds, and session cookie configuration.
+ * Defines SLA targets, thresholds, pagination bounds, session cookie configuration, and database transaction limits.
  */
 
 export const SLA_TARGETS_MINUTES = {
@@ -20,3 +20,11 @@ export const MAX_PAGE_SIZE = 100;
 
 export const SESSION_COOKIE_NAME = "busy_ticketing_session";
 export const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 days
+
+/**
+ * Default interactive transaction options for Prisma to prevent timeout during high-concurrency network spikes.
+ */
+export const DEFAULT_TX_OPTIONS = {
+  maxWait: 10000, // Wait up to 10s to acquire a connection from the pool
+  timeout: 20000, // Allow transaction up to 20s before rollback
+};

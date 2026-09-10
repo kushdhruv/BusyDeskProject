@@ -13,11 +13,15 @@ export * from "./bulk.routes";
 export * from "./export.routes";
 export * from "./dashboard.routes";
 export * from "./user.routes";
+export * from "./health.routes";
 
 /**
  * Overview of all system routes, methods, access requirements, and descriptions.
  */
 export const API_ROUTE_REGISTRY = [
+  // Health & System
+  { method: "GET", path: "/api/health", handler: "getHealthRoute", authRequired: false, desc: "System and database connectivity health check" },
+
   // Authentication
   { method: "POST", path: "/api/auth/login", handler: "loginRoute", authRequired: false, desc: "User login with session cookie creation" },
   { method: "POST", path: "/api/auth/logout", handler: "logoutRoute", authRequired: false, desc: "User logout and clear session cookie" },

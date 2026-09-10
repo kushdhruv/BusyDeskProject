@@ -9,6 +9,7 @@ import { SessionUser } from "../models/types.model";
 import { ReplyPolicy } from "../models/policies/reply.policy";
 import { AuditController } from "./audit.controller";
 import { SlaController } from "./sla.controller";
+import { DEFAULT_TX_OPTIONS } from "../utils/constants.util";
 
 export class ReplyController {
   /**
@@ -139,7 +140,7 @@ export class ReplyController {
       await SlaController.syncAlertForTicket(ticketId, tx);
 
       return reply;
-    });
+    }, DEFAULT_TX_OPTIONS);
   }
 
   // Backward-compatible alias for agent reply
@@ -231,7 +232,7 @@ export class ReplyController {
       await SlaController.syncAlertForTicket(ticketId, tx);
 
       return reply;
-    });
+    }, DEFAULT_TX_OPTIONS);
   }
 }
 

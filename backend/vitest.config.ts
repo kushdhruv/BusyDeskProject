@@ -22,10 +22,14 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
+    testTimeout: 30000,
+    hookTimeout: 30000,
+    fileParallelism: false,
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./"),
+      "@/routes": path.resolve(__dirname, "./routes"),
       "@/controllers": path.resolve(__dirname, "./controllers"),
       "@/middlewares": path.resolve(__dirname, "./middlewares"),
       "@/models": path.resolve(__dirname, "./models"),

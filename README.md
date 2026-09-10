@@ -4,9 +4,9 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/Supabase-Managed%20Postgres-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Prisma ORM](https://img.shields.io/badge/Prisma-5.22.0-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
-[![Vitest](https://img.shields.io/badge/Tests-137%20Passing-brightgreen?style=flat-square&logo=vitest)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Tests-176%20Passing-brightgreen?style=flat-square&logo=vitest)](https://vitest.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 
 ---
@@ -28,16 +28,16 @@ takehome-04-support-ticketing/
 │   └── tsconfig.json
 │
 ├── backend/                           # Pure REST API & Microservice Domain Layer (Port 3001)
-│   ├── routes/                        # Dedicated API Route Layer (auth, ticket, reply, sla, csat, bulk, export)
+│   ├── routes/                        # Dedicated API Route Layer (auth, ticket, reply, sla, csat, bulk, export, health)
 │   │   └── index.ts                   # Central Barrel Export & API_ROUTE_REGISTRY catalog
 │   ├── controllers/                   # Pure Domain Logic & Business Rules (Ticket, Sla, Lifecycle, Reply, etc.)
 │   ├── models/                        # Domain types & declarative authorization policies (TicketPolicy, etc.)
 │   ├── middlewares/                   # JWT Session Auth, Role Guards & CORS Middleware
-│   ├── db/                            # Database connection & Prisma client wrapper
+│   ├── db/                            # Database connection & Prisma client wrapper (Supavisor + Direct pooling)
 │   ├── utils/                         # Global constants & utility helpers
 │   ├── app/api/                       # Next.js route entry points (1-line delegates to @/routes)
 │   ├── prisma/                        # Database Schema (schema.prisma) & Rich Seeder (seed.ts)
-│   ├── tests/                         # 137 Unit, Integration, Security & Fuzzing Tests (19 suites)
+│   ├── tests/                         # 176 Unit, Integration, Security & Fuzzing Tests (23 suites)
 │   ├── package.json                   # Backend dependencies, scripts & Vitest runner
 │   └── tsconfig.json
 │
@@ -83,7 +83,7 @@ takehome-04-support-ticketing/
 
 ---
 
-## 🧪 Comprehensive Test Suite (137 Tests, 100% Passing)
+## 🧪 Comprehensive Test Suite (176 Tests, 100% Passing)
 
 Run the full automated test suite inside `backend/`:
 
@@ -92,17 +92,21 @@ cd backend
 npm test
 ```
 
-### Test Suite Breakdown (19 Test Suites)
+### Test Suite Breakdown (23 Test Suites)
 | Test Category | Test File | Count | Focus Areas |
 |---|---|---|---|
 | **Unit Testing** | `backend/tests/unit/policies.test.ts` | 39 | Complete 3-role $\times$ permission matrix |
 | **Unit Testing** | `backend/tests/unit/lifecycle-service.test.ts` | 26 | Valid/invalid state machine transitions & 7-day reopen guard |
+| **Unit Testing** | `backend/tests/unit/api-routes-comprehensive.test.ts` | 21 | Route layer request/response validation & 401/400 auth guards |
 | **Unit Testing** | `backend/tests/unit/sla-service.test.ts` | 10 | Target minutes calculation, pause & resume math |
+| **Unit Testing** | `backend/tests/unit/cors-and-security.test.ts` | 6 | Dynamic origin reflection, cross-origin cookies, production partitioning |
 | **Unit Testing** | `backend/tests/unit/export-service.test.ts` | 5 | RFC-4180 CSV escaping, formula injection protection |
 | **Unit Testing** | `backend/tests/unit/auth.test.ts` | 3 | JWT signing, verification, expiration |
 | **Unit Testing** | `backend/tests/unit/routes.test.ts` | 2 | API Route Registry structure & auth requirement verification |
+| **Unit Testing** | `backend/tests/unit/health.test.ts` | 2 | Live DB health ping (`SELECT 1`), latency monitoring, error fallback |
 | **Unit Testing** | `backend/tests/unit/timeline-service.test.ts` | 1 | Interleaving of replies & audit events with deduplication |
 | **Security Testing** | `backend/tests/security/customer-security.test.ts` | 16 | Strict customer row-level isolation & internal note protection |
+| **Integration** | `backend/tests/integration/route-handlers.integration.test.ts` | 10 | End-to-end HTTP route execution on live Supabase (CRUD, replies, status, CSAT, bulk) |
 | **Integration** | `backend/tests/integration/comprehensive-fixes.test.ts` | 5 | Multi-agent collaboration, SLA cycles, bulk workflows |
 | **Integration** | `backend/tests/integration/bulk-operations.integration.test.ts` | 3 | Isolated per-ticket atomicity & partial success reporting |
 | **Integration** | `backend/tests/integration/lifecycle.integration.test.ts` | 3 | Real PostgreSQL transactions & audit logs |
@@ -143,12 +147,18 @@ npm install
 ```
 
 ### 2. Configure Environment Variables & Database
-Create `backend/.env`:
+Create `backend/.env` (supports both local PostgreSQL or cloud Supabase with connection pooling):
 ```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ticketing?schema=public"
+# Supabase Pooler (Transaction Mode, Port 6543)
+DATABASE_URL="postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=15&pool_timeout=30"
+
+# Supabase Direct Session (Port 5432 - Used by Prisma migrations)
+DIRECT_URL="postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres"
+
 JWT_SECRET="super-secret-jwt-key-for-session-tokens"
 NODE_ENV="development"
 PORT=3001
+FRONTEND_URL="http://localhost:3000"
 ```
 
 ### 3. Run Database Setup (Backend)

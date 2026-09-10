@@ -13,7 +13,8 @@ The project was executed across 7 disciplined engineering sessions designed to e
 | **Session 5** | Frontend agent workspace UI, live SLA countdown timers, queue filters, and Recharts dashboard | 2.5 hrs | 2.5 hrs | Next.js 14 App Router UI, Tailwind CSS design system, Customer Portal layout |
 | **Session 6** | Automated test suite (unit, integration, security, and fuzz testing) and documentation polish | 1.5 hrs | 1.5 hrs | 19 Vitest test suites, 137 tests passing, fuzzing tests, complete `docs/` |
 | **Session 7** | Decoupled microservice setup (independent `package.json`, isolated `node_modules`, CORS headers, proxy rewrites) | 1.0 hrs | 1.0 hrs | Clean frontend/backend repository isolation, build verification |
-| **Total** | | **13.0 hrs** | **12.5 hrs** | **Fully decoupled, production-grade support ticketing platform** |
+| **Session 8** | Supabase cloud database migration, health diagnostics, and route test suite expansion | 1.0 hrs | 1.0 hrs | Supavisor pooler (port 6543) + direct session (port 5432), 23 Vitest suites, 176 tests passing, live health ping |
+| **Total** | | **14.0 hrs** | **13.5 hrs** | **Fully decoupled, cloud-ready support ticketing platform on Supabase** |
 
 ---
 
@@ -35,10 +36,13 @@ The project was executed across 7 disciplined engineering sessions designed to e
    - Implemented the client UI against stable, typed backend API contracts: queue table with multi-filter queries, live 1-second interval SLA countdown timers, tabbed reply/note composer, SLA alert center, analytics dashboard, and customer support portal.
 
 6. **Comprehensive Automated Testing & Fuzzing Sixth**:
-   - Developed 19 test suites covering 137 individual tests: business rule invariants, lifecycle state machine, SLA calculation math, role security, query fuzzing, input injection fuzzing, and bulk concurrency.
+   - Developed 23 test suites covering 176 individual tests: business rule invariants, lifecycle state machine, SLA calculation math, role security, query fuzzing, input injection fuzzing, route layer verification, live health ping diagnostics, and bulk concurrency under ACID transactions.
 
 7. **Decoupled Microservice Isolation Seventh**:
    - Partitioned the codebase into isolated `frontend/` and `backend/` services with separate `node_modules/`, independent TypeScript configurations, and dedicated `.env` files to prove microservice readiness and eliminate bundle leakage.
+
+8. **Supabase Cloud Managed Database & Health Observability Eighth**:
+   - Migrated database layer to Supabase PostgreSQL with transaction pooling (`aws-0-ap-northeast-2.pooler.supabase.com:6543`) and direct connection URL for Prisma migrations. Added `/api/health` diagnostic ping endpoint measuring live latency and database status.
 
 ---
 

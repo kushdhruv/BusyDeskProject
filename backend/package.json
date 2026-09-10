@@ -9,7 +9,9 @@
     "test": "vitest run",
     "seed": "prisma db seed",
     "db:push": "prisma db push",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:setup": "prisma db push && prisma db seed",
+    "db:generate": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

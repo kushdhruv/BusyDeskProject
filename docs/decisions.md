@@ -90,3 +90,24 @@ This document records the definitive architectural decisions, trade-offs, and de
 - **Why:** 
   - **Security & Data Privacy**: Filtering in memory wastes database I/O, leaks pagination metadata (e.g. incorrect `totalCount`), and risks catastrophic data leaks if an in-memory filter has a bug.
   - **High Performance**: Query-level constraints (`where: { requesterEmail: user.email }` for customers; `where: { archivedAt: null }` for active queues) are pushed directly to PostgreSQL, utilizing composite B-tree indexes for single-digit millisecond query execution.
+
+---
+
+## Decision 9: Managed Supabase Cloud Database with Dual-URL Connection Pooling
+
+- **Chose:** Supabase Managed PostgreSQL with dual connection URLs: `DATABASE_URL` targeting the transaction pooler (`aws-0-ap-northeast-2.pooler.supabase.com:6543?pgbouncer=true&connection_limit=15&pool_timeout=30`) and `DIRECT_URL` targeting direct session port (`5432`).
+- **Rejected:** Connecting directly to port 5432 for all application queries, or running an unmanaged containerized PostgreSQL on Render.
+- **Why:** 
+  - **Connection Resilience**: Cloud deployments across Vercel (serverless edge/Node.js) and Render can easily exhaust standard PostgreSQL connection limits (`max_connections=60-100`). Supavisor transaction pooler multiplexes hundreds of concurrent client connections over 15 pooled connections.
+  - **DDL Migration Safety**: Transaction poolers do not support PostgreSQL prepared statements or advisory locks needed by Prisma migrations. Configuring Prisma `directUrl = env("DIRECT_URL")` separates migration DDL execution from runtime transaction pooling.
+  - **Cross-Region Latency Guard**: Configured `DEFAULT_TX_OPTIONS = { maxWait: 10000, timeout: 20000 }` on interactive `$transaction` blocks to safeguard multi-step ACID operations against cross-region network latency.
+
+---
+
+## Decision 10: Centralized HTTP Route Layer & Dual-Layer Testing
+
+- **Chose:** Implementing a clean `backend/routes/` layer (with central `API_ROUTE_REGISTRY`) that isolates request parsing, authentication token extraction, and HTTP status code formatting from domain controllers, validated by both isolated unit tests and live end-to-end route tests.
+- **Rejected:** Placing business logic inside `app/api/` route files or relying solely on service-level unit tests.
+- **Why:** 
+  - **Clean Architecture & Framework Portability**: Next.js `app/api/*` routes are 1-line delegate wrappers around `@/routes`. If the backend is migrated to standalone Express, Fastify, or Nest.js, zero business logic needs rewriting.
+  - **Complete Test Coverage**: Route-level tests verify the real boundary: JSON parsing, missing body handling, 401 Unauthorized token guards, 400 Bad Request validations, and 200/201 response structures.

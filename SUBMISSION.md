@@ -62,9 +62,14 @@
 
 ## Automated Test Suite
 
-- **19 Test Suites / 137 Unit, Integration, Security & Fuzz Tests** passing with 100% green status (`npm test` in `backend/`):
-  - `tests/unit/routes.test.ts`: 2 tests verifying the central `API_ROUTE_REGISTRY` catalog and authentication requirement flags.
+- **23 Test Suites / 176 Unit, Integration, Security & Fuzz Tests** passing with 100% green status (`npm test` in `backend/`):
+  - `tests/integration/route-handlers.integration.test.ts`: 10 end-to-end integration tests executing HTTP route handlers directly against live Supabase PostgreSQL (health diagnostics, ticket creation, queue query, timeline fetch, customer reply, reassignment, agent reply, status change to resolved, 5-star CSAT submission, and bulk close).
+  - `tests/unit/api-routes-comprehensive.test.ts`: 21 comprehensive route validation tests ensuring strict 401 Unauthorized and 400 Bad Request enforcement across all API route handlers.
+  - `tests/unit/cors-and-security.test.ts`: 6 tests validating dynamic CORS origin reflection, `credentials: true`, wildcard preflight options, production SameSite=None secure cookie transmission, and localhost development fallback.
+  - `tests/unit/health.test.ts`: 2 unit tests covering active database ping (`SELECT 1`), latency measurement, status reporting, and graceful degradation fallback.
   - `tests/security/customer-security.test.ts`: 16 comprehensive tests covering registration role enforcement, Customer A vs B isolation, query-level data masking, unauthorized action rejection, conditional SLA resumption, atomic CSAT logging, and supervisor CSAT metrics.
-  - `tests/unit/policies.test.ts`: Complete 3-role policy validation matrix across `TicketPolicy`, `ReplyPolicy`, `CollaboratorPolicy`, `AlertPolicy`, and `canRateCsat`.
+  - `tests/unit/policies.test.ts`: 39 unit tests covering complete 3-role policy validation matrix across `TicketPolicy`, `ReplyPolicy`, `CollaboratorPolicy`, `AlertPolicy`, and `canRateCsat`.
+  - `tests/unit/lifecycle-service.test.ts`: 26 state transition tests verifying valid lifecycle states and the strict 7-day reopening window.
+  - `tests/unit/sla-service.test.ts`: 10 tests verifying target minutes calculation, pause & resume math, and cycle management.
   - `tests/business-rules.test.ts`: 11 core SLA and lifecycle state machine invariant tests.
-  - `tests/fuzz/*`: Injection, Unicode edge cases, query fuzzing, and concurrency testing.
+  - `tests/fuzz/*`: Injection, Unicode edge cases, query bounds fuzzing, and 10-parallel concurrent request race condition testing under ACID transactions.

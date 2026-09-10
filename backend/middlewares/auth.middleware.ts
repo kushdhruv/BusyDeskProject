@@ -75,10 +75,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 export async function setSessionCookie(user: SessionUser) {
   const token = await createSessionToken(user);
   const cookieStore = cookies();
+  const isProd = process.env.NODE_ENV === "production";
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
     maxAge: SESSION_MAX_AGE_SECONDS,
     path: "/",
   });

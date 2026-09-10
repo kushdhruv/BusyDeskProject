@@ -6,7 +6,11 @@
 import { NextResponse } from "next/server";
 
 export function corsHeaders(requestOrigin?: string | null): Record<string, string> {
-  const allowedOrigin = process.env.CORS_ORIGIN || requestOrigin || "*";
+  const configuredOrigin = process.env.CORS_ORIGIN || process.env.FRONTEND_URL;
+  const allowedOrigin =
+    configuredOrigin ||
+    requestOrigin ||
+    "http://localhost:3000";
 
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
