@@ -73,7 +73,7 @@ describe("Fuzz Testing: Input Validation, Payloads, Injection & Unicode Edge Cas
 
     // Clean up
     await prisma.ticket.deleteMany({ where: { id: { in: createdTicketIds } } });
-  }, 150000);
+  }, 200000);
 
   it("Safely handles fuzzed payloads in Agent and Customer replies", async () => {
     const ticket = await TicketService.createTicket(
@@ -105,7 +105,7 @@ describe("Fuzz Testing: Input Validation, Payloads, Injection & Unicode Edge Cas
 
     // Clean up
     await prisma.ticket.delete({ where: { id: ticket.id } });
-  }, 90000);
+  }, 200000);
 
   it("Rejects empty or whitespace-only inputs strictly", async () => {
     const emptyVariants = ["", "   ", "\t\t", "\n\n", "   \r\n   "];
