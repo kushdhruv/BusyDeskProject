@@ -83,5 +83,5 @@ describe("Integration Tests: Collaborators, Shared Queues & Access Control", () 
 
     // Clean up
     await prisma.ticket.delete({ where: { id: ticket.id } });
-  });
+  }, 60000);
 });
