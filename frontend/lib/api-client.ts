@@ -137,10 +137,46 @@ export class ApiClient {
     });
   }
 
-  static async addReply(ticketId: string, body: string, isInternal: boolean = false) {
+  static async uploadFile(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Upload failed" }));
+      throw new Error(err.error || "Upload failed");
+    }
+    return res.json() as Promise<{
+      url: string;
+      name: string;
+      size: number;
+      type: string;
+    }>;
+  }
+
+  static async addReply(
+    ticketId: string,
+    body: string,
+    isInternal: boolean = false,
+    attachment?: {
+      url: string;
+      name: string;
+      size?: number;
+      type?: string;
+    } | null
+  ) {
     return this.request<{ reply: any }>(`/api/tickets/${ticketId}/replies`, {
       method: "POST",
-      body: JSON.stringify({ body, isInternal }),
+      body: JSON.stringify({
+        body,
+        isInternal,
+        attachmentUrl: attachment?.url || null,
+        attachmentName: attachment?.name || null,
+        attachmentSize: attachment?.size || null,
+        attachmentType: attachment?.type || null,
+      }),
     });
   }
 

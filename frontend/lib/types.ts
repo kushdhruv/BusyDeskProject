@@ -78,6 +78,10 @@ export interface TimelineItem {
     authorEmail: string;
     body: string;
     isInternal: boolean;
+    attachmentUrl?: string | null;
+    attachmentName?: string | null;
+    attachmentSize?: number | null;
+    attachmentType?: string | null;
   };
   audit?: {
     id: string;
@@ -108,6 +112,7 @@ export interface DashboardMetrics {
   pendingOnCustomerCount: number;
   resolvedThisWeekCount: number;
   breachingSlaCount: number;
+  slaComplianceRate?: number;
   statusBreakdown: { status: Status; count: number }[];
   agentBreakdown: { agentId: string; agentName: string; agentEmail?: string; activeTicketsCount: number }[];
   weeklyResolutionTrend: { weekStart: string; weekLabel: string; resolvedCount: number }[];

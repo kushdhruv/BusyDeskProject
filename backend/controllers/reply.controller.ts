@@ -10,6 +10,8 @@ import { ReplyPolicy } from "../models/policies/reply.policy";
 import { AuditController } from "./audit.controller";
 import { SlaController } from "./sla.controller";
 import { DEFAULT_TX_OPTIONS } from "../utils/constants.util";
+import { ticketBroadcaster } from "../utils/event-bus.util";
+import { invalidateMetricsCache } from "./dashboard.controller";
 
 export class ReplyController {
   /**
@@ -17,7 +19,14 @@ export class ReplyController {
    */
   static async addReply(
     ticketId: string,
-    data: { body: string; isInternal?: boolean },
+    data: {
+      body: string;
+      isInternal?: boolean;
+      attachmentUrl?: string | null;
+      attachmentName?: string | null;
+      attachmentSize?: number | null;
+      attachmentType?: string | null;
+    },
     actor: SessionUser
   ) {
     if (!data.body || data.body.trim().length === 0) {
@@ -56,7 +65,7 @@ export class ReplyController {
 
     const authorType = actor.role === Role.CUSTOMER ? AuthorType.CUSTOMER : AuthorType.AGENT;
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const reply = await tx.reply.create({
         data: {
           ticketId,
@@ -66,6 +75,10 @@ export class ReplyController {
           authorEmail: actor.email,
           body: data.body.trim(),
           isInternal,
+          attachmentUrl: data.attachmentUrl || null,
+          attachmentName: data.attachmentName || null,
+          attachmentSize: data.attachmentSize || null,
+          attachmentType: data.attachmentType || null,
         },
       });
 
@@ -79,6 +92,8 @@ export class ReplyController {
             replyId: reply.id,
             isInternal,
             authorType,
+            hasAttachment: !!data.attachmentUrl,
+            attachmentName: data.attachmentName || undefined,
           },
         },
         tx
@@ -141,12 +156,25 @@ export class ReplyController {
 
       return reply;
     }, DEFAULT_TX_OPTIONS);
+
+    // Real-time broadcast and cache invalidation
+    ticketBroadcaster.broadcast(ticketId, { type: "REPLY_ADDED", reply: result });
+    invalidateMetricsCache();
+
+    return result;
   }
 
   // Backward-compatible alias for agent reply
   static async addAgentReply(
     ticketId: string,
-    data: { body: string; isInternal: boolean },
+    data: {
+      body: string;
+      isInternal: boolean;
+      attachmentUrl?: string | null;
+      attachmentName?: string | null;
+      attachmentSize?: number | null;
+      attachmentType?: string | null;
+    },
     actor: SessionUser
   ) {
     return this.addReply(ticketId, data, actor);
@@ -155,7 +183,15 @@ export class ReplyController {
   // Helper for inbound customer replies
   static async addCustomerReply(
     ticketId: string,
-    data: { body: string; customerName?: string; customerEmail?: string }
+    data: {
+      body: string;
+      customerName?: string;
+      customerEmail?: string;
+      attachmentUrl?: string | null;
+      attachmentName?: string | null;
+      attachmentSize?: number | null;
+      attachmentType?: string | null;
+    }
   ) {
     if (!data.body || data.body.trim().length === 0) {
       throw new Error("Customer reply body cannot be empty.");
@@ -172,7 +208,7 @@ export class ReplyController {
     const customerName = data.customerName || ticket.requesterName;
     const customerEmail = data.customerEmail || ticket.requesterEmail;
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const reply = await tx.reply.create({
         data: {
           ticketId,
@@ -182,6 +218,10 @@ export class ReplyController {
           authorEmail: customerEmail,
           body: data.body.trim(),
           isInternal: false,
+          attachmentUrl: data.attachmentUrl || null,
+          attachmentName: data.attachmentName || null,
+          attachmentSize: data.attachmentSize || null,
+          attachmentType: data.attachmentType || null,
         },
       });
 
@@ -195,6 +235,8 @@ export class ReplyController {
             replyId: reply.id,
             isInternal: false,
             authorType: AuthorType.CUSTOMER,
+            hasAttachment: !!data.attachmentUrl,
+            attachmentName: data.attachmentName || undefined,
           },
         },
         tx
@@ -233,6 +275,12 @@ export class ReplyController {
 
       return reply;
     }, DEFAULT_TX_OPTIONS);
+
+    // Real-time broadcast and cache invalidation
+    ticketBroadcaster.broadcast(ticketId, { type: "REPLY_ADDED", reply: result });
+    invalidateMetricsCache();
+
+    return result;
   }
 }
 

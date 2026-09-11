@@ -13,18 +13,33 @@ export async function addAgentReplyRoute(
     }
 
     const body = await req.json();
-    const { body: replyBody, isInternal } = body;
+    const {
+      body: replyBody,
+      isInternal,
+      attachmentUrl,
+      attachmentName,
+      attachmentSize,
+      attachmentType,
+    } = body;
 
-    if (!replyBody || !replyBody.trim()) {
+    const trimmedBody = (replyBody || "").trim();
+    if (!trimmedBody && !attachmentUrl) {
       return NextResponse.json(
-        { error: "Reply body cannot be empty." },
+        { error: "Reply body or attachment cannot be empty." },
         { status: 400 }
       );
     }
 
     const reply = await ReplyController.addAgentReply(
       params.id,
-      { body: replyBody, isInternal: Boolean(isInternal) },
+      {
+        body: trimmedBody || (attachmentName ? `Attached file: ${attachmentName}` : "Attachment"),
+        isInternal: Boolean(isInternal),
+        attachmentUrl,
+        attachmentName,
+        attachmentSize,
+        attachmentType,
+      },
       user
     );
 
@@ -41,19 +56,32 @@ export async function addCustomerReplyRoute(
 ): Promise<NextResponse> {
   try {
     const body = await req.json();
-    const { body: replyBody, customerName, customerEmail } = body;
+    const {
+      body: replyBody,
+      customerName,
+      customerEmail,
+      attachmentUrl,
+      attachmentName,
+      attachmentSize,
+      attachmentType,
+    } = body;
 
-    if (!replyBody || !replyBody.trim()) {
+    const trimmedBody = (replyBody || "").trim();
+    if (!trimmedBody && !attachmentUrl) {
       return NextResponse.json(
-        { error: "Reply body cannot be empty." },
+        { error: "Reply body or attachment cannot be empty." },
         { status: 400 }
       );
     }
 
     const reply = await ReplyController.addCustomerReply(params.id, {
-      body: replyBody,
+      body: trimmedBody || (attachmentName ? `Attached file: ${attachmentName}` : "Attachment"),
       customerName,
       customerEmail,
+      attachmentUrl,
+      attachmentName,
+      attachmentSize,
+      attachmentType,
     });
 
     return NextResponse.json({ reply }, { status: 201 });

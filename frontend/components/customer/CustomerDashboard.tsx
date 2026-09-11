@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { CustomerDashboardSkeleton } from "@/components/ui/Skeletons";
 import {
   Inbox,
   Clock,
@@ -61,6 +62,10 @@ export function CustomerDashboard({ user }: CustomerDashboardProps) {
     e.preventDefault();
     loadData();
   };
+
+  if (loading && !metrics) {
+    return <CustomerDashboardSkeleton />;
+  }
 
   return (
     <div className="space-y-5">

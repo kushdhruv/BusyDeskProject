@@ -39,6 +39,13 @@ export class DashboardController {
       };
     }
 
+    // Check in-memory cache to eliminate repetitive 9-query database storms
+    const cacheKey = user ? `${user.id}_${user.role}` : "anonymous";
+    const cached = metricsCache.get(cacheKey);
+    if (cached && now.getTime() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data;
+    }
+
     // 2. Internal Staff (Agent / Supervisor) Metrics
     // Align start of current week to UTC Monday 00:00:00 (ISO 8601 standard)
     const startOfWeek = new Date(now);
@@ -49,6 +56,19 @@ export class DashboardController {
 
     const eightWeeksAgo = new Date(now.getTime() - 8 * 7 * 24 * 60 * 60 * 1000);
     eightWeeksAgo.setUTCHours(0, 0, 0, 0);
+
+    const isAgent = user && user.role === Role.AGENT;
+    const openTicketsWhere: any = {
+      archivedAt: null,
+      status: { in: [Status.NEW, Status.OPEN] },
+    };
+
+    if (isAgent) {
+      openTicketsWhere.OR = [
+        { primaryAssigneeId: user.id },
+        { collaborators: { some: { userId: user.id } } },
+      ];
+    }
 
     const [
       openCount,
@@ -62,15 +82,20 @@ export class DashboardController {
       csatGroups,
     ] = await Promise.all([
       prisma.ticket.count({
-        where: {
-          archivedAt: null,
-          status: { in: [Status.NEW, Status.OPEN] },
-        },
+        where: openTicketsWhere,
       }),
       prisma.ticket.count({
         where: {
           archivedAt: null,
           status: Status.PENDING,
+          ...(isAgent
+            ? {
+                OR: [
+                  { primaryAssigneeId: user.id },
+                  { collaborators: { some: { userId: user.id } } },
+                ],
+              }
+            : {}),
         },
       }),
       prisma.ticket.count({
@@ -78,6 +103,14 @@ export class DashboardController {
           archivedAt: null,
           status: { in: [Status.RESOLVED, Status.CLOSED] },
           resolvedAt: { gte: startOfWeek },
+          ...(isAgent
+            ? {
+                OR: [
+                  { primaryAssigneeId: user.id },
+                  { collaborators: { some: { userId: user.id } } },
+                ],
+              }
+            : {}),
         },
       }),
       prisma.ticket.count({
@@ -85,6 +118,14 @@ export class DashboardController {
           archivedAt: null,
           status: { in: [Status.NEW, Status.OPEN] },
           slaDueAt: { lte: now },
+          ...(isAgent
+            ? {
+                OR: [
+                  { primaryAssigneeId: user.id },
+                  { collaborators: { some: { userId: user.id } } },
+                ],
+              }
+            : {}),
         },
       }),
       prisma.ticket.groupBy({
@@ -180,11 +221,19 @@ export class DashboardController {
       : 0;
     const csatResponseCount = csatAggregate._count.id || 0;
 
-    return {
+    // True active SLA compliance rate
+    const activeTicketsTotal = openCount + pendingCount;
+    const slaComplianceRate =
+      activeTicketsTotal > 0
+        ? Math.max(0, Math.min(100, Math.round(((activeTicketsTotal - breachedCount) / activeTicketsTotal) * 100)))
+        : 100;
+
+    const result: DashboardMetrics = {
       openTicketsCount: openCount,
       pendingOnCustomerCount: pendingCount,
       resolvedThisWeekCount,
       breachingSlaCount: breachedCount,
+      slaComplianceRate,
       statusBreakdown,
       agentBreakdown,
       weeklyResolutionTrend,
@@ -192,7 +241,18 @@ export class DashboardController {
       csatResponseCount,
       csatRatingDistribution,
     };
+
+    metricsCache.set(cacheKey, { data: result, timestamp: now.getTime() });
+    return result;
   }
+}
+
+// Global in-memory cache for dashboard metrics (15-second TTL)
+const metricsCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL_MS = 15000;
+
+export function invalidateMetricsCache() {
+  metricsCache.clear();
 }
 
 export const DashboardService = DashboardController;

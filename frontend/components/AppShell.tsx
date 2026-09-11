@@ -2,21 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { User as SessionUser } from "@/lib/types";
+import { SessionProvider, useSession } from "@/lib/session-context";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { CustomerPortalLayout } from "./customer/CustomerPortalLayout";
 import { Loader2 } from "lucide-react";
 
-export function AppShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function AppShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { user, loading } = useSession();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [sidebarWidth, setSidebarWidth] = useState<number>(240);
   const [mobileOpen, setMobileOpen] = useState<boolean>(false);
@@ -69,34 +64,10 @@ export function AppShell({
   }, [pathname]);
 
   useEffect(() => {
-    if (isAuthPage) {
-      setLoading(false);
-      return;
+    if (!loading && !user && !isAuthPage) {
+      router.push("/login");
     }
-
-    // If user is already loaded in memory, do not re-fetch /api/auth/me on every internal client navigation
-    if (user) {
-      return;
-    }
-
-    const checkAuth = async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user || null);
-        } else {
-          router.push("/login");
-        }
-      } catch {
-        router.push("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [pathname, isAuthPage, router, user]);
+  }, [loading, user, isAuthPage, router]);
 
   if (isAuthPage) {
     return <div className="min-h-screen bg-slate-50 flex flex-col justify-center">{children}</div>;
@@ -146,5 +117,13 @@ export function AppShell({
         </main>
       </div>
     </div>
+  );
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </SessionProvider>
   );
 }

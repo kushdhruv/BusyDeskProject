@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Priority, Category, Status, SessionUser, BulkActionResponse } from "@/lib/types";
+import { Priority, Category, Status, BulkActionResponse } from "@/lib/types";
+import { useSession } from "@/lib/session-context";
+import { QueueTableSkeleton } from "@/components/ui/Skeletons";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PriorityBadge, CategoryBadge } from "@/components/PriorityBadge";
 import { SlaCountdown } from "@/components/SlaCountdown";
@@ -51,9 +53,8 @@ function TicketsQueueContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [user, setUser] = useState<SessionUser | null>(null);
+  const { user, agents } = useSession();
   const [tickets, setTickets] = useState<TicketItem[]>([]);
-  const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -81,17 +82,6 @@ function TicketsQueueContent() {
   const [bulkLoading, setBulkLoading] = useState<boolean>(false);
   const [bulkModalOpen, setBulkModalOpen] = useState<boolean>(false);
   const [bulkResultData, setBulkResultData] = useState<BulkActionResponse | null>(null);
-
-  // Fetch Current User & Agents
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : { user: null }))
-      .then((d) => setUser(d.user));
-
-    fetch("/api/users")
-      .then((res) => (res.ok ? res.json() : { users: [] }))
-      .then((d) => setAgents(d.users || []));
-  }, []);
 
   // Synchronize state whenever URL query params change (sidebar navigation or browser back/forward)
   useEffect(() => {
@@ -526,11 +516,38 @@ function TicketsQueueContent() {
 
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr>
-                  <td colSpan={9} className="text-center py-16 text-slate-400">
-                    Loading support tickets...
-                  </td>
-                </tr>
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="p-2.5 text-center">
+                      <div className="w-3.5 h-3.5 bg-slate-100 rounded mx-auto" />
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="h-3 w-8 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="h-3.5 w-48 bg-slate-200 rounded mb-1" />
+                      <div className="h-2.5 w-28 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="h-3 w-24 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="h-4 w-14 bg-slate-100 rounded-full" />
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="h-4 w-16 bg-slate-100 rounded-full" />
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="h-3 w-20 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="h-3 w-16 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-2.5 px-3 text-right">
+                      <div className="h-3 w-12 bg-slate-100 rounded ml-auto" />
+                    </td>
+                  </tr>
+                ))
               ) : tickets.length === 0 ? (
                 <tr>
                   <td colSpan={9}>

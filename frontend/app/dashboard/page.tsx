@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, DashboardMetrics, Status } from "@/lib/types";
+import { useSession } from "@/lib/session-context";
+import { DashboardMetrics, Status } from "@/lib/types";
 import { CustomerDashboard } from "@/components/customer/CustomerDashboard";
+import { DashboardSkeleton } from "@/components/ui/Skeletons";
 import { Button } from "@/components/ui/Button";
 import {
   Inbox,
@@ -12,54 +14,40 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Calendar,
-  Loader2,
   Star,
   ExternalLink,
 } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: sessionLoading } = useSession();
   const [metrics, setMetrics] = useState<DashboardMetrics | any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const fetchData = async () => {
+    let isMounted = true;
+    const fetchDashboard = async () => {
       try {
-        const [meRes, dashRes] = await Promise.all([
-          fetch("/api/auth/me"),
-          fetch("/api/dashboard"),
-        ]);
-
-        if (!meRes.ok) {
-          router.push("/login");
-          return;
-        }
-
-        const meData = await meRes.json();
-        setUser(meData.user || null);
-
-        if (dashRes.ok) {
-          const dashData = await dashRes.json();
+        const res = await fetch("/api/dashboard");
+        if (res.ok && isMounted) {
+          const dashData = await res.json();
           setMetrics(dashData);
         }
       } catch {
         // fallback handle
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
-    fetchData();
-  }, [router]);
+    fetchDashboard();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  if (loading || !user) {
-    return (
-      <div className="py-24 flex flex-col items-center justify-center text-slate-400 text-xs">
-        <Loader2 className="w-5 h-5 animate-spin text-slate-600 mb-2" />
-        <span>Loading dashboard metrics...</span>
-      </div>
-    );
+  if (sessionLoading || loading || !user) {
+    return <DashboardSkeleton />;
   }
 
   // If authenticated user is a CUSTOMER, render the tailored Customer Help Center Dashboard
@@ -68,19 +56,16 @@ export default function DashboardPage() {
   }
 
   if (!metrics || !metrics.statusBreakdown) {
-    return (
-      <div className="py-24 flex flex-col items-center justify-center text-slate-400 text-xs">
-        <Loader2 className="w-5 h-5 animate-spin text-slate-600 mb-2" />
-        <span>Loading dashboard metrics...</span>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const isSupervisor = user.role === "SUPERVISOR";
 
   const totalTicketsCount = metrics.statusBreakdown.reduce((acc: number, curr: any) => acc + curr.count, 0) || 1;
-  const onTimePercentage = Math.round(
-    ((totalTicketsCount - metrics.breachingSlaCount) / totalTicketsCount) * 100
+  const onTimePercentage = metrics.slaComplianceRate ?? (
+    totalTicketsCount > 0
+      ? Math.max(0, Math.min(100, Math.round(((totalTicketsCount - metrics.breachingSlaCount) / totalTicketsCount) * 100)))
+      : 100
   );
   const breachedPercentage = 100 - onTimePercentage;
 
@@ -92,6 +77,29 @@ export default function DashboardPage() {
     1,
     ...metrics.weeklyResolutionTrend.map((w: any) => w.resolvedCount)
   );
+
+  // Proportional multi-segment SVG Donut calculation (circumference = 2 * PI * 38 ≈ 238.76)
+  const statusColors: Record<Status, string> = {
+    NEW: "#3b82f6",
+    OPEN: "#1e293b",
+    PENDING: "#f59e0b",
+    RESOLVED: "#059669",
+    CLOSED: "#94a3b8",
+  };
+
+  let cumulativeLength = 0;
+  const donutSegments = metrics.statusBreakdown.map((s: any) => {
+    const segmentLength = (s.count / totalTicketsCount) * 238.76;
+    const offset = -cumulativeLength;
+    cumulativeLength += segmentLength;
+    return {
+      status: s.status as Status,
+      count: s.count,
+      color: statusColors[s.status as Status] || "#94a3b8",
+      strokeDasharray: `${segmentLength} ${238.76 - segmentLength}`,
+      strokeDashoffset: offset,
+    };
+  });
 
   return (
     <div className="space-y-5 pb-12">
@@ -282,7 +290,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-6 py-2">
-            {/* Minimal SVG Donut */}
+            {/* Accurate Proportional SVG Donut */}
             <div className="relative w-32 h-32 flex-shrink-0 flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <circle
@@ -294,30 +302,19 @@ export default function DashboardPage() {
                   stroke="currentColor"
                   fill="transparent"
                 />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="38"
-                  className="text-slate-800"
-                  strokeWidth="8"
-                  strokeDasharray="238.76"
-                  strokeDashoffset={238.76 * (1 - (metrics.openTicketsCount / totalTicketsCount || 0.4))}
-                  strokeLinecap="round"
-                  stroke="currentColor"
-                  fill="transparent"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="38"
-                  className="text-amber-500"
-                  strokeWidth="8"
-                  strokeDasharray="238.76"
-                  strokeDashoffset={238.76 * (1 - (metrics.pendingOnCustomerCount / totalTicketsCount || 0.15))}
-                  strokeLinecap="round"
-                  stroke="currentColor"
-                  fill="transparent"
-                />
+                {donutSegments.map((seg: any) => (
+                  <circle
+                    key={seg.status}
+                    cx="50"
+                    cy="50"
+                    r="38"
+                    stroke={seg.color}
+                    strokeWidth="8"
+                    strokeDasharray={seg.strokeDasharray}
+                    strokeDashoffset={seg.strokeDashoffset}
+                    fill="transparent"
+                  />
+                ))}
               </svg>
               <div className="absolute flex flex-col items-center justify-center text-center">
                 <span className="text-xl font-bold text-slate-900 tabular-nums">{totalTicketsCount}</span>

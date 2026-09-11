@@ -493,6 +493,10 @@ export class TicketController {
           authorEmail: r.authorEmail,
           body: r.body,
           isInternal: false,
+          attachmentUrl: r.attachmentUrl,
+          attachmentName: r.attachmentName,
+          attachmentSize: r.attachmentSize,
+          attachmentType: r.attachmentType,
         },
       }));
     } else {

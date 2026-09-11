@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { User, Ticket, TimelineItem } from "@/lib/types";
 import { ApiClient } from "@/lib/api-client";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CategoryBadge } from "@/components/PriorityBadge";
+import { AttachmentDisplay, AttachedFileChip } from "@/components/ui/AttachmentView";
 import {
   ArrowLeft,
   MessageSquare,
@@ -16,6 +17,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ShieldCheck,
+  Paperclip,
+  Loader2,
 } from "lucide-react";
 
 interface CustomerTicketDetailProps {
@@ -36,6 +39,54 @@ export function CustomerTicketDetail({
   const [submittingReply, setSubmittingReply] = useState<boolean>(false);
   const [replyError, setReplyError] = useState<string | null>(null);
 
+  // Attachment State
+  const [attachedFile, setAttachedFile] = useState<{
+    url: string;
+    name: string;
+    size: number;
+    type: string;
+  } | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Real-time EventSource connection for live customer updates
+  useEffect(() => {
+    if (!ticket?.id) return;
+
+    const eventSource = new EventSource(`/api/tickets/${ticket.id}/events`);
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "REPLY_ADDED") {
+          onRefresh();
+        }
+      } catch (err) {
+        console.error("Customer SSE parse error:", err);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [ticket?.id, onRefresh]);
+
+  // Handle Attachment Selection
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAttachment(true);
+    try {
+      const uploaded = await ApiClient.uploadFile(file);
+      setAttachedFile(uploaded);
+    } catch (err: any) {
+      alert(err.message || "Failed to upload attachment.");
+    } finally {
+      setUploadingAttachment(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   // CSAT Rating State
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number>(0);
@@ -47,14 +98,21 @@ export function CustomerTicketDetail({
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyBody.trim()) return;
+    const text = replyBody.trim();
+    if (!text && !attachedFile) return;
 
     setSubmittingReply(true);
     setReplyError(null);
 
     try {
-      await ApiClient.addReply(ticket.id, replyBody.trim(), false);
+      await ApiClient.addReply(
+        ticket.id,
+        text || (attachedFile?.name ? `Attached file: ${attachedFile.name}` : "Attachment"),
+        false,
+        attachedFile
+      );
       setReplyBody("");
+      setAttachedFile(null);
       onRefresh();
     } catch (err: any) {
       setReplyError(err.message || "Failed to send reply.");
@@ -349,6 +407,14 @@ export function CustomerTicketDetail({
                   <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
                     {r.body}
                   </p>
+                  {r.attachmentUrl && (
+                    <AttachmentDisplay
+                      url={r.attachmentUrl}
+                      name={r.attachmentName || "Attachment"}
+                      size={r.attachmentSize}
+                      type={r.attachmentType}
+                    />
+                  )}
                 </div>
               );
             })}
@@ -369,8 +435,17 @@ export function CustomerTicketDetail({
             onChange={(e) => setReplyBody(e.target.value)}
             placeholder="Type your reply or additional details..."
             rows={4}
-            required
           />
+
+          {attachedFile && (
+            <div className="pt-1">
+              <AttachedFileChip
+                name={attachedFile.name}
+                size={attachedFile.size}
+                onRemove={() => setAttachedFile(null)}
+              />
+            </div>
+          )}
 
           {replyError && (
             <div className="p-2 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md">
@@ -378,16 +453,38 @@ export function CustomerTicketDetail({
             </div>
           )}
 
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <button
+                type="button"
+                disabled={uploadingAttachment || submittingReply}
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-medium px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200/70 border border-slate-200 transition-colors cursor-pointer"
+              >
+                {uploadingAttachment ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-600" />
+                ) : (
+                  <Paperclip className="w-3.5 h-3.5 text-slate-500" />
+                )}
+                <span>{uploadingAttachment ? "Uploading..." : "Attach file"}</span>
+              </button>
+            </div>
+
             <Button
               type="submit"
               variant="primary"
               size="sm"
               loading={submittingReply}
-              disabled={!replyBody.trim()}
+              disabled={(!replyBody.trim() && !attachedFile) || uploadingAttachment}
               icon={<Send className="w-3.5 h-3.5" />}
             >
-              Send Message
+              Send Reply
             </Button>
           </div>
         </form>

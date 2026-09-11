@@ -150,15 +150,19 @@ model TicketCollaborator {
 }
 
 model Reply {
-  id         String     @id @default(cuid())
-  ticketId   String
-  authorId   String?
-  authorType AuthorType @default(AGENT)
-  authorName String
-  authorEmail String
-  body       String
-  isInternal Boolean    @default(false)
-  createdAt  DateTime   @default(now())
+  id             String     @id @default(cuid())
+  ticketId       String
+  authorId       String?
+  authorType     AuthorType @default(AGENT)
+  authorName     String
+  authorEmail    String
+  body           String
+  isInternal     Boolean    @default(false)
+  attachmentUrl  String?
+  attachmentName String?
+  attachmentSize Int?
+  attachmentType String?
+  createdAt      DateTime   @default(now())
 
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   author User?  @relation("UserReplies", fields: [authorId], references: [id], onDelete: SetNull)

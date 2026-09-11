@@ -37,6 +37,10 @@ export class TimelineController {
           authorEmail: r.authorEmail,
           body: r.body,
           isInternal: r.isInternal,
+          attachmentUrl: r.attachmentUrl,
+          attachmentName: r.attachmentName,
+          attachmentSize: r.attachmentSize,
+          attachmentType: r.attachmentType,
         },
       });
     }

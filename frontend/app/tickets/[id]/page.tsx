@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Priority, Category, Status, SessionUser, TicketPermissions, TimelineItem } from "@/lib/types";
+import { Priority, Category, Status, TicketPermissions, TimelineItem } from "@/lib/types";
+import { useSession } from "@/lib/session-context";
+import { TicketWorkspaceSkeleton } from "@/components/ui/Skeletons";
+import { AttachmentDisplay, AttachedFileChip } from "@/components/ui/AttachmentView";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PriorityBadge, CategoryBadge } from "@/components/PriorityBadge";
 import { SlaCountdown } from "@/components/SlaCountdown";
@@ -29,6 +32,8 @@ import {
   AlertCircle,
   Sparkles,
   ChevronRight,
+  Paperclip,
+  Loader2,
 } from "lucide-react";
 
 export default function TicketWorkspacePage() {
@@ -36,8 +41,7 @@ export default function TicketWorkspacePage() {
   const router = useRouter();
   const ticketId = params.id as string;
 
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
+  const { user, agents } = useSession();
   const [ticketData, setTicketData] = useState<any | null>(null);
   const [permissions, setPermissions] = useState<TicketPermissions | null>(null);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
@@ -51,6 +55,16 @@ export default function TicketWorkspacePage() {
   const [replyBody, setReplyBody] = useState<string>("");
   const [isInternal, setIsInternal] = useState<boolean>(false);
   const [submittingReply, setSubmittingReply] = useState<boolean>(false);
+
+  // Attachment State
+  const [attachedFile, setAttachedFile] = useState<{
+    url: string;
+    name: string;
+    size: number;
+    type: string;
+  } | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Modals & Actions
   const [simulateModalOpen, setSimulateModalOpen] = useState<boolean>(false);
@@ -78,28 +92,102 @@ export default function TicketWorkspacePage() {
   }, [ticketId]);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : { user: null }))
-      .then((d) => setUser(d.user));
-
-    fetch("/api/users")
-      .then((res) => (res.ok ? res.json() : { users: [] }))
-      .then((d) => setAgents(d.users || []));
-
     loadTicket();
   }, [loadTicket]);
+
+  // Real-time EventSource connection for live chat updates across screens
+  useEffect(() => {
+    if (!ticketId) return;
+
+    const eventSource = new EventSource(`/api/tickets/${ticketId}/events`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "REPLY_ADDED" && data.reply) {
+          const incoming = data.reply;
+          setTimeline((prev) => {
+            const exists = prev.some(
+              (item) => item.reply?.id === incoming.id || item.id === `reply-${incoming.id}`
+            );
+            if (exists) return prev;
+            const newItem: TimelineItem = {
+              id: `reply-${incoming.id}`,
+              type: "REPLY",
+              createdAt: incoming.createdAt || new Date().toISOString(),
+              reply: {
+                id: incoming.id,
+                authorId: incoming.authorId,
+                authorType: incoming.authorType,
+                authorName: incoming.authorName,
+                authorEmail: incoming.authorEmail,
+                body: incoming.body,
+                isInternal: incoming.isInternal,
+                attachmentUrl: incoming.attachmentUrl,
+                attachmentName: incoming.attachmentName,
+                attachmentSize: incoming.attachmentSize,
+                attachmentType: incoming.attachmentType,
+              },
+            };
+            return [...prev, newItem];
+          });
+        }
+      } catch (err) {
+        console.error("Failed to parse SSE event:", err);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [ticketId]);
+
+  // Handle Attachment Upload
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Upload failed.");
+      }
+      const uploaded = await res.json();
+      setAttachedFile(uploaded);
+    } catch (err: any) {
+      alert(err.message || "Failed to upload file.");
+    } finally {
+      setUploadingAttachment(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   // Submit Agent Reply / Internal Note
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyBody.trim()) return;
+    const text = replyBody.trim();
+    if (!text && !attachedFile) return;
 
     setSubmittingReply(true);
     try {
       const res = await fetch(`/api/tickets/${ticketId}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: replyBody.trim(), isInternal }),
+        body: JSON.stringify({
+          body: text || (attachedFile?.name ? `Attached file: ${attachedFile.name}` : "Attachment"),
+          isInternal,
+          attachmentUrl: attachedFile?.url,
+          attachmentName: attachedFile?.name,
+          attachmentSize: attachedFile?.size,
+          attachmentType: attachedFile?.type,
+        }),
       });
 
       if (!res.ok) {
@@ -107,8 +195,27 @@ export default function TicketWorkspacePage() {
         throw new Error(err.error || "Failed to submit reply.");
       }
 
+      const result = await res.json();
+      if (result.reply) {
+        const incoming = result.reply;
+        setTimeline((prev) => {
+          if (prev.some((item) => item.reply?.id === incoming.id || item.id === `reply-${incoming.id}`)) {
+            return prev;
+          }
+          return [
+            ...prev,
+            {
+              id: `reply-${incoming.id}`,
+              type: "REPLY",
+              createdAt: incoming.createdAt || new Date().toISOString(),
+              reply: incoming,
+            },
+          ];
+        });
+      }
+
       setReplyBody("");
-      loadTicket();
+      setAttachedFile(null);
     } catch (err: any) {
       alert(err.message || "Failed to submit reply.");
     } finally {
@@ -237,7 +344,7 @@ export default function TicketWorkspacePage() {
   };
 
   if (loading) {
-    return <div className="text-center py-24 text-slate-400 text-xs">Loading ticket workspace...</div>;
+    return <TicketWorkspaceSkeleton />;
   }
 
   if (error || !ticketData) {
@@ -481,6 +588,14 @@ export default function TicketWorkspacePage() {
                         <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
                           {item.reply.body}
                         </div>
+                        {item.reply.attachmentUrl && (
+                          <AttachmentDisplay
+                            url={item.reply.attachmentUrl}
+                            name={item.reply.attachmentName || "Attachment"}
+                            size={item.reply.attachmentSize}
+                            type={item.reply.attachmentType}
+                          />
+                        )}
                       </div>
                     );
                   }
@@ -556,18 +671,51 @@ export default function TicketWorkspacePage() {
                       className={`min-h-[130px] ${isInternal ? "bg-amber-50/20 border-amber-200" : ""}`}
                     />
 
+                    {/* Attached File Chip Preview */}
+                    {attachedFile && (
+                      <div className="pt-1">
+                        <AttachedFileChip
+                          name={attachedFile.name}
+                          size={attachedFile.size}
+                          onRemove={() => setAttachedFile(null)}
+                        />
+                      </div>
+                    )}
+
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1">
-                      <span className="text-xs text-slate-400">
-                        {isInternal
-                          ? "Internal notes are private and never sent to the customer."
-                          : "Customer will receive an email notification."}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileSelect}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          disabled={uploadingAttachment || submittingReply}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-medium px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200/70 border border-slate-200 transition-colors cursor-pointer"
+                        >
+                          {uploadingAttachment ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-600" />
+                          ) : (
+                            <Paperclip className="w-3.5 h-3.5 text-slate-500" />
+                          )}
+                          <span>{uploadingAttachment ? "Uploading..." : "Attach file"}</span>
+                        </button>
+                        <span className="text-xs text-slate-400">
+                          {isInternal
+                            ? "Internal notes are private and never sent to the customer."
+                            : "Customer will receive an email notification."}
+                        </span>
+                      </div>
+
                       <Button
                         type="submit"
                         variant={isInternal ? "secondary" : "primary"}
                         size="sm"
                         loading={submittingReply}
-                        disabled={!replyBody.trim()}
+                        disabled={(!replyBody.trim() && !attachedFile) || uploadingAttachment}
                         icon={isInternal ? <Lock className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
                       >
                         {isInternal ? "Add Internal Note" : "Send Reply"}
