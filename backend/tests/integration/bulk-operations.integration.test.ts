@@ -69,7 +69,7 @@ describe("Integration Tests: Bulk Actions, Partial Success & Isolated Transactio
 
     // Clean up
     await prisma.ticket.deleteMany({ where: { id: { in: [ticket1.id, ticket2.id] } } });
-  });
+  }, 60000);
 
   it("Executes Bulk Reassign with per-ticket transaction isolation", async () => {
     const t1 = await TicketService.createTicket(

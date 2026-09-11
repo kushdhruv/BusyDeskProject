@@ -42,6 +42,8 @@ takehome-04-support-ticketing/
 │   └── tsconfig.json
 │
 ├── docs/                              # In-depth Architecture, Decisions, Plan, & Schema Documentation
+│   └── scalability.md                 # Scalability & Performance Report (10x/100x/1M Analysis)
+├── SCALABILITY.md                     # Scalability & Performance Report
 ├── README.md
 └── SUBMISSION.md
 ```

@@ -128,6 +128,7 @@ model Ticket {
   @@index([primaryAssigneeId, status, archivedAt])
   @@index([status, archivedAt, slaDueAt])
   @@index([archivedAt, createdAt(sort: Desc)])
+  @@index([archivedAt, resolvedAt])
   @@index([ticketNumber])
   @@map("tickets")
 }
@@ -197,6 +198,7 @@ model SlaAlert {
   ticket         Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   acknowledgedBy User?  @relation("UserAlertAcks", fields: [acknowledgedById], references: [id], onDelete: SetNull)
 
+  @@unique([ticketId, breachCycle])
   @@index([ticketId, status])
   @@map("sla_alerts")
 }

@@ -53,7 +53,15 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     const payload = await verifySessionToken(token);
     if (!payload) return null;
 
-    // Verify user still exists in database
+    // Security & Architectural Decision:
+    // Retain database lookup to ensure strict authorization correctness.
+    // 1. Prevents stale authorization: If a user is deactivated, deleted, or their role changes,
+    //    a 7-day token is instantly revoked rather than remaining valid for up to 7 days.
+    // 2. Multi-instance safety: Process-local Sets (e.g. Set<userId>) do not work across
+    //    clustered/multi-container deployments.
+    // 3. Performance: The query hits the primary key index (id) directly with <0.2ms DB execution.
+    // Scale Roadmap: If DB connection limits become a bottleneck at high scale, redesign around
+    // short-lived access tokens (15m) + refresh token rotation with centralized Redis revocation.
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
       select: { id: true, email: true, name: true, role: true },

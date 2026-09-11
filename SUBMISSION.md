@@ -62,7 +62,9 @@
 
 ## Automated Test Suite
 
-- **23 Test Suites / 176 Unit, Integration, Security & Fuzz Tests** passing with 100% green status (`npm test` in `backend/`):
+- **24 Test Suites / 177 Unit, Integration, Security & Fuzz Tests** passing with 100% green status (`npm test` in `backend/`):
+  - `tests/integration/sla-concurrency.integration.test.ts`: [NEW] Concurrency integration test executing 10 simultaneous polling clients, verifying transaction advisory locking (`pg_try_advisory_xact_lock`), zero deadlocks, and zero duplicate alerts under database engine unique constraint (`@@unique([ticketId, breachCycle])`).
+  - `tests/integration/dashboard-and-metrics.integration.test.ts`: Integration tests verifying 4 headline metrics, status distributions, and 8 continuous Monday-aligned weekly buckets with strict UTC timezone and PostgreSQL `date_trunc('week', ...)` alignment.
   - `tests/integration/route-handlers.integration.test.ts`: 10 end-to-end integration tests executing HTTP route handlers directly against live Supabase PostgreSQL (health diagnostics, ticket creation, queue query, timeline fetch, customer reply, reassignment, agent reply, status change to resolved, 5-star CSAT submission, and bulk close).
   - `tests/unit/api-routes-comprehensive.test.ts`: 21 comprehensive route validation tests ensuring strict 401 Unauthorized and 400 Bad Request enforcement across all API route handlers.
   - `tests/unit/cors-and-security.test.ts`: 6 tests validating dynamic CORS origin reflection, `credentials: true`, wildcard preflight options, production SameSite=None secure cookie transmission, and localhost development fallback.
@@ -73,3 +75,12 @@
   - `tests/unit/sla-service.test.ts`: 10 tests verifying target minutes calculation, pause & resume math, and cycle management.
   - `tests/business-rules.test.ts`: 11 core SLA and lifecycle state machine invariant tests.
   - `tests/fuzz/*`: Injection, Unicode edge cases, query bounds fuzzing, and 10-parallel concurrent request race condition testing under ACID transactions.
+
+## Scalability & Performance Engineering
+
+Full empirical report available in [`docs/scalability.md`](file:///docs/scalability.md). Key verified optimizations:
+- **Set-Based SLA Synchronization**: Replaced $O(N)$ candidate ticket loops with set-based PostgreSQL queries and transaction advisory locking. Dropped SLA polling p50 latency from **67,976 ms** to **4,045 ms** (sequential) and **2,362 ms** (concurrent) — a **94.0% reduction in latency (16.8×–28.7× faster)**.
+- **Duplicate Alert Prevention**: Added `@@unique([ticketId, breachCycle])` to the `SlaAlert` model in `schema.prisma`, resolving a real race condition where concurrent 15-second polling created duplicate alerts.
+- **Dashboard SQL Aggregation**: Replaced in-memory row iteration with PostgreSQL `date_trunc('week', "resolvedAt")` and `LEFT JOIN ... GROUP BY` on agents with `idx_tickets_archived_resolved`. Dropped dashboard p50 from **3,942 ms** to **873 ms** (**77.8% latency reduction / 4.5× faster**).
+- **Trigram Search Indexing**: Added `pg_trgm` GIN indexes on `subject`, `description`, `requesterName`, and `requesterEmail` alongside a partial B-Tree index on SLA-eligible tickets (`idx_tickets_sla_eligible`), verified via `EXPLAIN (ANALYZE, BUFFERS)`.
+- **Authorization Correctness**: Retained indexed database user validation in `auth.middleware.ts` to prevent stale 7-day tokens on deactivated or demoted accounts, avoiding multi-instance-unsafe in-memory sets.

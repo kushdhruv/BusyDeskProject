@@ -40,14 +40,15 @@ export class DashboardController {
     }
 
     // 2. Internal Staff (Agent / Supervisor) Metrics
+    // Align start of current week to UTC Monday 00:00:00 (ISO 8601 standard)
     const startOfWeek = new Date(now);
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-    startOfWeek.setDate(diff);
-    startOfWeek.setHours(0, 0, 0, 0);
+    const day = startOfWeek.getUTCDay();
+    const diff = startOfWeek.getUTCDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setUTCDate(diff);
+    startOfWeek.setUTCHours(0, 0, 0, 0);
 
     const eightWeeksAgo = new Date(now.getTime() - 8 * 7 * 24 * 60 * 60 * 1000);
-    eightWeeksAgo.setHours(0, 0, 0, 0);
+    eightWeeksAgo.setUTCHours(0, 0, 0, 0);
 
     const [
       openCount,
@@ -55,8 +56,8 @@ export class DashboardController {
       resolvedThisWeekCount,
       breachedCount,
       statusGroups,
-      agents,
-      resolvedTickets8Weeks,
+      agentBreakdown,
+      sqlWeeklyTrend,
       csatAggregate,
       csatGroups,
     ] = await Promise.all([
@@ -91,30 +92,34 @@ export class DashboardController {
         _count: { id: true },
         where: { archivedAt: null },
       }),
-      prisma.user.findMany({
-        where: { role: Role.AGENT },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          assignedTickets: {
-            where: {
-              archivedAt: null,
-              status: { in: [Status.NEW, Status.OPEN, Status.PENDING] },
-            },
-            select: { id: true },
-          },
-        },
-      }),
-      prisma.ticket.findMany({
-        where: {
-          archivedAt: null,
-          resolvedAt: { gte: eightWeeksAgo },
-        },
-        select: {
-          resolvedAt: true,
-        },
-      }),
+      // Set-based Agent Workload: eliminates loading nested ticket ID relations into Node heap
+      prisma.$queryRaw<
+        Array<{ agentId: string; agentName: string; agentEmail: string; activeTicketsCount: number }>
+      >`
+        SELECT 
+          u.id AS "agentId", 
+          u.name AS "agentName", 
+          u.email AS "agentEmail", 
+          COUNT(t.id)::int AS "activeTicketsCount"
+        FROM users u
+        LEFT JOIN tickets t ON t."primaryAssigneeId" = u.id
+          AND t."archivedAt" IS NULL
+          AND t.status IN ('NEW', 'OPEN', 'PENDING')
+        WHERE u.role = 'AGENT'
+        GROUP BY u.id, u.name, u.email
+        ORDER BY "activeTicketsCount" DESC;
+      `,
+      // Set-based 8-Week Trend: date_trunc('week', ...) executed directly in PostgreSQL
+      prisma.$queryRaw<Array<{ week_start: string; count: number }>>`
+        SELECT 
+          to_char(date_trunc('week', "resolvedAt"), 'YYYY-MM-DD') AS week_start,
+          COUNT(*)::int AS count
+        FROM tickets
+        WHERE "archivedAt" IS NULL
+          AND "resolvedAt" >= ${eightWeeksAgo}
+        GROUP BY 1
+        ORDER BY 1 ASC;
+      `,
       prisma.customerSatisfaction.aggregate({
         _avg: { rating: true },
         _count: { id: true },
@@ -132,23 +137,17 @@ export class DashboardController {
       count: statusMap.get(s) || 0,
     }));
 
-    const agentBreakdown = agents.map((a) => ({
-      agentId: a.id,
-      agentName: a.name,
-      agentEmail: a.email,
-      activeTicketsCount: a.assignedTickets.length,
-    }));
-
+    // Build 8 continuous Monday-aligned weekly buckets
     const weeklyBuckets: { [weekKey: string]: { label: string; start: string; count: number } } = {};
     for (let i = 7; i >= 0; i--) {
       const weekStart = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
-      const wDay = weekStart.getDay();
-      const wDiff = weekStart.getDate() - wDay + (wDay === 0 ? -6 : 1);
-      weekStart.setDate(wDiff);
-      weekStart.setHours(0, 0, 0, 0);
+      const wDay = weekStart.getUTCDay();
+      const wDiff = weekStart.getUTCDate() - wDay + (wDay === 0 ? -6 : 1);
+      weekStart.setUTCDate(wDiff);
+      weekStart.setUTCHours(0, 0, 0, 0);
 
-      const monthName = weekStart.toLocaleString("default", { month: "short" });
-      const dayNum = weekStart.getDate();
+      const monthName = weekStart.toLocaleString("default", { month: "short", timeZone: "UTC" });
+      const dayNum = weekStart.getUTCDate();
       const weekKey = weekStart.toISOString().split("T")[0];
       weeklyBuckets[weekKey] = {
         label: `${monthName} ${dayNum < 10 ? "0" + dayNum : dayNum}`,
@@ -157,18 +156,10 @@ export class DashboardController {
       };
     }
 
-    for (const t of resolvedTickets8Weeks) {
-      if (!t.resolvedAt) continue;
-      const rDate = new Date(t.resolvedAt);
-      const rDay = rDate.getDay();
-      const rDiff = rDate.getDate() - rDay + (rDay === 0 ? -6 : 1);
-      const bucketStart = new Date(rDate);
-      bucketStart.setDate(rDiff);
-      bucketStart.setHours(0, 0, 0, 0);
-      const bucketKey = bucketStart.toISOString().split("T")[0];
-
-      if (weeklyBuckets[bucketKey]) {
-        weeklyBuckets[bucketKey].count++;
+    // Merge SQL date_trunc counts into the continuous weekly buckets
+    for (const row of sqlWeeklyTrend) {
+      if (weeklyBuckets[row.week_start]) {
+        weeklyBuckets[row.week_start].count = row.count;
       }
     }
 

@@ -165,7 +165,101 @@ export class SlaController {
     }
   }
 
+  static async syncAllAlertsSetBased(): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      // PostgreSQL transaction advisory lock:
+      // If multiple polling requests arrive simultaneously, only 1 acquires the lock
+      // to reconcile alert state. Concurrent requests that cannot acquire the lock
+      // immediately skip write-sync and proceed directly to reading active alerts.
+      const lockResult: any[] = await tx.$queryRaw`
+        SELECT pg_try_advisory_xact_lock(hashtext('sla_alert_sync')) AS acquired;
+      `;
+      const acquired = lockResult[0]?.acquired;
+      if (!acquired) {
+        return;
+      }
+
+      // A. Escalate existing alerts to BREACHED for active overdue tickets
+      await tx.$executeRaw`
+        UPDATE sla_alerts a
+        SET type = 'BREACHED', status = 'ACTIVE'
+        FROM tickets t
+        WHERE a."ticketId" = t.id
+          AND a."breachCycle" = t."slaCycle"
+          AND (a.type != 'BREACHED' OR a.status != 'ACTIVE')
+          AND t."archivedAt" IS NULL
+          AND t.status IN ('NEW', 'OPEN')
+          AND t."slaDueAt" IS NOT NULL
+          AND t."slaDueAt" <= NOW();
+      `;
+
+      // B. Insert missing BREACHED alerts for active overdue tickets
+      await tx.$executeRaw`
+        INSERT INTO sla_alerts (id, "ticketId", type, status, "breachCycle", "createdAt")
+        SELECT 
+          concat('sla_', replace(gen_random_uuid()::text, '-', '')),
+          t.id, 
+          'BREACHED'::"SlaAlertType", 
+          'ACTIVE'::"SlaAlertStatus", 
+          t."slaCycle", 
+          NOW()
+        FROM tickets t
+        LEFT JOIN sla_alerts a 
+          ON a."ticketId" = t.id 
+         AND a."breachCycle" = t."slaCycle"
+        WHERE a.id IS NULL
+          AND t."archivedAt" IS NULL
+          AND t.status IN ('NEW', 'OPEN')
+          AND t."slaDueAt" IS NOT NULL
+          AND t."slaDueAt" <= NOW()
+        ON CONFLICT ("ticketId", "breachCycle") DO UPDATE
+          SET type = 'BREACHED', status = 'ACTIVE'
+          WHERE sla_alerts.type != 'BREACHED' OR sla_alerts.status != 'ACTIVE';
+      `;
+
+      // C. Insert missing DUE_SOON alerts for tickets within 15-min warning window
+      await tx.$executeRaw`
+        INSERT INTO sla_alerts (id, "ticketId", type, status, "breachCycle", "createdAt")
+        SELECT 
+          concat('sla_', replace(gen_random_uuid()::text, '-', '')),
+          t.id, 
+          'DUE_SOON'::"SlaAlertType", 
+          'ACTIVE'::"SlaAlertStatus", 
+          t."slaCycle", 
+          NOW()
+        FROM tickets t
+        LEFT JOIN sla_alerts a 
+          ON a."ticketId" = t.id 
+         AND a."breachCycle" = t."slaCycle"
+        WHERE a.id IS NULL
+          AND t."archivedAt" IS NULL
+          AND t.status IN ('NEW', 'OPEN')
+          AND t."slaDueAt" IS NOT NULL
+          AND t."slaDueAt" > NOW()
+          AND t."slaDueAt" <= NOW() + INTERVAL '15 minutes'
+        ON CONFLICT ("ticketId", "breachCycle") DO NOTHING;
+      `;
+
+      // D. Resolve alerts on tickets that are no longer active/eligible
+      await tx.$executeRaw`
+        UPDATE sla_alerts a
+        SET status = 'RESOLVED'
+        FROM tickets t
+        WHERE a."ticketId" = t.id
+          AND a.status IN ('ACTIVE', 'ACKNOWLEDGED')
+          AND (
+            t."archivedAt" IS NOT NULL 
+            OR t.status NOT IN ('NEW', 'OPEN') 
+            OR t."slaDueAt" IS NULL
+          );
+      `;
+    });
+  }
+
   static async getActiveAlerts(user: SessionUser) {
+    // Reconcile dynamic SLA alerts set-based without in-memory looping
+    await this.syncAllAlertsSetBased();
+
     const ticketWhere: Prisma.TicketWhereInput = {
       archivedAt: null,
       status: { in: [Status.NEW, Status.OPEN] },
@@ -174,16 +268,6 @@ export class SlaController {
 
     if (user.role !== Role.SUPERVISOR) {
       ticketWhere.primaryAssigneeId = user.id;
-    }
-
-    const candidateTickets = await prisma.ticket.findMany({
-      where: ticketWhere,
-      select: { id: true },
-    });
-
-    // Evaluate dynamic SLA breaches for candidate tickets
-    for (const t of candidateTickets) {
-      await this.syncAlertForTicket(t.id);
     }
 
     const alerts = await prisma.slaAlert.findMany({
