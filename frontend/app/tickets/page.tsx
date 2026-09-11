@@ -93,6 +93,29 @@ function TicketsQueueContent() {
       .then((d) => setAgents(d.users || []));
   }, []);
 
+  // Synchronize state whenever URL query params change (sidebar navigation or browser back/forward)
+  useEffect(() => {
+    const urlSearch = searchParams.get("search") || "";
+    const urlStatus = searchParams.get("status") || "";
+    const urlPriority = searchParams.get("priority") || "";
+    const urlCategory = searchParams.get("category") || "";
+    const urlAssigneeId = searchParams.get("assigneeId") || "";
+    const urlScope = searchParams.get("scope") || "all";
+    const urlSort = searchParams.get("sort") || "createdAt";
+    const urlOrder = searchParams.get("order") || "desc";
+    const urlPage = searchParams.get("page") ? parseInt(searchParams.get("page")!, 10) : 1;
+
+    setSearch(urlSearch);
+    setStatus(urlStatus);
+    setPriority(urlPriority);
+    setCategory(urlCategory);
+    setAssigneeId(urlAssigneeId);
+    setScope(urlScope);
+    setSort(urlSort);
+    setOrder(urlOrder);
+    setPage(urlPage);
+  }, [searchParams]);
+
   // Fetch Queue Data
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -282,6 +305,10 @@ function TicketsQueueContent() {
                 setScope(tab.scopeVal);
                 setStatus(tab.statusVal);
                 setPage(1);
+                const params = new URLSearchParams();
+                if (tab.scopeVal && tab.scopeVal !== "all") params.set("scope", tab.scopeVal);
+                if (tab.statusVal) params.set("status", tab.statusVal);
+                router.push(`/tickets${params.toString() ? `?${params.toString()}` : ""}`);
               }}
               className={`px-3 py-2 font-medium transition-colors border-b-2 -mb-px whitespace-nowrap cursor-pointer ${
                 active

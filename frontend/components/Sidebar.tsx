@@ -117,6 +117,13 @@ export function Sidebar({
     onToggleCollapse();
   };
 
+  const handleNavClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (mobileOpen) {
+      onCloseMobile();
+    }
+  };
+
   if (!user) return null;
 
   const isSupervisor = user.role === "SUPERVISOR";
@@ -220,6 +227,7 @@ export function Sidebar({
             <Link
               href="/dashboard"
               prefetch={true}
+              onClick={handleNavClick}
               title={collapsed ? "Dashboard" : undefined}
               className={navItemClass(pathname === "/dashboard")}
             >
@@ -232,6 +240,7 @@ export function Sidebar({
             <Link
               href="/tickets"
               prefetch={true}
+              onClick={handleNavClick}
               title={collapsed ? (isSupervisor ? "All Tickets" : "My Tickets") : undefined}
               className={navItemClass(isTicketsActive)}
             >
@@ -244,6 +253,7 @@ export function Sidebar({
             <Link
               href="/alerts"
               prefetch={true}
+              onClick={handleNavClick}
               title={collapsed ? `SLA Alerts (${alertCount})` : undefined}
               className={navItemClass(pathname === "/alerts")}
             >
@@ -277,6 +287,7 @@ export function Sidebar({
             <Link
               href="/tickets?scope=assigned_to_me"
               prefetch={true}
+              onClick={handleNavClick}
               title={collapsed ? "Assigned to Me" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "assigned_to_me")}
             >
@@ -289,6 +300,7 @@ export function Sidebar({
             <Link
               href="/tickets?scope=collaborating"
               prefetch={true}
+              onClick={handleNavClick}
               title={collapsed ? "Collaborating" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "collaborating")}
             >
@@ -301,6 +313,7 @@ export function Sidebar({
             <Link
               href="/tickets?scope=awaiting_customer"
               prefetch={true}
+              onClick={handleNavClick}
               title={collapsed ? "Awaiting Customer" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "awaiting_customer")}
             >
@@ -313,6 +326,7 @@ export function Sidebar({
             <Link
               href="/tickets?scope=due_soon"
               prefetch={true}
+              onClick={handleNavClick}
               title={collapsed ? "Due Soon" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "due_soon")}
             >
@@ -325,6 +339,7 @@ export function Sidebar({
             <Link
               href="/tickets?scope=breached"
               prefetch={true}
+              onClick={handleNavClick}
               title={collapsed ? "SLA Breached" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "breached")}
             >
@@ -337,6 +352,7 @@ export function Sidebar({
             <Link
               href="/tickets?scope=archived"
               prefetch={true}
+              onClick={handleNavClick}
               title={collapsed ? "Archived" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "archived")}
             >
