@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { User as SessionUser } from "@/lib/types";
 import {
@@ -15,7 +16,6 @@ import {
   LogOut,
   Headphones,
   PanelLeftClose,
-  PanelLeftOpen,
   X,
 } from "lucide-react";
 
@@ -73,6 +73,7 @@ export function Sidebar({
     (e: React.MouseEvent) => {
       if (collapsed) return;
       e.preventDefault();
+      e.stopPropagation();
       setIsResizing(true);
     },
     [collapsed]
@@ -98,10 +99,22 @@ export function Sidebar({
     };
   }, [isResizing, onWidthChange]);
 
-  const handleLogout = async () => {
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
+  };
+
+  // Toggle in / toggle out when clicking on empty space
+  const handleEmptySpaceClick = (e: React.MouseEvent) => {
+    if (isResizing) return;
+    const target = e.target as HTMLElement;
+    // Do not toggle if clicking an interactive element (link, button, input)
+    if (target.closest("a, button, input, select, textarea, [data-no-toggle]")) {
+      return;
+    }
+    onToggleCollapse();
   };
 
   if (!user) return null;
@@ -121,22 +134,35 @@ export function Sidebar({
   const navItemClass = (isActive: boolean) =>
     `flex items-center ${
       collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-1.5"
-    } rounded-md text-xs font-medium transition-colors ${
+    } rounded-md text-xs font-medium transition-colors cursor-pointer ${
       isActive
         ? "bg-slate-200/90 text-slate-900 font-semibold shadow-2xs"
         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
     }`;
 
   const renderSidebarContent = (isMobile: boolean) => (
-    <div className="flex flex-col h-full select-none">
+    <div
+      className={`flex flex-col h-full select-none ${collapsed && !isMobile ? "cursor-pointer" : ""}`}
+      onClick={handleEmptySpaceClick}
+      title={collapsed && !isMobile ? "Click empty space to expand sidebar" : undefined}
+    >
       {/* Brand Header */}
       <div
-        className={`h-14 flex items-center border-b border-slate-200 ${
+        className={`h-14 flex items-center border-b border-slate-200 flex-shrink-0 ${
           !isMobile && collapsed ? "justify-center px-2" : "justify-between px-3.5"
         }`}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-md bg-slate-900 flex items-center justify-center text-white flex-shrink-0 shadow-2xs">
+        <div
+          className="flex items-center gap-2.5 min-w-0 cursor-pointer"
+          onClick={(e) => {
+            if (collapsed && !isMobile) {
+              e.stopPropagation();
+              onToggleCollapse();
+            }
+          }}
+          title={collapsed && !isMobile ? "Click to expand sidebar" : "SupportDesk"}
+        >
+          <div className="w-7 h-7 rounded-md bg-slate-900 flex items-center justify-center text-white flex-shrink-0 shadow-2xs hover:bg-slate-800 transition-colors">
             <Headphones className="w-3.5 h-3.5" />
           </div>
           {(isMobile || !collapsed) && (
@@ -154,7 +180,10 @@ export function Sidebar({
         {/* Mobile: Close Drawer Button */}
         {isMobile && (
           <button
-            onClick={onCloseMobile}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCloseMobile();
+            }}
             className="p-1 text-slate-400 hover:text-slate-700 rounded cursor-pointer"
             aria-label="Close menu"
           >
@@ -162,27 +191,19 @@ export function Sidebar({
           </button>
         )}
 
-        {/* Desktop: Collapse/Expand Toggle Button */}
-        {!isMobile && (
-          !collapsed ? (
-            <button
-              onClick={onToggleCollapse}
-              title="Collapse sidebar (Go in)"
-              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
-              aria-label="Collapse sidebar"
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              onClick={onToggleCollapse}
-              title="Expand sidebar (Pop up)"
-              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
-              aria-label="Expand sidebar"
-            >
-              <PanelLeftOpen className="w-4 h-4" />
-            </button>
-          )
+        {/* Desktop: Collapse Toggle Button (ONLY visible in expanded mode to eliminate overlap) */}
+        {!isMobile && !collapsed && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCollapse();
+            }}
+            title="Collapse sidebar (Go in)"
+            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+            aria-label="Collapse sidebar"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </button>
         )}
       </div>
 
@@ -196,8 +217,9 @@ export function Sidebar({
             </div>
           )}
           <nav className="space-y-0.5">
-            <a
+            <Link
               href="/dashboard"
+              prefetch={true}
               title={collapsed ? "Dashboard" : undefined}
               className={navItemClass(pathname === "/dashboard")}
             >
@@ -205,10 +227,11 @@ export function Sidebar({
                 <LayoutDashboard className="w-4 h-4 text-slate-500 flex-shrink-0" />
                 {!collapsed && <span>Dashboard</span>}
               </div>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/tickets"
+              prefetch={true}
               title={collapsed ? (isSupervisor ? "All Tickets" : "My Tickets") : undefined}
               className={navItemClass(isTicketsActive)}
             >
@@ -216,10 +239,11 @@ export function Sidebar({
                 <Inbox className="w-4 h-4 text-slate-500 flex-shrink-0" />
                 {!collapsed && <span>{isSupervisor ? "All Tickets" : "My Tickets"}</span>}
               </div>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/alerts"
+              prefetch={true}
               title={collapsed ? `SLA Alerts (${alertCount})` : undefined}
               className={navItemClass(pathname === "/alerts")}
             >
@@ -238,7 +262,7 @@ export function Sidebar({
                   {!collapsed && alertCount}
                 </span>
               )}
-            </a>
+            </Link>
           </nav>
         </div>
 
@@ -250,8 +274,9 @@ export function Sidebar({
             </div>
           )}
           <nav className="space-y-0.5">
-            <a
+            <Link
               href="/tickets?scope=assigned_to_me"
+              prefetch={true}
               title={collapsed ? "Assigned to Me" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "assigned_to_me")}
             >
@@ -259,10 +284,11 @@ export function Sidebar({
                 <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 {!collapsed && <span>Assigned to Me</span>}
               </div>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/tickets?scope=collaborating"
+              prefetch={true}
               title={collapsed ? "Collaborating" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "collaborating")}
             >
@@ -270,10 +296,11 @@ export function Sidebar({
                 <Users2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 {!collapsed && <span>Collaborating</span>}
               </div>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/tickets?scope=awaiting_customer"
+              prefetch={true}
               title={collapsed ? "Awaiting Customer" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "awaiting_customer")}
             >
@@ -281,10 +308,11 @@ export function Sidebar({
                 <Clock className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 {!collapsed && <span>Awaiting Customer</span>}
               </div>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/tickets?scope=due_soon"
+              prefetch={true}
               title={collapsed ? "Due Soon" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "due_soon")}
             >
@@ -292,10 +320,11 @@ export function Sidebar({
                 <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
                 {!collapsed && <span>Due Soon</span>}
               </div>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/tickets?scope=breached"
+              prefetch={true}
               title={collapsed ? "SLA Breached" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "breached")}
             >
@@ -303,10 +332,11 @@ export function Sidebar({
                 <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0" />
                 {!collapsed && <span>SLA Breached</span>}
               </div>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/tickets?scope=archived"
+              prefetch={true}
               title={collapsed ? "Archived" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "archived")}
             >
@@ -314,13 +344,13 @@ export function Sidebar({
                 <Archive className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 {!collapsed && <span>Archived</span>}
               </div>
-            </a>
+            </Link>
           </nav>
         </div>
       </div>
 
       {/* User Profile Footer */}
-      <div className="p-2 border-t border-slate-200 bg-slate-100/40">
+      <div className="p-2 border-t border-slate-200 bg-slate-100/40 flex-shrink-0">
         <div
           className={`flex items-center ${
             collapsed ? "justify-center" : "justify-between"

@@ -74,6 +74,11 @@ export function AppShell({
       return;
     }
 
+    // If user is already loaded in memory, do not re-fetch /api/auth/me on every internal client navigation
+    if (user) {
+      return;
+    }
+
     const checkAuth = async () => {
       try {
         const res = await fetch("/api/auth/me");
@@ -91,7 +96,7 @@ export function AppShell({
     };
 
     checkAuth();
-  }, [pathname, isAuthPage, router]);
+  }, [pathname, isAuthPage, router, user]);
 
   if (isAuthPage) {
     return <div className="min-h-screen bg-slate-50 flex flex-col justify-center">{children}</div>;

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User as SessionUser } from "@/lib/types";
 import { Search, Bell, Plus, Command, Menu, PanelLeftOpen, PanelLeftClose } from "lucide-react";
@@ -110,8 +111,9 @@ export function TopBar({
       {/* Right side Action Center */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         {/* SLA Alert Notification Bell */}
-        <a
+        <Link
           href="/alerts"
+          prefetch={true}
           className="relative p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
           title={unreadAlerts > 0 ? `${unreadAlerts} active SLA alerts` : "SLA Alerts"}
         >
@@ -119,15 +121,15 @@ export function TopBar({
           {unreadAlerts > 0 && (
             <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
           )}
-        </a>
+        </Link>
 
         {/* New Ticket CTA */}
-        <a href="/tickets/new">
+        <Link href="/tickets/new" prefetch={true}>
           <Button variant="primary" size="sm" icon={<Plus className="w-3.5 h-3.5" />}>
             <span className="hidden sm:inline">New Ticket</span>
             <span className="sm:hidden">New</span>
           </Button>
-        </a>
+        </Link>
       </div>
     </header>
   );
