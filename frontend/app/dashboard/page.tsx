@@ -220,16 +220,20 @@ export default function DashboardPage() {
         </a>
       </div>
 
-      {/* Supervisor CSAT Card */}
-      {isSupervisor && metrics.csatResponseCount !== undefined && (
+      {/* CSAT Performance Card */}
+      {metrics.csatResponseCount !== undefined && (
         <div className="bg-white rounded-md p-4 border border-slate-200 shadow-xs">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                Customer Satisfaction (CSAT)
+                {isSupervisor ? "Department Customer Satisfaction (CSAT)" : "My Customer Satisfaction (CSAT)"}
               </span>
               <p className="text-xs text-slate-500 mt-0.5">
-                Based on <span className="font-semibold text-slate-800">{metrics.csatResponseCount}</span> customer ratings submitted upon ticket resolution.
+                {isSupervisor ? (
+                  <>Based on <span className="font-semibold text-slate-800">{metrics.csatResponseCount}</span> customer ratings submitted team-wide upon ticket resolution.</>
+                ) : (
+                  <>Based on <span className="font-semibold text-slate-800">{metrics.csatResponseCount}</span> customer ratings submitted on your assigned tickets.</>
+                )}
               </p>
             </div>
 
@@ -490,6 +494,78 @@ export default function DashboardPage() {
           </a>
         </div>
       </div>
+
+      {/* Recent Customer Reviews Feed */}
+      {metrics.recentReviews && metrics.recentReviews.length > 0 && (
+        <div className="bg-white rounded-md p-4 border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+            <div>
+              <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                Recent Customer Reviews
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Latest customer feedback and satisfaction ratings
+              </p>
+            </div>
+            <span className="text-xs text-slate-500 tabular-nums font-medium">
+              {metrics.recentReviews.length} latest reviews
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {metrics.recentReviews.map((rev: any) => (
+              <div
+                key={rev.id}
+                className="p-3.5 rounded border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition-colors flex flex-col justify-between text-xs space-y-2.5"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          className={`w-3.5 h-3.5 ${
+                            s <= rev.rating
+                              ? "text-amber-500 fill-amber-500"
+                              : "text-slate-200"
+                          }`}
+                        />
+                      ))}
+                      <span className="text-xs font-bold text-slate-800 ml-1">
+                        {rev.rating}.0
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 tabular-nums">
+                      {new Date(rev.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  {rev.comment ? (
+                    <p className="text-xs text-slate-700 italic bg-white p-2.5 rounded border border-slate-100 line-clamp-3">
+                      &ldquo;{rev.comment}&rdquo;
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 italic">No written feedback provided.</p>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <a
+                    href={`/tickets/${rev.ticket.id}`}
+                    className="font-medium text-slate-900 hover:text-blue-600 truncate flex items-center gap-1 group max-w-[65%]"
+                  >
+                    <span className="font-mono text-slate-400">#{rev.ticket.ticketNumber}</span>
+                    <span className="truncate group-hover:underline">{rev.ticket.subject}</span>
+                  </a>
+                  <span className="text-slate-500 truncate text-[10px] bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 max-w-[30%]">
+                    {rev.user.name}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

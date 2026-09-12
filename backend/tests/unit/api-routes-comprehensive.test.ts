@@ -21,6 +21,9 @@ import {
   exportTicketsRoute,
   getDashboardRoute,
   getUsersRoute,
+  getTicketRecommendationsRoute,
+  searchKnowledgeBaseRoute,
+  logRecommendationFeedbackRoute,
 } from "@/routes";
 
 describe("API Route Layer Validation & Error Responses", () => {
@@ -201,6 +204,35 @@ describe("API Route Layer Validation & Error Responses", () => {
 
     it("getUsersRoute returns 401 when unauthenticated", async () => {
       const res = await getUsersRoute();
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe("AI & Knowledge Recommendation Routes (Smart Assist)", () => {
+    it("getTicketRecommendationsRoute returns 401 when unauthenticated", async () => {
+      const req = new Request("http://localhost:3001/api/tickets/t1/recommendations");
+      const res = await getTicketRecommendationsRoute(req, { id: "t1" });
+      expect(res.status).toBe(401);
+    });
+
+    it("searchKnowledgeBaseRoute returns 401 when unauthenticated", async () => {
+      const req = new Request("http://localhost:3001/api/kb/search?q=oauth");
+      const res = await searchKnowledgeBaseRoute(req);
+      expect(res.status).toBe(401);
+    });
+
+    it("logRecommendationFeedbackRoute returns 401 when unauthenticated", async () => {
+      const req = new Request("http://localhost:3001/api/recommendations/feedback", {
+        method: "POST",
+        body: JSON.stringify({
+          targetTicketId: "t1",
+          sourceType: "TICKET",
+          sourceId: "s1",
+          similarityScore: 0.9,
+          actionTaken: "INSERTED",
+        }),
+      });
+      const res = await logRecommendationFeedbackRoute(req);
       expect(res.status).toBe(401);
     });
   });

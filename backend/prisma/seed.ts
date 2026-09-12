@@ -7,6 +7,8 @@ async function main() {
   console.log("Seeding database...");
 
   // Clean existing data
+  await prisma.recommendationFeedback.deleteMany();
+  await prisma.knowledgeArticle.deleteMany();
   await prisma.customerSatisfaction.deleteMany();
   await prisma.slaAlert.deleteMany();
   await prisma.auditLog.deleteMany();
@@ -418,7 +420,64 @@ async function main() {
     },
   });
 
-  console.log("Seed finished successfully! 6 users (Supervisor, 3 Agents, 2 Customers) and 35+ tickets created.");
+  // 9. Seed Knowledge Base Articles for Semantic Copilot & Deflection
+  await prisma.knowledgeArticle.createMany({
+    data: [
+      {
+        title: "Resolving OAuth 2.0 Invalid Grant and Token Refresh Errors",
+        slug: "oauth-invalid-grant-troubleshooting",
+        category: Category.BUG,
+        content: `When encountering 'invalid_grant' during OAuth 2.0 token refresh, perform the following verification checklist:
+1. Verify system clock synchronization: Ensure the client server clock is synchronized with NTP (maximum allowed drift is 5 minutes).
+2. Check Refresh Token Expiration: Refresh tokens expire automatically after 30 days of inactivity or upon password reset.
+3. Validate Redirect URI: The callback URL must match character-for-character with the registered URI in the Developer Portal (including trailing slashes and https).
+4. Re-issue Authorization Code: Authorization codes are strictly single-use and expire within 10 minutes.`,
+        isPublished: true,
+      },
+      {
+        title: "Billing Reconciliation, Prorated Upgrades and Invoice Adjustments",
+        slug: "billing-reconciliation-guide",
+        category: Category.BILLING,
+        content: `Prorated billing adjustments are calculated mathematically based on remaining seconds in the billing cycle:
+1. Mid-cycle upgrades are credited automatically for unused subscription tier days.
+2. Invoices are generated on the 1st of each calendar month and charged to the default payment method.
+3. If a double-charge is detected due to webhook retries, refund the duplicate transaction in Stripe and apply a billing credit note.`,
+        isPublished: true,
+      },
+      {
+        title: "SSO / SAML 2.0 Identity Provider Setup & X.509 Certificate Renewal",
+        slug: "sso-saml-setup-guide",
+        category: Category.QUESTION,
+        content: `To configure enterprise Single Sign-On (SSO) with Okta, Azure AD, or Google Workspace:
+1. Download the SAML Metadata XML from your Identity Provider.
+2. Paste the Identity Provider Issuer URL and Single Sign-On Service URL into Security Settings.
+3. Upload the current X.509 Certificate. When renewing certificates, ensure the new certificate is uploaded at least 24 hours prior to expiration to avoid agent lockouts.`,
+        isPublished: true,
+      },
+      {
+        title: "API Rate Limiting (HTTP 429) & Exponential Backoff Implementation",
+        slug: "api-rate-limiting-best-practices",
+        category: Category.FEATURE,
+        content: `BusyDesk enforces a tiered token bucket rate limiter:
+- Standard Tier: 100 requests per minute
+- Enterprise Tier: 1,000 requests per minute
+When receiving HTTP 429 Too Many Requests, inspect the 'Retry-After' response header and implement exponential backoff with randomized jitter (wait = base * 2^attempt + jitter).`,
+        isPublished: true,
+      },
+      {
+        title: "Custom CSV Export Scheduling & RFC-4180 Format Guide",
+        slug: "csv-export-guide",
+        category: Category.FEATURE,
+        content: `Bulk exports are streamed directly in RFC-4180 compliant CSV format:
+- All fields containing commas, quotes, or newlines are wrapped in double quotes.
+- Leading characters ('=', '+', '-', '@') are prepended with an apostrophe to prevent CSV formula injection in spreadsheet software.
+- Supervisors can trigger bulk exports from the Ticket Queue by clicking 'Export CSV'.`,
+        isPublished: true,
+      },
+    ],
+  });
+
+  console.log("Seed finished successfully! 6 users, 35+ tickets, and 5 Knowledge Base articles created.");
 }
 
 main()

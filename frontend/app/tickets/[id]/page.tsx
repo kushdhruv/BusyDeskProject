@@ -15,6 +15,7 @@ import { CustomerTicketDetail } from "@/components/customer/CustomerTicketDetail
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
+import { SmartAssistPanel } from "@/components/tickets/SmartAssistPanel";
 import {
   ArrowLeft,
   Clock,
@@ -34,6 +35,7 @@ import {
   ChevronRight,
   Paperclip,
   Loader2,
+  Star,
 } from "lucide-react";
 
 export default function TicketWorkspacePage() {
@@ -601,6 +603,54 @@ export default function TicketWorkspacePage() {
                   }
 
                   if (item.type === "AUDIT" && item.audit) {
+                    if (item.audit.eventType === "CSAT_SUBMITTED") {
+                      const rating = Number(item.audit.newValue?.rating || 0);
+                      const comment = item.audit.newValue?.comment;
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-4 rounded-md border border-amber-200 bg-amber-50/50 text-sm shadow-xs"
+                        >
+                          <div className="flex items-center justify-between pb-2 border-b border-amber-100 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex-shrink-0">
+                                <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                              </span>
+                              <span className="font-semibold text-xs text-slate-900">
+                                Customer Satisfaction Submitted
+                              </span>
+                              <div className="flex items-center gap-0.5 ml-1">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                  <Star
+                                    key={s}
+                                    className={`w-3.5 h-3.5 ${
+                                      s <= rating
+                                        ? "text-amber-500 fill-amber-500"
+                                        : "text-slate-200"
+                                    }`}
+                                  />
+                                ))}
+                                <span className="text-xs font-semibold text-slate-800 ml-1">
+                                  {rating}/5
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[11px] text-slate-400 tabular-nums">
+                              {new Date(item.createdAt).toLocaleDateString()}{" "}
+                              {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          {comment ? (
+                            <p className="text-xs text-slate-700 italic bg-white/80 p-2.5 rounded border border-amber-100">
+                              &ldquo;{comment}&rdquo;
+                            </p>
+                          ) : (
+                            <p className="text-xs text-slate-400 italic">No written comment provided.</p>
+                          )}
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={item.id} className="py-1.5 px-3 text-xs text-slate-500 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />
@@ -628,6 +678,25 @@ export default function TicketWorkspacePage() {
                   return null;
                 })}
               </div>
+
+              {/* AI Semantic Knowledge Copilot (Smart Assist) */}
+              {permissions?.canReply && (
+                <SmartAssistPanel
+                  ticketId={ticketId}
+                  onApplyDraft={(text: string) => {
+                    setReplyBody((prev) =>
+                      prev.trim().length > 0 ? `${prev}\n\n${text}` : text
+                    );
+                    setIsInternal(false);
+                  }}
+                  onApplyInternalDraft={(text: string) => {
+                    setReplyBody((prev) =>
+                      prev.trim().length > 0 ? `${prev}\n\n${text}` : text
+                    );
+                    setIsInternal(true);
+                  }}
+                />
+              )}
 
               {/* Reply Composer */}
               {permissions?.canReply && (
@@ -858,6 +927,8 @@ export default function TicketWorkspacePage() {
                           {item.audit?.eventType === "REPLY_ADDED" && "added a comment"}
                           {item.audit?.eventType === "TICKET_ARCHIVED" && "archived this ticket"}
                           {item.audit?.eventType === "TICKET_RESTORED" && "restored this ticket"}
+                          {item.audit?.eventType === "CSAT_SUBMITTED" &&
+                            `submitted customer review (${item.audit.newValue?.rating}/5 stars)`}
                         </span>
                       </div>
                       <span className="text-[11px] text-slate-400 tabular-nums">
@@ -872,6 +943,58 @@ export default function TicketWorkspacePage() {
 
         {/* Right Columns: Inspector & Lifecycle Controls */}
         <div className="lg:col-span-5 xl:col-span-4 space-y-5 lg:sticky lg:top-4">
+          {/* Customer Review Card (when CSAT submitted) */}
+          {ticketData.satisfaction && (
+            <div className="bg-white p-5 rounded-md border border-amber-200/80 shadow-xs space-y-3 bg-gradient-to-b from-amber-50/40 to-white">
+              <div className="flex items-center justify-between border-b border-amber-100 pb-2.5">
+                <div className="flex items-center gap-1.5">
+                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                  <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                    Customer Satisfaction
+                  </h3>
+                </div>
+                <span className="text-[11px] text-slate-400 tabular-nums">
+                  {new Date(ticketData.satisfaction.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-4 h-4 ${
+                          s <= ticketData.satisfaction.rating
+                            ? "text-amber-500 fill-amber-500"
+                            : "text-slate-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 bg-amber-50 text-amber-900 px-2 py-0.5 rounded border border-amber-200">
+                    {ticketData.satisfaction.rating} / 5 Stars
+                  </span>
+                </div>
+
+                {ticketData.satisfaction.comment ? (
+                  <div className="mt-2 text-xs text-slate-700 bg-amber-50/40 p-3 rounded border border-amber-200/60 italic leading-relaxed">
+                    &ldquo;{ticketData.satisfaction.comment}&rdquo;
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">No written feedback provided.</p>
+                )}
+
+                <div className="text-[11px] text-slate-500 pt-1 flex items-center justify-between border-t border-amber-100/60">
+                  <span className="truncate">By {ticketData.satisfaction.user?.name || ticketData.requesterName || "Customer"}</span>
+                  <span className="text-emerald-700 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 text-[10px] flex-shrink-0">
+                    Verified CSAT
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Metadata Inspector Card */}
           <div className="bg-white p-5 rounded-md border border-slate-200 shadow-xs space-y-4">
             <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2.5">

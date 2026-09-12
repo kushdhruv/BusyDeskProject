@@ -9,6 +9,8 @@ import { SessionUser } from "../models/types.model";
 import { TicketPolicy } from "../models/policies/ticket.policy";
 import { AuditController } from "./audit.controller";
 
+import { DEFAULT_TX_OPTIONS } from "../utils/constants.util";
+
 export interface SubmitCsatDTO {
   rating: number;
   comment?: string;
@@ -76,7 +78,7 @@ export class CsatController {
       );
 
       return satisfaction;
-    });
+    }, DEFAULT_TX_OPTIONS);
   }
 }
 

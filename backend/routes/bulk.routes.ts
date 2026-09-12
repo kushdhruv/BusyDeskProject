@@ -10,7 +10,7 @@ export async function bulkActionRoute(req: Request): Promise<NextResponse> {
     }
 
     const body = await req.json();
-    const { ticketIds, action, targetAssigneeId } = body;
+    const { ticketIds, action, targetAssigneeId, targetStatus, targetPriority } = body;
 
     if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0) {
       return NextResponse.json(
@@ -19,9 +19,10 @@ export async function bulkActionRoute(req: Request): Promise<NextResponse> {
       );
     }
 
-    if (action !== "REASSIGN" && action !== "CLOSE") {
+    const validActions = ["REASSIGN", "CLOSE", "CHANGE_STATUS", "CHANGE_PRIORITY", "ARCHIVE"];
+    if (!validActions.includes(action)) {
       return NextResponse.json(
-        { error: "action must be either 'REASSIGN' or 'CLOSE'." },
+        { error: `action must be one of: ${validActions.join(", ")}.` },
         { status: 400 }
       );
     }
@@ -29,7 +30,7 @@ export async function bulkActionRoute(req: Request): Promise<NextResponse> {
     const result = await BulkController.executeBulkAction(
       ticketIds,
       action,
-      { targetAssigneeId },
+      { targetAssigneeId, targetStatus, targetPriority },
       user
     );
 

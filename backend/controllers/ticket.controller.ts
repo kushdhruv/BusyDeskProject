@@ -455,6 +455,7 @@ export class TicketController {
             rating: true,
             comment: true,
             createdAt: true,
+            user: { select: { id: true, name: true, email: true } },
           },
         },
       },
@@ -603,6 +604,14 @@ export class TicketController {
           primaryAssignee: user.role === Role.CUSTOMER ? false : { select: { id: true, name: true, email: true } },
           collaborators: user.role === Role.CUSTOMER ? false : {
             include: { user: { select: { id: true, name: true, email: true } } },
+          },
+          satisfaction: {
+            select: {
+              id: true,
+              rating: true,
+              comment: true,
+              createdAt: true,
+            },
           },
           _count: { select: { replies: true } },
         },

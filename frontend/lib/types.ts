@@ -14,11 +14,16 @@ export type SessionUser = User;
 
 export interface CustomerSatisfaction {
   id: string;
-  ticketId: string;
-  userId: string;
+  ticketId?: string;
+  userId?: string;
   rating: number;
   comment?: string | null;
   createdAt: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
 }
 
 export interface Ticket {
@@ -119,6 +124,23 @@ export interface DashboardMetrics {
   averageCsatRating?: number;
   csatResponseCount?: number;
   csatRatingDistribution?: { rating: number; count: number }[];
+  recentReviews?: {
+    id: string;
+    rating: number;
+    comment: string | null;
+    createdAt: string;
+    ticket: {
+      id: string;
+      ticketNumber: number;
+      subject: string;
+      primaryAssignee?: { id: string; name: string } | null;
+    };
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  }[];
 }
 
 export interface CustomerDashboardMetrics {

@@ -76,15 +76,16 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  createdTickets      Ticket[]               @relation("TicketCreator")
-  requestedTickets    Ticket[]               @relation("TicketRequester")
-  assignedTickets     Ticket[]               @relation("TicketAssignee")
-  collaborations      TicketCollaborator[]   @relation("UserCollaborations")
-  addedCollaborations TicketCollaborator[]   @relation("AddedByCollaborations")
-  replies             Reply[]                @relation("UserReplies")
-  auditLogs           AuditLog[]             @relation("UserAuditLogs")
-  acknowledgedAlerts  SlaAlert[]             @relation("UserAlertAcks")
-  satisfactions       CustomerSatisfaction[] @relation("UserSatisfaction")
+  createdTickets         Ticket[]                 @relation("TicketCreator")
+  requestedTickets       Ticket[]                 @relation("TicketRequester")
+  assignedTickets        Ticket[]                 @relation("TicketAssignee")
+  collaborations         TicketCollaborator[]     @relation("UserCollaborations")
+  addedCollaborations    TicketCollaborator[]     @relation("AddedByCollaborations")
+  replies                Reply[]                  @relation("UserReplies")
+  auditLogs              AuditLog[]               @relation("UserAuditLogs")
+  acknowledgedAlerts     SlaAlert[]               @relation("UserAlertAcks")
+  satisfactions          CustomerSatisfaction[]   @relation("UserSatisfaction")
+  recommendationFeedback RecommendationFeedback[] @relation("UserRecommendationFeedback")
 
   @@map("users")
 }
@@ -115,14 +116,15 @@ model Ticket {
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
 
-  requester       User                  @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Restrict)
-  createdBy       User                  @relation("TicketCreator", fields: [createdById], references: [id])
-  primaryAssignee User?                 @relation("TicketAssignee", fields: [primaryAssigneeId], references: [id], onDelete: SetNull)
-  collaborators   TicketCollaborator[]
-  replies         Reply[]
-  auditLogs       AuditLog[]
-  slaAlerts       SlaAlert[]
-  satisfaction    CustomerSatisfaction?
+  requester              User                  @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  createdBy              User                  @relation("TicketCreator", fields: [createdById], references: [id])
+  primaryAssignee        User?                 @relation("TicketAssignee", fields: [primaryAssigneeId], references: [id], onDelete: SetNull)
+  collaborators          TicketCollaborator[]
+  replies                Reply[]
+  auditLogs              AuditLog[]
+  slaAlerts              SlaAlert[]
+  satisfaction           CustomerSatisfaction?
+  recommendationFeedback RecommendationFeedback[]
 
   @@index([requesterId, archivedAt, updatedAt(sort: Desc)])
   @@index([primaryAssigneeId, status, archivedAt])
@@ -220,4 +222,36 @@ model CustomerSatisfaction {
 
   @@index([rating])
   @@map("customer_satisfactions")
+}
+
+model KnowledgeArticle {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  content     String
+  category    Category @default(QUESTION)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category, isPublished])
+  @@map("kb_articles")
+}
+
+model RecommendationFeedback {
+  id              String   @id @default(cuid())
+  targetTicketId  String
+  sourceType      String   // "TICKET" | "KB"
+  sourceId        String
+  similarityScore Float
+  actionTaken     String   // "INSERTED" | "VIEWED" | "DISMISSED"
+  agentId         String?
+  createdAt       DateTime @default(now())
+
+  targetTicket    Ticket   @relation(fields: [targetTicketId], references: [id], onDelete: Cascade)
+  agent           User?    @relation("UserRecommendationFeedback", fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([targetTicketId])
+  @@index([agentId])
+  @@map("recommendation_feedback")
 }

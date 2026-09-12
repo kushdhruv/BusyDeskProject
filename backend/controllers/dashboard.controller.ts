@@ -80,6 +80,7 @@ export class DashboardController {
       sqlWeeklyTrend,
       csatAggregate,
       csatGroups,
+      rawRecentReviews,
     ] = await Promise.all([
       prisma.ticket.count({
         where: openTicketsWhere,
@@ -162,12 +163,65 @@ export class DashboardController {
         ORDER BY 1 ASC;
       `,
       prisma.customerSatisfaction.aggregate({
+        where: isAgent
+          ? {
+              ticket: {
+                OR: [
+                  { primaryAssigneeId: user.id },
+                  { collaborators: { some: { userId: user.id } } },
+                ],
+              },
+            }
+          : {},
         _avg: { rating: true },
         _count: { id: true },
       }),
       prisma.customerSatisfaction.groupBy({
+        where: isAgent
+          ? {
+              ticket: {
+                OR: [
+                  { primaryAssigneeId: user.id },
+                  { collaborators: { some: { userId: user.id } } },
+                ],
+              },
+            }
+          : {},
         by: ["rating"],
         _count: { id: true },
+      }),
+      prisma.customerSatisfaction.findMany({
+        where: isAgent
+          ? {
+              ticket: {
+                OR: [
+                  { primaryAssigneeId: user.id },
+                  { collaborators: { some: { userId: user.id } } },
+                ],
+              },
+            }
+          : {},
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          createdAt: true,
+          ticket: {
+            select: {
+              id: true,
+              ticketNumber: true,
+              subject: true,
+              primaryAssignee: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+          user: {
+            select: { id: true, name: true, email: true },
+          },
+        },
       }),
     ]);
 
@@ -228,6 +282,26 @@ export class DashboardController {
         ? Math.max(0, Math.min(100, Math.round(((activeTicketsTotal - breachedCount) / activeTicketsTotal) * 100)))
         : 100;
 
+    const recentReviews = rawRecentReviews.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      comment: r.comment,
+      createdAt: r.createdAt.toISOString(),
+      ticket: {
+        id: r.ticket.id,
+        ticketNumber: r.ticket.ticketNumber,
+        subject: r.ticket.subject,
+        primaryAssignee: r.ticket.primaryAssignee
+          ? { id: r.ticket.primaryAssignee.id, name: r.ticket.primaryAssignee.name }
+          : null,
+      },
+      user: {
+        id: r.user?.id || "",
+        name: r.user?.name || "Customer",
+        email: r.user?.email || "",
+      },
+    }));
+
     const result: DashboardMetrics = {
       openTicketsCount: openCount,
       pendingOnCustomerCount: pendingCount,
@@ -240,6 +314,7 @@ export class DashboardController {
       averageCsatRating,
       csatResponseCount,
       csatRatingDistribution,
+      recentReviews,
     };
 
     metricsCache.set(cacheKey, { data: result, timestamp: now.getTime() });

@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { PriorityBadge, CategoryBadge } from "@/components/PriorityBadge";
 import { SlaCountdown } from "@/components/SlaCountdown";
 import { BulkResultsModal } from "@/components/BulkResultsModal";
+import { ContextMenu } from "@/components/ContextMenu";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -26,6 +27,10 @@ import {
   RotateCcw,
   Inbox,
   UserCheck,
+  Star,
+  Tag,
+  ShieldAlert,
+  Archive,
 } from "lucide-react";
 
 interface TicketItem {
@@ -46,6 +51,7 @@ interface TicketItem {
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  satisfaction?: { id: string; rating: number; comment?: string | null; createdAt: string } | null;
   _count: { replies: number };
 }
 
@@ -82,6 +88,15 @@ function TicketsQueueContent() {
   const [bulkLoading, setBulkLoading] = useState<boolean>(false);
   const [bulkModalOpen, setBulkModalOpen] = useState<boolean>(false);
   const [bulkResultData, setBulkResultData] = useState<BulkActionResponse | null>(null);
+
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    ticketIds: string[];
+    singleTicketNumber?: number;
+    singleTicketSubject?: string;
+  } | null>(null);
 
   // Synchronize state whenever URL query params change (sidebar navigation or browser back/forward)
   useEffect(() => {
@@ -156,13 +171,18 @@ function TicketsQueueContent() {
     }
   };
 
-  // Execute Bulk Action
-  const handleExecuteBulk = async (actionType: "REASSIGN" | "CLOSE", targetAssignee?: string) => {
-    if (selectedIds.length === 0) return;
-    if (actionType === "REASSIGN" && !targetAssignee) {
-      alert("Please select an agent to reassign to.");
-      return;
-    }
+  // Execute Bulk or Context Action
+  const handleExecuteBulk = async (
+    actionType: "REASSIGN" | "CLOSE" | "CHANGE_STATUS" | "CHANGE_PRIORITY" | "ARCHIVE",
+    params?: {
+      targetAssigneeId?: string | null;
+      targetStatus?: Status;
+      targetPriority?: Priority;
+    },
+    customTicketIds?: string[]
+  ) => {
+    const ids = customTicketIds && customTicketIds.length > 0 ? customTicketIds : selectedIds;
+    if (ids.length === 0) return;
 
     setBulkLoading(true);
     try {
@@ -170,9 +190,9 @@ function TicketsQueueContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ticketIds: selectedIds,
+          ticketIds: ids,
           action: actionType,
-          targetAssigneeId: targetAssignee,
+          ...params,
         }),
       });
 
@@ -423,15 +443,16 @@ function TicketsQueueContent() {
 
           <div className="flex items-center gap-2">
             {isSupervisor ? (
-              <>
-                <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Reassign select + button */}
+                <div className="flex items-center gap-1">
                   <select
                     id="bulk-target-agent-select"
-                    className="text-xs py-1 px-2.5 rounded bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    className="text-xs py-1 px-2 rounded bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none"
                     defaultValue=""
                   >
                     <option value="" disabled>
-                      Assign to...
+                      Assign agent...
                     </option>
                     {agents.map((a) => (
                       <option key={a.id} value={a.id}>
@@ -445,19 +466,93 @@ function TicketsQueueContent() {
                     size="xs"
                     disabled={bulkLoading}
                     onClick={() => {
-                      const select = document.getElementById(
-                        "bulk-target-agent-select"
-                      ) as HTMLSelectElement;
+                      const select = document.getElementById("bulk-target-agent-select") as HTMLSelectElement;
                       if (select?.value) {
-                        handleExecuteBulk("REASSIGN", select.value);
+                        handleExecuteBulk("REASSIGN", { targetAssigneeId: select.value });
                       } else {
                         alert("Please select an agent first.");
                       }
                     }}
                   >
-                    Reassign
+                    Assign
                   </Button>
                 </div>
+
+                {/* Change Status select + button */}
+                <div className="flex items-center gap-1">
+                  <select
+                    id="bulk-target-status-select"
+                    className="text-xs py-1 px-2 rounded bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>
+                      Status...
+                    </option>
+                    <option value="OPEN">Open</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="CLOSED">Closed</option>
+                  </select>
+
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    disabled={bulkLoading}
+                    onClick={() => {
+                      const select = document.getElementById("bulk-target-status-select") as HTMLSelectElement;
+                      if (select?.value) {
+                        handleExecuteBulk("CHANGE_STATUS", { targetStatus: select.value as Status });
+                      } else {
+                        alert("Please select a status first.");
+                      }
+                    }}
+                  >
+                    Set
+                  </Button>
+                </div>
+
+                {/* Change Priority select + button */}
+                <div className="flex items-center gap-1">
+                  <select
+                    id="bulk-target-priority-select"
+                    className="text-xs py-1 px-2 rounded bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>
+                      Priority...
+                    </option>
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="URGENT">Urgent</option>
+                  </select>
+
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    disabled={bulkLoading}
+                    onClick={() => {
+                      const select = document.getElementById("bulk-target-priority-select") as HTMLSelectElement;
+                      if (select?.value) {
+                        handleExecuteBulk("CHANGE_PRIORITY", { targetPriority: select.value as Priority });
+                      } else {
+                        alert("Please select a priority first.");
+                      }
+                    }}
+                  >
+                    Set
+                  </Button>
+                </div>
+
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  disabled={bulkLoading}
+                  onClick={() => handleExecuteBulk("ARCHIVE")}
+                  icon={<Archive className="w-3 h-3 text-slate-400" />}
+                >
+                  Archive
+                </Button>
 
                 <Button
                   variant="danger"
@@ -465,12 +560,12 @@ function TicketsQueueContent() {
                   disabled={bulkLoading}
                   onClick={() => handleExecuteBulk("CLOSE")}
                 >
-                  Close Tickets
+                  Close
                 </Button>
-              </>
+              </div>
             ) : (
               <span className="text-slate-400 text-xs">
-                Bulk reassignments & closures require Supervisor role.
+                Bulk operations require Supervisor permissions.
               </span>
             )}
 
@@ -576,6 +671,20 @@ function TicketsQueueContent() {
                         isSelected ? "bg-slate-50/80" : ""
                       }`}
                       onClick={() => router.push(`/tickets/${t.id}`)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        const targetIds = selectedIds.includes(t.id) && selectedIds.length > 1
+                          ? selectedIds
+                          : [t.id];
+
+                        setContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          ticketIds: targetIds,
+                          singleTicketNumber: t.ticketNumber,
+                          singleTicketSubject: t.subject,
+                        });
+                      }}
                     >
                       {/* Checkbox */}
                       <td
@@ -601,7 +710,7 @@ function TicketsQueueContent() {
 
                       {/* Subject */}
                       <td className="py-2.5 px-3 max-w-xs">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-medium text-slate-900 truncate hover:underline">
                             {t.subject}
                           </span>
@@ -609,6 +718,15 @@ function TicketsQueueContent() {
                             <span className="text-[10px] text-slate-400 flex items-center gap-0.5 flex-shrink-0 tabular-nums">
                               <MessageSquare className="w-3 h-3" />
                               {t._count.replies}
+                            </span>
+                          )}
+                          {t.satisfaction && (
+                            <span
+                              className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 shrink-0"
+                              title={`Customer rating: ${t.satisfaction.rating}/5 stars${t.satisfaction.comment ? ` - "${t.satisfaction.comment}"` : ""}`}
+                            >
+                              <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                              <span>{t.satisfaction.rating}★</span>
                             </span>
                           )}
                         </div>
@@ -705,6 +823,38 @@ function TicketsQueueContent() {
         onClose={() => setBulkModalOpen(false)}
         data={bulkResultData}
       />
+
+      {/* Right-click Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          ticketIds={contextMenu.ticketIds}
+          singleTicketNumber={contextMenu.singleTicketNumber}
+          singleTicketSubject={contextMenu.singleTicketSubject}
+          isSupervisor={Boolean(isSupervisor)}
+          agents={agents}
+          onClose={() => setContextMenu(null)}
+          onViewDetails={(id) => router.push(`/tickets/${id}`)}
+          onCopyLink={(id) => {
+            if (typeof window !== "undefined") {
+              navigator.clipboard.writeText(`${window.location.origin}/tickets/${id}`);
+            }
+          }}
+          onAssign={(ids, agentId) => {
+            handleExecuteBulk("REASSIGN", { targetAssigneeId: agentId }, ids);
+          }}
+          onChangeStatus={(ids, st) => {
+            handleExecuteBulk("CHANGE_STATUS", { targetStatus: st }, ids);
+          }}
+          onChangePriority={(ids, pr) => {
+            handleExecuteBulk("CHANGE_PRIORITY", { targetPriority: pr }, ids);
+          }}
+          onArchive={(ids) => {
+            handleExecuteBulk("ARCHIVE", {}, ids);
+          }}
+        />
+      )}
     </div>
   );
 }

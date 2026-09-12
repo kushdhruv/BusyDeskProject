@@ -14,6 +14,7 @@ export * from "./export.routes";
 export * from "./dashboard.routes";
 export * from "./user.routes";
 export * from "./health.routes";
+export * from "./recommendation.routes";
 
 /**
  * Overview of all system routes, methods, access requirements, and descriptions.
@@ -52,6 +53,11 @@ export const API_ROUTE_REGISTRY = [
 
   // CSAT
   { method: "POST", path: "/api/tickets/[id]/csat", handler: "submitCsatRoute", authRequired: true, desc: "Submit customer satisfaction rating and comment" },
+
+  // AI & Semantic Knowledge Recommendations (Smart Assist)
+  { method: "GET", path: "/api/tickets/[id]/recommendations", handler: "getTicketRecommendationsRoute", authRequired: true, desc: "Retrieve semantic resolution recommendations for an active ticket" },
+  { method: "GET", path: "/api/kb/search", handler: "searchKnowledgeBaseRoute", authRequired: true, desc: "Search Knowledge Base articles" },
+  { method: "POST", path: "/api/recommendations/feedback", handler: "logRecommendationFeedbackRoute", authRequired: true, desc: "Log agent telemetry feedback on recommended solutions" },
 
   // Bulk & Export & Metrics
   { method: "POST", path: "/api/tickets/bulk", handler: "bulkActionRoute", authRequired: true, desc: "Execute bulk reassignment or bulk close" },
