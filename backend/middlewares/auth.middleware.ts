@@ -64,10 +64,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     // short-lived access tokens (15m) + refresh token rotation with centralized Redis revocation.
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { id: true, email: true, name: true, role: true },
+      select: { id: true, email: true, name: true, role: true, status: true },
     });
 
-    if (!user) return null;
+    if (!user || user.status !== "ACTIVE") return null;
 
     return {
       id: user.id,

@@ -1,4 +1,5 @@
 export type Role = "SUPERVISOR" | "AGENT" | "CUSTOMER";
+export type UserStatus = "PENDING_SETUP" | "ACTIVE" | "SUSPENDED";
 export type Status = "NEW" | "OPEN" | "PENDING" | "RESOLVED" | "CLOSED";
 export type Priority = "URGENT" | "HIGH" | "MEDIUM" | "LOW";
 export type Category = "BUG" | "BILLING" | "FEATURE" | "QUESTION";
@@ -8,6 +9,22 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  status?: UserStatus;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  status: UserStatus;
+  createdAt: string;
+  activeTicketCount: number;
+  pendingInvitation?: {
+    id: string;
+    expiresAt: string;
+    isExpired: boolean;
+  } | null;
 }
 
 export type SessionUser = User;

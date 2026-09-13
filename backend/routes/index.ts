@@ -13,6 +13,7 @@ export * from "./bulk.routes";
 export * from "./export.routes";
 export * from "./dashboard.routes";
 export * from "./user.routes";
+export * from "./agent.routes";
 export * from "./health.routes";
 export * from "./recommendation.routes";
 
@@ -64,6 +65,11 @@ export const API_ROUTE_REGISTRY = [
   { method: "GET", path: "/api/tickets/export", handler: "exportTicketsRoute", authRequired: true, desc: "Export filtered tickets to CSV" },
   { method: "GET", path: "/api/dashboard", handler: "getDashboardRoute", authRequired: true, desc: "Retrieve operational dashboard metrics" },
 
-  // Users
+  // Users & Staff
   { method: "GET", path: "/api/users", handler: "getUsersRoute", authRequired: true, desc: "List all users for assignment and collaboration" },
+  { method: "GET", path: "/api/agents", handler: "getTeamDirectoryRoute", authRequired: true, desc: "Retrieve internal staff team directory with workload metrics" },
+  { method: "POST", path: "/api/agents/invite", handler: "inviteAgentRoute", authRequired: true, desc: "Supervisor invites a new agent with 24-hour one-time token" },
+  { method: "POST", path: "/api/agents/[id]/resend-invite", handler: "resendInviteRoute", authRequired: true, desc: "Supervisor resends invitation with freshly rotated token" },
+  { method: "GET", path: "/api/auth/invitation", handler: "validateInvitationRoute", authRequired: false, desc: "Validate one-time invitation token without consuming it" },
+  { method: "POST", path: "/api/auth/setup-account", handler: "setupAccountRoute", authRequired: false, desc: "Consume invitation token, set password, and sign in" },
 ] as const;

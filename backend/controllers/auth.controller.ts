@@ -25,6 +25,14 @@ export class AuthController {
       throw new Error("Invalid email or password.");
     }
 
+    if (user.status === "PENDING_SETUP") {
+      throw new Error("Your account has not been set up yet. Please check your invitation email to create your password.");
+    }
+
+    if (user.status === "SUSPENDED") {
+      throw new Error("Your account has been suspended. Please contact your supervisor.");
+    }
+
     const isValid = await bcrypt.compare(password, user.passwordHash);
     if (!isValid) {
       throw new Error("Invalid email or password.");

@@ -17,6 +17,7 @@ import {
   Headphones,
   PanelLeftClose,
   X,
+  UserPlus,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -273,6 +274,21 @@ export function Sidebar({
                 </span>
               )}
             </Link>
+
+            {isSupervisor && (
+              <Link
+                href="/team"
+                prefetch={true}
+                onClick={handleNavClick}
+                title={collapsed ? "Team Management" : undefined}
+                className={navItemClass(pathname === "/team")}
+              >
+                <div className="flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                  {!collapsed && <span>Team Management</span>}
+                </div>
+              </Link>
+            )}
           </nav>
         </div>
 
