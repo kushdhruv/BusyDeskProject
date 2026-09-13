@@ -101,7 +101,7 @@ export function TopBar({
               placeholder="Search tickets (Ctrl+K)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-12 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors"
+              className="w-full pl-8 pr-12 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-sky-500 focus:border-sky-500 transition-colors"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:flex items-center gap-0.5 text-[10px] font-medium text-slate-400 bg-white border border-slate-200 px-1 py-0.2 rounded">
               <Command className="w-2.5 h-2.5" /> K
@@ -112,6 +112,10 @@ export function TopBar({
 
       {/* Right side Action Center */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        <span className="hidden lg:inline-flex items-center gap-1.5 text-[11px] font-medium text-sky-800 bg-sky-50 border border-sky-200/80 px-2.5 py-1 rounded-md">
+          <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+          BUSY Accounting Support
+        </span>
         {/* Email Digest Trigger Button */}
         {onOpenDigest && (
           <button

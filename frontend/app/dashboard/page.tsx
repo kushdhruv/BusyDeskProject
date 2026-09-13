@@ -106,13 +106,20 @@ export default function DashboardPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-base font-semibold text-slate-900 tracking-tight">
-            {isSupervisor ? "Supervisor Dashboard" : "Agent Dashboard"}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
+              {isSupervisor ? "Supervisor Operations" : "Agent Workspace"}
+            </span>
+            <span className="text-xs text-slate-400">·</span>
+            <span className="text-xs text-slate-500 font-medium">BUSYDesk</span>
+          </div>
+          <h1 className="text-base font-bold text-slate-900 tracking-tight mt-1">
+            {isSupervisor ? "Supervisor Operations Dashboard" : "My Work Console"}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {isSupervisor
-              ? "Department-wide queue throughput, agent capacity, and SLA compliance metrics."
-              : "Overview of your assigned workload and active customer requests."}
+              ? "Department-wide queue throughput, global agent capacity, and organizational SLA compliance."
+              : "Your active ticket assignments, individual SLA commitments, and customer satisfaction."}
           </p>
         </div>
 
@@ -121,9 +128,9 @@ export default function DashboardPage() {
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <span>This Week</span>
           </div>
-          <a href="/tickets">
+          <a href={isSupervisor ? "/tickets?scope=all" : "/tickets?scope=assigned_to_me"}>
             <Button variant="primary" size="sm" icon={<ArrowUpRight className="w-3.5 h-3.5" />}>
-              View Queue
+              {isSupervisor ? "Team Queue" : "My Tickets"}
             </Button>
           </a>
         </div>
@@ -133,12 +140,12 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Card 1: Open Tickets */}
         <a
-          href="/tickets?status=OPEN"
+          href={isSupervisor ? "/tickets?status=OPEN" : "/tickets?scope=assigned_to_me&status=OPEN"}
           className="bg-white p-4 rounded-md border border-slate-200 shadow-xs hover:border-slate-300 transition-colors block"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500">
-              {isSupervisor ? "Open Tickets" : "My Open Tickets"}
+              {isSupervisor ? "Global Open Tickets" : "My Open Tickets"}
             </span>
             <Inbox className="w-4 h-4 text-slate-400" />
           </div>
@@ -150,16 +157,20 @@ export default function DashboardPage() {
               Active
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Tickets in progress</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {isSupervisor ? "Tickets in progress across team" : "Your active assignments in progress"}
+          </p>
         </a>
 
         {/* Card 2: Pending on Customer */}
         <a
-          href="/tickets?scope=awaiting_customer"
+          href={isSupervisor ? "/tickets?scope=awaiting_customer" : "/tickets?scope=assigned_to_me&status=PENDING"}
           className="bg-white p-4 rounded-md border border-slate-200 shadow-xs hover:border-slate-300 transition-colors block"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Pending Customer</span>
+            <span className="text-xs font-medium text-slate-500">
+              {isSupervisor ? "Pending Customer" : "My Pending Tickets"}
+            </span>
             <Clock className="w-4 h-4 text-slate-400" />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
@@ -170,16 +181,20 @@ export default function DashboardPage() {
               Awaiting
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Waiting on customer response</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {isSupervisor ? "Waiting on customer response across queue" : "Your tickets waiting on customer reply"}
+          </p>
         </a>
 
         {/* Card 3: Resolved This Week */}
         <a
-          href="/tickets?status=RESOLVED"
+          href={isSupervisor ? "/tickets?status=RESOLVED" : "/tickets?scope=assigned_to_me&status=RESOLVED"}
           className="bg-white p-4 rounded-md border border-slate-200 shadow-xs hover:border-slate-300 transition-colors block"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Resolved This Week</span>
+            <span className="text-xs font-medium text-slate-500">
+              {isSupervisor ? "Resolved This Week" : "My Resolutions This Week"}
+            </span>
             <CheckCircle2 className="w-4 h-4 text-slate-400" />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
@@ -190,7 +205,9 @@ export default function DashboardPage() {
               Resolved
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Successfully closed</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {isSupervisor ? "Successfully closed across department" : "Tickets closed by you this week"}
+          </p>
         </a>
 
         {/* Card 4: Breaching SLA */}
@@ -199,7 +216,9 @@ export default function DashboardPage() {
           className="bg-white p-4 rounded-md border border-slate-200 shadow-xs hover:border-slate-300 transition-colors block"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">SLA Breaches</span>
+            <span className="text-xs font-medium text-slate-500">
+              {isSupervisor ? "SLA Breaches" : "My SLA Breaches"}
+            </span>
             <AlertTriangle className="w-4 h-4 text-rose-500" />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
@@ -216,7 +235,9 @@ export default function DashboardPage() {
               {metrics.breachingSlaCount > 0 ? "Action required" : "Healthy"}
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Overdue response commitments</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {isSupervisor ? "Overdue response commitments across department" : "Overdue commitments on your tickets"}
+          </p>
         </a>
       </div>
 
@@ -289,7 +310,9 @@ export default function DashboardPage() {
         {/* Status Distribution */}
         <div className="lg:col-span-6 bg-white p-4 rounded-md border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Queue by Status</h2>
+            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+              {isSupervisor ? "Global Queue by Status" : "My Tickets by Status"}
+            </h2>
             <span className="text-xs text-slate-500 tabular-nums font-medium">{totalTicketsCount} total</span>
           </div>
 
@@ -352,33 +375,100 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Tickets by Agent Horizontal Bars */}
+        {/* Tickets by Agent Horizontal Bars / Agent Personal Panel */}
         <div className="lg:col-span-6 bg-white p-4 rounded-md border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Agent Workload</h2>
-            <span className="text-xs text-slate-500">Active tickets</span>
+            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+              {isSupervisor ? "Agent Workload (Team)" : "My Assigned Workload"}
+            </h2>
+            <span className="text-xs text-slate-500">
+              {isSupervisor ? "Active tickets" : "My Active Queue"}
+            </span>
           </div>
 
-          <div className="space-y-3 pt-1">
-            {metrics.agentBreakdown.map((agent: any) => {
-              const widthPct = Math.max(6, Math.round((agent.activeTicketsCount / maxAgentTickets) * 100));
+          {isSupervisor ? (
+            <div className="space-y-3 pt-1">
+              {metrics.agentBreakdown.map((agent: any) => {
+                const widthPct = Math.max(6, Math.round((agent.activeTicketsCount / maxAgentTickets) * 100));
 
-              return (
-                <div key={agent.agentId} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-slate-800">{agent.agentName}</span>
-                    <span className="font-mono font-medium text-slate-900 tabular-nums">{agent.activeTicketsCount}</span>
+                return (
+                  <div key={agent.agentId} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-slate-800">{agent.agentName}</span>
+                      <span className="font-mono font-medium text-slate-900 tabular-nums">{agent.activeTicketsCount}</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded h-2 overflow-hidden">
+                      <div
+                        style={{ width: `${widthPct}%` }}
+                        className="bg-slate-800 h-2 rounded transition-all duration-300"
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-100 rounded h-2 overflow-hidden">
-                    <div
-                      style={{ width: `${widthPct}%` }}
-                      className="bg-slate-800 h-2 rounded transition-all duration-300"
-                    />
-                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-3 pt-1">
+              <div className="p-3 bg-sky-50/60 border border-sky-200 rounded-md flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-sky-950">{user.name}</div>
+                  <div className="text-[11px] text-sky-700">{user.email} · Dedicated Agent</div>
                 </div>
-              );
-            })}
-          </div>
+                <div className="text-right">
+                  <div className="text-xl font-bold text-sky-900 tabular-nums">
+                    {metrics.agentBreakdown?.[0]?.activeTicketsCount ?? metrics.openTicketsCount}
+                  </div>
+                  <div className="text-[10px] text-sky-600 font-medium">Assigned Active</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+                <a
+                  href="/tickets?scope=assigned_to_me"
+                  className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors block text-slate-800 font-medium"
+                >
+                  <div className="text-slate-500 text-[10px] uppercase font-semibold">Assigned Queue</div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span>My Tickets</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+                </a>
+
+                <a
+                  href="/tickets?scope=collaborating"
+                  className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors block text-slate-800 font-medium"
+                >
+                  <div className="text-slate-500 text-[10px] uppercase font-semibold">Collaborations</div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span>Collaborating</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+                </a>
+
+                <a
+                  href="/alerts"
+                  className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors block text-slate-800 font-medium"
+                >
+                  <div className="text-slate-500 text-[10px] uppercase font-semibold">SLA Alerts</div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span>Due Soon & Breached</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+                </a>
+
+                <a
+                  href="/reviews"
+                  className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors block text-slate-800 font-medium"
+                >
+                  <div className="text-slate-500 text-[10px] uppercase font-semibold">Customer CSAT</div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span>My Reviews</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

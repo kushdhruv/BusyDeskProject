@@ -99,6 +99,10 @@ export interface Ticket {
   requesterId: string;
   requesterName?: string;
   requesterEmail?: string;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentSize?: number | null;
+  attachmentType?: string | null;
   primaryAssigneeId?: string | null;
   primaryAssignee?: User | null;
   createdById?: string | null;

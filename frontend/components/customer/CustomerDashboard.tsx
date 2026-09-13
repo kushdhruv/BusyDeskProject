@@ -7,6 +7,7 @@ import { ApiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { StatusBadge } from "@/components/StatusBadge";
+import { CategoryBadge } from "@/components/PriorityBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CustomerDashboardSkeleton } from "@/components/ui/Skeletons";
 import {
@@ -70,12 +71,16 @@ export function CustomerDashboard({ user }: CustomerDashboardProps) {
   return (
     <div className="space-y-5">
       {/* Welcome Header */}
-      <div className="bg-white rounded-md p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-            Customer Help Center
-          </span>
-          <h1 className="text-lg font-semibold text-slate-900 tracking-tight mt-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
+              BUSY Infotech Help Center
+            </span>
+            <span className="text-xs text-slate-400">·</span>
+            <span className="text-xs text-slate-500 font-medium">Accounting & GST Support</span>
+          </div>
+          <h1 className="text-lg font-bold text-slate-900 tracking-tight mt-1">
             Welcome back, {user.name}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -240,7 +245,7 @@ export function CustomerDashboard({ user }: CustomerDashboardProps) {
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-slate-500">#{t.ticketNumber}</span>
                     <StatusBadge status={t.status} size="sm" />
-                    <span className="text-[11px] text-slate-400 font-medium">{t.category}</span>
+                    <CategoryBadge category={t.category} />
                   </div>
                   <h3 className="font-medium text-slate-900 truncate">{t.subject}</h3>
                   <div className="flex items-center gap-3 text-[11px] text-slate-400">

@@ -147,6 +147,11 @@ model Ticket {
   createdById                String
   primaryAssigneeId          String?
   
+  attachmentUrl              String?
+  attachmentName             String?
+  attachmentSize             Int?
+  attachmentType             String?
+  
   slaTargetMinutes           Int
   slaDueAt                   DateTime?
   slaPausedAt                DateTime?

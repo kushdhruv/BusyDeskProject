@@ -20,6 +20,10 @@ export interface CreateTicketDTO {
   customerUrgency?: "LOW" | "NORMAL" | "HIGH";
   category?: string;
   primaryAssigneeId?: string;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentSize?: number | null;
+  attachmentType?: string | null;
 }
 
 export interface BulkOperationDTO {

@@ -175,16 +175,16 @@ export function Sidebar({
           }}
           title={collapsed && !isMobile ? "Click to expand sidebar" : "SupportDesk"}
         >
-          <div className="w-7 h-7 rounded-md bg-slate-900 flex items-center justify-center text-white flex-shrink-0 shadow-2xs hover:bg-slate-800 transition-colors">
+          <div className="w-7 h-7 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 flex-shrink-0 shadow-2xs hover:bg-slate-800 transition-colors">
             <Headphones className="w-3.5 h-3.5" />
           </div>
           {(isMobile || !collapsed) && (
             <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-xs text-slate-900 tracking-tight leading-tight">
-                SupportDesk
+              <span className="font-bold text-xs text-slate-900 tracking-tight leading-tight">
+                BUSY<span className="text-sky-600">Desk</span>
               </span>
               <span className="text-[10px] text-slate-400 font-medium truncate leading-tight">
-                {isSupervisor ? "Supervisor" : "Agent"}
+                BUSY Infotech · {isSupervisor ? "Supervisor" : "Agent"}
               </span>
             </div>
           )}

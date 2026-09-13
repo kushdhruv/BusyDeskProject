@@ -23,6 +23,10 @@ export interface CreateTicketDTO {
   customerUrgency?: "LOW" | "NORMAL" | "HIGH";
   category?: Category;
   primaryAssigneeId?: string | null;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentSize?: number | null;
+  attachmentType?: string | null;
 }
 
 export interface GetQueueParams {
@@ -114,6 +118,10 @@ export class TicketController {
           status: Status.NEW,
           createdById: actor.id,
           primaryAssigneeId: primaryAssigneeId || null,
+          attachmentUrl: data.attachmentUrl || null,
+          attachmentName: data.attachmentName || null,
+          attachmentSize: data.attachmentSize || null,
+          attachmentType: data.attachmentType || null,
           slaTargetMinutes,
           slaDueAt,
           slaCycle: 1,

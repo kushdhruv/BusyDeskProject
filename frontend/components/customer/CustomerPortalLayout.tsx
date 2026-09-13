@@ -34,13 +34,20 @@ export function CustomerPortalLayout({
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           {/* Logo & Portal Branding */}
           <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-md bg-slate-900 text-white flex items-center justify-center">
-                <Headphones className="w-3.5 h-3.5" />
+            <Link href="/dashboard" className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-sky-400 border border-slate-800 flex items-center justify-center shadow-xs">
+                <Headphones className="w-4 h-4" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-xs text-slate-900 tracking-tight">SupportDesk</span>
-                <span className="text-[10px] font-medium text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.2 rounded">
+                <div className="flex flex-col">
+                  <span className="font-bold text-xs text-slate-900 tracking-tight leading-none">
+                    BUSY<span className="text-sky-600">Desk</span>
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-medium tracking-wide mt-0.5">
+                    BUSY INFOTECH
+                  </span>
+                </div>
+                <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full">
                   Customer Portal
                 </span>
               </div>
@@ -98,8 +105,11 @@ export function CustomerPortalLayout({
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-4 mt-auto">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
-          <p>© 2026 SupportDesk Customer Help Center</p>
-          <p>Strict server-side ticket isolation & SLA tracking</p>
+          <p>© 2026 BUSY Infotech Pvt. Ltd. · Business Accounting Software Help Center</p>
+          <p className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            <span>Enterprise SLA & GST Compliance Guaranteed</span>
+          </p>
         </div>
       </footer>
     </div>

@@ -587,6 +587,14 @@ export default function TicketWorkspacePage() {
                 <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
                   {ticketData.description}
                 </div>
+                {ticketData.attachmentUrl && (
+                  <AttachmentDisplay
+                    url={ticketData.attachmentUrl}
+                    name={ticketData.attachmentName || "Attachment"}
+                    size={ticketData.attachmentSize}
+                    type={ticketData.attachmentType}
+                  />
+                )}
               </div>
 
               {/* Timeline Messages & Events */}

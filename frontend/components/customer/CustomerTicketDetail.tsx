@@ -355,6 +355,14 @@ export function CustomerTicketDetail({
           <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
             {ticket.description}
           </p>
+          {ticket.attachmentUrl && (
+            <AttachmentDisplay
+              url={ticket.attachmentUrl}
+              name={ticket.attachmentName || "Attachment"}
+              size={ticket.attachmentSize}
+              type={ticket.attachmentType}
+            />
+          )}
         </div>
 
         {/* Chronological Replies Feed */}

@@ -132,36 +132,77 @@ export class DashboardController {
       prisma.ticket.groupBy({
         by: ["status"],
         _count: { id: true },
-        where: { archivedAt: null },
+        where: {
+          archivedAt: null,
+          ...(isAgent
+            ? {
+                OR: [
+                  { primaryAssigneeId: user.id },
+                  { collaborators: { some: { userId: user.id } } },
+                ],
+              }
+            : {}),
+        },
       }),
-      // Set-based Agent Workload: eliminates loading nested ticket ID relations into Node heap
-      prisma.$queryRaw<
-        Array<{ agentId: string; agentName: string; agentEmail: string; activeTicketsCount: number }>
-      >`
-        SELECT 
-          u.id AS "agentId", 
-          u.name AS "agentName", 
-          u.email AS "agentEmail", 
-          COUNT(t.id)::int AS "activeTicketsCount"
-        FROM users u
-        LEFT JOIN tickets t ON t."primaryAssigneeId" = u.id
-          AND t."archivedAt" IS NULL
-          AND t.status IN ('NEW', 'OPEN', 'PENDING')
-        WHERE u.role = 'AGENT'
-        GROUP BY u.id, u.name, u.email
-        ORDER BY "activeTicketsCount" DESC;
-      `,
-      // Set-based 8-Week Trend: date_trunc('week', ...) executed directly in PostgreSQL
-      prisma.$queryRaw<Array<{ week_start: string; count: number }>>`
-        SELECT 
-          to_char(date_trunc('week', "resolvedAt"), 'YYYY-MM-DD') AS week_start,
-          COUNT(*)::int AS count
-        FROM tickets
-        WHERE "archivedAt" IS NULL
-          AND "resolvedAt" >= ${eightWeeksAgo}
-        GROUP BY 1
-        ORDER BY 1 ASC;
-      `,
+      // Set-based Agent Workload: scoped to current agent if AGENT role, or all agents if SUPERVISOR
+      isAgent
+        ? prisma.$queryRaw<
+            Array<{ agentId: string; agentName: string; agentEmail: string; activeTicketsCount: number }>
+          >`
+            SELECT 
+              u.id AS "agentId", 
+              u.name AS "agentName", 
+              u.email AS "agentEmail", 
+              COUNT(t.id)::int AS "activeTicketsCount"
+            FROM users u
+            LEFT JOIN tickets t ON t."primaryAssigneeId" = u.id
+              AND t."archivedAt" IS NULL
+              AND t.status IN ('NEW', 'OPEN', 'PENDING')
+            WHERE u.id = ${user.id}
+            GROUP BY u.id, u.name, u.email;
+          `
+        : prisma.$queryRaw<
+            Array<{ agentId: string; agentName: string; agentEmail: string; activeTicketsCount: number }>
+          >`
+            SELECT 
+              u.id AS "agentId", 
+              u.name AS "agentName", 
+              u.email AS "agentEmail", 
+              COUNT(t.id)::int AS "activeTicketsCount"
+            FROM users u
+            LEFT JOIN tickets t ON t."primaryAssigneeId" = u.id
+              AND t."archivedAt" IS NULL
+              AND t.status IN ('NEW', 'OPEN', 'PENDING')
+            WHERE u.role = 'AGENT'
+            GROUP BY u.id, u.name, u.email
+            ORDER BY "activeTicketsCount" DESC;
+          `,
+      // Set-based 8-Week Trend: scoped to current agent if AGENT role
+      isAgent
+        ? prisma.$queryRaw<Array<{ week_start: string; count: number }>>`
+            SELECT 
+              to_char(date_trunc('week', "resolvedAt"), 'YYYY-MM-DD') AS week_start,
+              COUNT(*)::int AS count
+            FROM tickets
+            WHERE "archivedAt" IS NULL
+              AND "resolvedAt" >= ${eightWeeksAgo}
+              AND (
+                "primaryAssigneeId" = ${user.id} 
+                OR id IN (SELECT "ticketId" FROM ticket_collaborators WHERE "userId" = ${user.id})
+              )
+            GROUP BY 1
+            ORDER BY 1 ASC;
+          `
+        : prisma.$queryRaw<Array<{ week_start: string; count: number }>>`
+            SELECT 
+              to_char(date_trunc('week', "resolvedAt"), 'YYYY-MM-DD') AS week_start,
+              COUNT(*)::int AS count
+            FROM tickets
+            WHERE "archivedAt" IS NULL
+              AND "resolvedAt" >= ${eightWeeksAgo}
+            GROUP BY 1
+            ORDER BY 1 ASC;
+          `,
       prisma.customerSatisfaction.aggregate({
         where: isAgent
           ? {
