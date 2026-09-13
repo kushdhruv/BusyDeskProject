@@ -5,11 +5,14 @@
 
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/middlewares/auth.middleware";
+import { Role } from "@prisma/client";
 import { ReviewsController, AgentSortOption } from "@/controllers/reviews.controller";
 
 /**
  * GET /api/reviews
- * Fetch paginated customer satisfaction reviews with optional filters.
+ * Fetch paginated customer satisfaction reviews with role-based scoping:
+ * - Supervisors can view all reviews or filter by any agent.
+ * - Agents can only view their own reviews.
  */
 export async function getAllReviewsRoute(req: Request): Promise<NextResponse> {
   try {
@@ -28,13 +31,16 @@ export async function getAllReviewsRoute(req: Request): Promise<NextResponse> {
     const offsetStr = url.searchParams.get("offset");
     const offset = offsetStr ? parseInt(offsetStr, 10) : 0;
 
-    const data = await ReviewsController.getAllReviews({
-      agentId,
-      rating,
-      search,
-      limit,
-      offset,
-    });
+    const data = await ReviewsController.getAllReviews(
+      {
+        agentId,
+        rating,
+        search,
+        limit,
+        offset,
+      },
+      sessionUser
+    );
 
     return NextResponse.json(data);
   } catch (error: any) {
@@ -47,7 +53,8 @@ export async function getAllReviewsRoute(req: Request): Promise<NextResponse> {
 
 /**
  * GET /api/reviews/agents
- * Fetch agent CSAT performance scorecards sorted by highest/lowest ratings, reviews, etc.
+ * Fetch team-wide agent CSAT performance scorecards sorted by highest/lowest ratings.
+ * STRICTLY restricted to supervisors.
  */
 export async function getAgentPerformanceRoute(req: Request): Promise<NextResponse> {
   try {
@@ -56,10 +63,17 @@ export async function getAgentPerformanceRoute(req: Request): Promise<NextRespon
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (sessionUser.role !== Role.SUPERVISOR) {
+      return NextResponse.json(
+        { error: "Forbidden: Only supervisors can access team-wide agent performance rankings." },
+        { status: 403 }
+      );
+    }
+
     const url = new URL(req.url);
     const sortBy = (url.searchParams.get("sortBy") as AgentSortOption) || "rating_desc";
 
-    const agents = await ReviewsController.getAgentPerformanceSummary(sortBy);
+    const agents = await ReviewsController.getAgentPerformanceSummary(sortBy, sessionUser);
     return NextResponse.json({ agents });
   } catch (error: any) {
     return NextResponse.json(
@@ -68,3 +82,4 @@ export async function getAgentPerformanceRoute(req: Request): Promise<NextRespon
     );
   }
 }
+

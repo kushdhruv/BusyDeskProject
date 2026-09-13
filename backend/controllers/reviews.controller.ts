@@ -5,6 +5,7 @@
 
 import { Role, Status } from "@prisma/client";
 import { prisma } from "../db/prisma.db";
+import { SessionUser } from "../models/types.model";
 
 export interface ReviewFilters {
   agentId?: string;
@@ -23,21 +24,46 @@ export type AgentSortOption =
 
 export class ReviewsController {
   /**
-   * Retrieves all customer reviews with support for filtering by agent, star rating, and text search.
+   * Retrieves customer reviews with role-based scoping:
+   * - Supervisor: Can view all reviews or filter by any agentId.
+   * - Agent: Strictly restricted to their own reviews (where ticket.primaryAssigneeId === user.id).
+   * - Customer: Strictly restricted to reviews they submitted (where userId === user.id).
    */
-  static async getAllReviews(filters: ReviewFilters = {}) {
-    const { agentId, rating, search, limit = 50, offset = 0 } = filters;
+  static async getAllReviews(filters: ReviewFilters = {}, sessionUser?: SessionUser) {
+    const { rating, search, limit = 50, offset = 0 } = filters;
+    let agentId = filters.agentId;
 
     const whereClause: any = {};
+    const summaryWhere: any = {};
+
+    // Role-based privacy enforcement
+    if (sessionUser?.role === Role.AGENT) {
+      // Support agents can ONLY view reviews on tickets where they are primary assignee
+      agentId = sessionUser.id;
+      whereClause.ticket = {
+        primaryAssigneeId: sessionUser.id,
+      };
+      summaryWhere.ticket = {
+        primaryAssigneeId: sessionUser.id,
+      };
+    } else if (sessionUser?.role === Role.CUSTOMER) {
+      // Customers can only view reviews they submitted
+      whereClause.userId = sessionUser.id;
+      summaryWhere.userId = sessionUser.id;
+    } else {
+      // Supervisor or system caller: can filter by specific agentId if provided
+      if (agentId && agentId !== "all") {
+        whereClause.ticket = {
+          primaryAssigneeId: agentId,
+        };
+        summaryWhere.ticket = {
+          primaryAssigneeId: agentId,
+        };
+      }
+    }
 
     if (rating && rating >= 1 && rating <= 5) {
       whereClause.rating = rating;
-    }
-
-    if (agentId && agentId !== "all") {
-      whereClause.ticket = {
-        primaryAssigneeId: agentId,
-      };
     }
 
     if (search && search.trim().length > 0) {
@@ -79,8 +105,9 @@ export class ReviewsController {
       prisma.customerSatisfaction.count({ where: whereClause }),
     ]);
 
-    // Global summary metrics
+    // Scoped summary metrics
     const allRatings = await prisma.customerSatisfaction.findMany({
+      where: summaryWhere,
       select: { rating: true },
     });
 
@@ -121,10 +148,16 @@ export class ReviewsController {
   }
 
   /**
-   * Generates a performance scorecard for every support agent with sorting capabilities
-   * (e.g. lowest rating first for coaching vs highest rating first).
+   * Generates a performance scorecard for every support agent with sorting capabilities.
+   * Strictly restricted to SUPERVISOR role.
    */
-  static async getAgentPerformanceSummary(sortBy: AgentSortOption = "rating_desc") {
+  static async getAgentPerformanceSummary(
+    sortBy: AgentSortOption = "rating_desc",
+    sessionUser?: SessionUser
+  ) {
+    if (sessionUser && sessionUser.role !== Role.SUPERVISOR) {
+      throw new Error("Forbidden: Only supervisors can view all agents' performance rankings.");
+    }
     // 1. Fetch internal support agents & supervisors
     const agents = await prisma.user.findMany({
       where: { role: { in: [Role.SUPERVISOR, Role.AGENT] } },

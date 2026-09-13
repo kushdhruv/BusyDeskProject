@@ -304,7 +304,7 @@ export function Sidebar({
             >
               <div className="flex items-center gap-2">
                 <Star className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                {!collapsed && <span>Customer Reviews</span>}
+                {!collapsed && <span>{isSupervisor ? "Customer Reviews" : "My Reviews"}</span>}
               </div>
             </Link>
 

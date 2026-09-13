@@ -59,4 +59,38 @@ describe("ReviewsController & Agent Performance Analytics", () => {
       }
     }
   });
+
+  it("should strictly scope reviews to the logged-in agent only", async () => {
+    // Find an agent with at least 1 review
+    const all = await ReviewsController.getAllReviews({ limit: 50 });
+    const reviewWithAssignee = all.reviews.find((r) => r.ticket.primaryAssignee?.id);
+    if (reviewWithAssignee && reviewWithAssignee.ticket.primaryAssignee) {
+      const targetAgent = reviewWithAssignee.ticket.primaryAssignee;
+      const agentSession = {
+        id: targetAgent.id,
+        name: targetAgent.name,
+        email: targetAgent.email,
+        role: "AGENT" as const,
+      };
+
+      const agentData = await ReviewsController.getAllReviews({}, agentSession);
+      for (const rev of agentData.reviews) {
+        expect(rev.ticket.primaryAssignee?.id).toBe(targetAgent.id);
+      }
+    }
+  });
+
+  it("should reject non-supervisors from accessing team-wide agent rankings", async () => {
+    const agentSession = {
+      id: "some-agent-id",
+      name: "Agent Test",
+      email: "agent@busy.com",
+      role: "AGENT" as const,
+    };
+
+    await expect(
+      ReviewsController.getAgentPerformanceSummary("rating_desc", agentSession)
+    ).rejects.toThrow("Forbidden: Only supervisors can view all agents' performance rankings.");
+  });
 });
+

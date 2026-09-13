@@ -501,21 +501,23 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
             <div>
               <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
-                Recent Customer Reviews
+                {isSupervisor ? "Recent Customer Reviews" : "My Recent Customer Reviews"}
               </h2>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Latest customer feedback and satisfaction ratings
+                {isSupervisor
+                  ? "Latest customer feedback and satisfaction ratings team-wide"
+                  : "Latest customer feedback and satisfaction ratings on your assigned tickets"}
               </p>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-slate-500 tabular-nums font-medium hidden sm:inline">
-                {metrics.recentReviews.length} latest reviews
+                {metrics.recentReviews.length} {isSupervisor ? "latest reviews" : "my reviews"}
               </span>
               <a
                 href="/reviews"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-slate-900 hover:text-blue-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md border border-slate-200 transition-colors"
               >
-                <span>View All Reviews</span>
+                <span>{isSupervisor ? "View All Reviews" : "View My Reviews"}</span>
                 <ArrowUpRight className="w-3.5 h-3.5 text-slate-500" />
               </a>
             </div>
