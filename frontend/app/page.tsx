@@ -8,16 +8,10 @@ import { Button } from "@/components/ui/Button";
 import {
   Headphones,
   ArrowRight,
-  Shield,
   Clock,
-  CheckCircle2,
-  AlertTriangle,
   Search,
   FileText,
-  User,
-  Zap,
-  Lock,
-  ExternalLink,
+  CheckCircle2,
 } from "lucide-react";
 
 interface TriageTier {
@@ -107,33 +101,27 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
       {/* Top Utility Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+      <header className="bg-white border-b border-slate-200/80 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           {/* Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 shadow-2xs">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-7 h-7 rounded-md bg-slate-900 text-white flex items-center justify-center shadow-xs group-hover:bg-slate-800 transition-colors">
               <Headphones className="w-3.5 h-3.5" />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-slate-900">
-                BUSY<span className="text-sky-600">Desk</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-sm tracking-tight text-slate-900">
+                BUSYDesk
               </span>
               <span className="text-slate-300 font-normal">/</span>
-              <span className="text-xs font-medium text-slate-500">Support</span>
+              <span className="text-xs text-slate-500 font-medium">Support</span>
             </div>
-          </div>
+          </Link>
 
-          {/* Operational Status & Auth Links */}
-          <div className="flex items-center gap-4 text-xs">
-            {/* Live Operational Status */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-slate-600 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>All Systems Operational</span>
-            </div>
-
+          {/* Auth Actions */}
+          <div className="flex items-center gap-3 text-xs">
             {user ? (
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500 hidden md:inline">
+              <div className="flex items-center gap-3">
+                <span className="text-slate-500 hidden sm:inline">
                   Signed in as <strong className="text-slate-800 font-medium">{user.name}</strong>
                 </span>
                 <Link href={user.role === "CUSTOMER" ? "/dashboard" : "/tickets"}>
@@ -146,7 +134,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 <Link
                   href="/login"
-                  className="text-slate-600 hover:text-slate-900 font-medium px-2 py-1 transition-colors"
+                  className="text-slate-600 hover:text-slate-900 font-medium px-2.5 py-1 transition-colors"
                 >
                   Sign In
                 </Link>
@@ -161,14 +149,13 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Main Container */}
+      {/* Main Content */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-16">
         {/* Core Hero Section */}
-        <section className="space-y-6 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-slate-100 border border-slate-200 text-[11px] font-semibold uppercase tracking-wider text-slate-700">
-            <Shield className="w-3 h-3 text-slate-600" />
-            <span>BUSY Infotech Help Center</span>
-          </div>
+        <section className="space-y-5 max-w-3xl">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            BUSY Infotech Support & Triage
+          </p>
 
           <div className="space-y-3">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-slate-900 leading-[1.15]">
@@ -208,24 +195,24 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* The Signature Detail: Interactive Live SLA & Urgency Response Simulator */}
-        <section className="bg-white rounded-lg border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
+        {/* The Signature Detail: Interactive Live SLA & Response Simulator */}
+        <section className="bg-white rounded-lg border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
                 Live Response Commitment
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Select the issue category below to preview your guaranteed resolution SLA window.
+                Select an issue category to view our guaranteed resolution SLA window.
               </p>
             </div>
             <span className="text-[11px] font-mono text-slate-400">
-              Response Clock Guaranteed by Contract
+              Contract-Guaranteed SLA
             </span>
           </div>
 
-          {/* Triage Tier Selector Pills */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          {/* Triage Tier Selector */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
             {TRIAGE_TIERS.map((tier) => {
               const isSelected = selectedTier.id === tier.id;
               return (
@@ -233,10 +220,10 @@ export default function HomePage() {
                   key={tier.id}
                   type="button"
                   onClick={() => setSelectedTier(tier)}
-                  className={`p-3 rounded-md border text-left transition-colors cursor-pointer flex flex-col justify-between ${
+                  className={`p-3.5 rounded-lg border text-left transition-colors cursor-pointer flex flex-col justify-between ${
                     isSelected
                       ? "bg-slate-900 text-white border-slate-900 shadow-xs"
-                      : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                      : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/70"
                   }`}
                 >
                   <div className="space-y-1">
@@ -249,17 +236,17 @@ export default function HomePage() {
                       {tier.shortDesc}
                     </p>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-slate-200/40 flex items-center justify-between">
+                  <div className="mt-3.5 pt-2 border-t border-slate-200/30 flex items-center justify-between">
                     <span
                       className={`text-[10px] font-mono uppercase ${
-                        isSelected ? "text-slate-300" : "text-slate-400"
+                        isSelected ? "text-slate-400" : "text-slate-400"
                       }`}
                     >
-                      Max SLA
+                      Target SLA
                     </span>
                     <span
-                      className={`text-xs font-bold tabular-nums ${
-                        isSelected ? "text-sky-300" : "text-slate-900"
+                      className={`text-xs font-semibold font-mono tabular-nums ${
+                        isSelected ? "text-white" : "text-slate-900"
                       }`}
                     >
                       {tier.slaCommit}
@@ -271,15 +258,15 @@ export default function HomePage() {
           </div>
 
           {/* Active Tier Details Breakdown Card */}
-          <div className="bg-slate-50/80 rounded-md border border-slate-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 text-xs">
+          <div className="bg-slate-50/70 rounded-lg border border-slate-200/80 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 text-xs">
             <div className="space-y-2 max-w-xl">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold text-slate-900 text-sm">
                   {selectedTier.label}
                 </span>
                 <span className="text-slate-300">·</span>
-                <span className="inline-flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[11px]">
-                  <Clock className="w-3 h-3" />
+                <span className="inline-flex items-center gap-1 font-mono font-medium text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded text-[11px] shadow-2xs">
+                  <Clock className="w-3 h-3 text-slate-500" />
                   Target: {selectedTier.slaCommit}
                 </span>
               </div>
@@ -289,11 +276,11 @@ export default function HomePage() {
               </p>
 
               <div className="text-[11px] text-slate-500">
-                <strong>Typical scenario:</strong> {selectedTier.example}
+                <span className="font-medium text-slate-700">Typical scenario:</span> {selectedTier.example}
               </div>
             </div>
 
-            <div className="flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-200 flex flex-col items-start md:items-end gap-1.5">
+            <div className="flex-shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200 flex flex-col items-start md:items-end gap-1.5">
               <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">
                 Assigned Team
               </span>
@@ -312,9 +299,9 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Transparent 3-Step Lifecycle ("What Happens Next") */}
+        {/* Transparent 3-Step Lifecycle */}
         <section className="space-y-5">
-          <div className="border-b border-slate-200 pb-3">
+          <div className="border-b border-slate-200/80 pb-3">
             <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
               What Happens After You Tell Us
             </h2>
@@ -325,21 +312,21 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
             {/* Step 1 */}
-            <div className="bg-white rounded-md border border-slate-200 p-4 sm:p-5 shadow-xs space-y-2">
-              <div className="w-6 h-6 rounded bg-slate-100 border border-slate-200 text-slate-700 font-mono font-bold text-xs flex items-center justify-center">
+            <div className="bg-white rounded-lg border border-slate-200/90 p-5 shadow-xs space-y-2.5">
+              <div className="text-xs font-mono font-bold text-slate-400">
                 01
               </div>
               <h3 className="font-semibold text-slate-900 text-sm">
                 Instant Reference & SLA Clock
               </h3>
               <p className="text-slate-600 leading-relaxed text-[11px]">
-                The moment you submit, a unique ticket number (#) is generated and a visible countdown clock starts ticking against our response commitment.
+                The moment you submit, a unique ticket reference is issued and a visible countdown clock begins against our SLA commitment.
               </p>
             </div>
 
             {/* Step 2 */}
-            <div className="bg-white rounded-md border border-slate-200 p-4 sm:p-5 shadow-xs space-y-2">
-              <div className="w-6 h-6 rounded bg-slate-100 border border-slate-200 text-slate-700 font-mono font-bold text-xs flex items-center justify-center">
+            <div className="bg-white rounded-lg border border-slate-200/90 p-5 shadow-xs space-y-2.5">
+              <div className="text-xs font-mono font-bold text-slate-400">
                 02
               </div>
               <h3 className="font-semibold text-slate-900 text-sm">
@@ -351,8 +338,8 @@ export default function HomePage() {
             </div>
 
             {/* Step 3 */}
-            <div className="bg-white rounded-md border border-slate-200 p-4 sm:p-5 shadow-xs space-y-2">
-              <div className="w-6 h-6 rounded bg-slate-100 border border-slate-200 text-slate-700 font-mono font-bold text-xs flex items-center justify-center">
+            <div className="bg-white rounded-lg border border-slate-200/90 p-5 shadow-xs space-y-2.5">
+              <div className="text-xs font-mono font-bold text-slate-400">
                 03
               </div>
               <h3 className="font-semibold text-slate-900 text-sm">
@@ -365,12 +352,12 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Quick Ticket Lookup & Knowledge Base Shortcuts */}
+        {/* Quick Ticket Lookup & Solutions */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Quick Ticket Lookup */}
-          <div className="bg-white rounded-md border border-slate-200 p-5 shadow-xs space-y-3">
+          <div className="bg-white rounded-lg border border-slate-200/90 p-5 shadow-xs space-y-3">
             <div className="flex items-center gap-2">
-              <Search className="w-4 h-4 text-slate-500" />
+              <Search className="w-4 h-4 text-slate-400" />
               <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
                 Looking for an Existing Ticket?
               </h3>
@@ -389,7 +376,7 @@ export default function HomePage() {
                     setSearchError("");
                   }}
                   placeholder="e.g. #102 or 104"
-                  className="flex-1 text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  className="flex-1 text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 transition-colors"
                 />
                 <Button type="submit" variant="secondary" size="sm">
                   Track →
@@ -402,9 +389,9 @@ export default function HomePage() {
           </div>
 
           {/* Quick Knowledge Base Shortcuts */}
-          <div className="bg-white rounded-md border border-slate-200 p-5 shadow-xs space-y-3">
+          <div className="bg-white rounded-lg border border-slate-200/90 p-5 shadow-xs space-y-3">
             <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-slate-500" />
+              <FileText className="w-4 h-4 text-slate-400" />
               <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
                 Common Instant Solutions
               </h3>
@@ -416,21 +403,21 @@ export default function HomePage() {
             <div className="divide-y divide-slate-100 text-xs">
               <Link
                 href="/tickets/new?category=ACCOUNT"
-                className="py-1.5 flex items-center justify-between text-slate-700 hover:text-slate-900 group"
+                className="py-2 flex items-center justify-between text-slate-700 hover:text-slate-900 group"
               >
                 <span>Resetting Operator & User Password</span>
                 <span className="text-slate-400 group-hover:text-slate-700">→</span>
               </Link>
               <Link
                 href="/tickets/new?category=PERFORMANCE"
-                className="py-1.5 flex items-center justify-between text-slate-700 hover:text-slate-900 group"
+                className="py-2 flex items-center justify-between text-slate-700 hover:text-slate-900 group"
               >
                 <span>Troubleshooting Slow Ledger & Dashboard Loading</span>
                 <span className="text-slate-400 group-hover:text-slate-700">→</span>
               </Link>
               <Link
                 href="/tickets/new?category=INTEGRATION"
-                className="py-1.5 flex items-center justify-between text-slate-700 hover:text-slate-900 group"
+                className="py-2 flex items-center justify-between text-slate-700 hover:text-slate-900 group"
               >
                 <span>Setting Up Webhooks & Accounting Integrations</span>
                 <span className="text-slate-400 group-hover:text-slate-700">→</span>
@@ -441,7 +428,7 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white mt-auto py-6">
+      <footer className="border-t border-slate-200/80 bg-white mt-auto py-6">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
           <div>
             <p>© 2026 BUSY Infotech Pvt. Ltd. · Business Accounting Software Support</p>
