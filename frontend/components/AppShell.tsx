@@ -22,6 +22,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   const isAuthPage =
     pathname === "/login" || pathname === "/register" || pathname === "/setup-account";
+  const isHomePage = pathname === "/";
 
   // Restore user preferences for sidebar width and collapse state
   useEffect(() => {
@@ -69,10 +70,16 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
-    if (!loading && !user && !isAuthPage) {
-      router.push("/login");
+    if (!loading && !user && !isAuthPage && !isHomePage) {
+      const currentPath = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
+      const redirectParam = currentPath && currentPath !== "/" ? `?redirect=${encodeURIComponent(currentPath)}` : "";
+      router.push(`/login${redirectParam}`);
     }
-  }, [loading, user, isAuthPage, router]);
+  }, [loading, user, isAuthPage, isHomePage, router]);
+
+  if (isHomePage) {
+    return <>{children}</>;
+  }
 
   if (isAuthPage) {
     return <div className="min-h-screen bg-slate-50 flex flex-col justify-center">{children}</div>;

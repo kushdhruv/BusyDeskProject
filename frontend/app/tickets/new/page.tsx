@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Priority, Category, User as SessionUser } from "@/lib/types";
 import { ApiClient } from "@/lib/api-client";
@@ -128,8 +128,14 @@ const CATEGORIES: CategoryDefinition[] = [
   },
 ];
 
-export default function NewTicketPage() {
+function NewTicketForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const paramCategory = (searchParams.get("category") as Category) || null;
+  const paramUrgency = (searchParams.get("urgency") as "LOW" | "NORMAL" | "HIGH") || null;
+  const paramPriority = (searchParams.get("priority") as Priority) || null;
+  const paramSubject = searchParams.get("subject") || "";
 
   const [user, setUser] = useState<SessionUser | null>(null);
   const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
@@ -137,11 +143,11 @@ export default function NewTicketPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Form Fields
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(paramSubject);
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<Category>("QUESTION");
-  const [customerUrgency, setCustomerUrgency] = useState<"LOW" | "NORMAL" | "HIGH">("NORMAL");
-  const [priority, setPriority] = useState<Priority>("MEDIUM");
+  const [category, setCategory] = useState<Category>(paramCategory || "QUESTION");
+  const [customerUrgency, setCustomerUrgency] = useState<"LOW" | "NORMAL" | "HIGH">(paramUrgency || "NORMAL");
+  const [priority, setPriority] = useState<Priority>(paramPriority || "MEDIUM");
 
   // Staff Fields
   const [requesterName, setRequesterName] = useState("");
@@ -692,3 +698,18 @@ export default function NewTicketPage() {
     </div>
   );
 }
+
+export default function NewTicketPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-6xl mx-auto p-8 flex items-center justify-center text-sm text-slate-500">
+          Loading ticket intake form...
+        </div>
+      }
+    >
+      <NewTicketForm />
+    </Suspense>
+  );
+}
+

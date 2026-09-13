@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Headphones, Eye, EyeOff, ArrowRight } from "lucide-react";
+import React, { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Headphones, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -31,7 +32,9 @@ export default function LoginPage() {
         throw new Error(data.error || "Invalid email or password.");
       }
 
-      window.location.href = "/dashboard";
+      const redirect = searchParams.get("redirect");
+      const targetUrl = redirect && redirect.startsWith("/") ? redirect : "/dashboard";
+      window.location.href = targetUrl;
     } catch (err: any) {
       setError(err.message || "Failed to sign in. Please check your credentials.");
     } finally {
@@ -132,3 +135,18 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[85vh] flex items-center justify-center">
+          <Loader2 className="w-5 h-5 text-slate-500 animate-spin" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
+  );
+}
+

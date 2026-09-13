@@ -96,6 +96,16 @@ takehome-04-support-ticketing/
 - **Automated Vercel Cron Scheduling**: Configured with `vercel.json` crons (`30 3 * * 1-5` for daily 9:00 AM dispatch and `0 3 * * 1` for Monday weekly summaries) with cryptographic header security (`CRON_SECRET`).
 - **Interactive In-App Preview & Settings**: Agents and supervisors can adjust delivery preferences (`DAILY`, `WEEKLY`, `NEVER`) and inspect live HTML email previews directly in the app.
 
+### 9. 🧠 Semantic Knowledge Copilot (Smart Assist)
+- **AI-Powered Solution Recommendations**: Automatically recommends semantically similar resolved tickets and Knowledge Base articles when agents view tickets.
+- **Hybrid Vector Architecture**: Utilizes Google Gemini (`text-embedding-004`) for high-dimensional semantic embeddings with an automated deterministic fallback vector generator.
+- **Agent Action Tracking**: Telemetry logging (`INSERTED`, `VIEWED`, `DISMISSED`) for continuous recommendation ranking refinement.
+
+### 10. 🔐 Secure Single-Use Agent Invitation Architecture
+- **Cryptographic Token Provisioning**: Supervisors can invite new agents at `/team`, generating 24-hour cryptographically secure tokens stored as SHA-256 hashes.
+- **Resend Email Dispatch**: Sends invitation emails over HTTP REST with automatic local console fallback.
+- **Single-Use Activation**: Dedicated `/setup-account` onboarding flow consumes the token, sets the password, marks the user active, and issues a session cookie in an atomic transaction.
+
 ---
 
 ## 🧪 Comprehensive Test Suite (195 Tests, 100% Passing)
@@ -146,7 +156,8 @@ npm test
 | **Senior Agent** | Sarah Jenkins | `sarah@busy.com` | `password123` | Assigned urgent breached tickets, collaborators, pending customer replies |
 | **Support Agent** | Alex Rivera | `alex@busy.com` | `password123` | High priority due-soon tickets, team collaborations, ticket resolution |
 | **Tier 1 Agent** | Jordan Lee | `jordan@busy.com` | `password123` | Low/medium tickets, resolved incident tickets |
-| **Customer** | John Doe | `john@acme.com` | `password123` | Customer Portal: Submit tickets, view own tickets, rate CSAT |
+| **Customer (Alice)** | Alice Henderson | `alice@customer.com` | `password123` | Customer Portal: Submit tickets, view own tickets, submit replies, rate CSAT |
+| **Customer (Bob)** | Bob Martinez | `bob@customer.com` | `password123` | Customer Portal: Separate isolated account, open/pending tickets |
 
 ---
 
@@ -172,10 +183,17 @@ DATABASE_URL="postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-northeast-
 # Supabase Direct Session (Port 5432 - Used by Prisma migrations)
 DIRECT_URL="postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres"
 
-JWT_SECRET="super-secret-jwt-key-for-session-tokens"
+SESSION_SECRET="support-ticketing-super-secret-key-change-in-production-minimum-32-chars-long"
 NODE_ENV="development"
 PORT=3001
 FRONTEND_URL="http://localhost:3000"
+
+# AI & Semantic Search (Optional - Google Gemini text-embedding-004)
+GEMINI_API_KEY="your-gemini-api-key"
+
+# Transactional Email & Queue Digests (Optional - Resend API)
+RESEND_API_KEY="re_..."
+RESEND_FROM="Busy Infotech Support <onboarding@resend.dev>"
 ```
 
 ### 3. Run Database Setup (Backend)
