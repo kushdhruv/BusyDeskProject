@@ -52,8 +52,8 @@ export default function TicketWorkspacePage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Active Tab: Conversation, Details, Collaborators, History
-  const [activeTab, setActiveTab] = useState<"conversation" | "details" | "collaborators" | "history">("conversation");
+  // Active Tab: Conversation, Collaborators, History
+  const [activeTab, setActiveTab] = useState<"conversation" | "collaborators" | "history">("conversation");
 
   // Reply Composer State
   const [replyBody, setReplyBody] = useState<string>("");
@@ -469,7 +469,7 @@ export default function TicketWorkspacePage() {
             variant="secondary"
             size="xs"
             onClick={() => setSimulateModalOpen(true)}
-            icon={<Sparkles className="w-3.5 h-3.5 text-slate-500" />}
+            icon={<MessageSquare className="w-3.5 h-3.5 text-slate-500" />}
           >
             Simulate Inbound Reply
           </Button>
@@ -526,18 +526,6 @@ export default function TicketWorkspacePage() {
             >
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Conversation</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("details")}
-              className={`pb-2.5 transition-colors border-b-2 -mb-px flex items-center gap-1.5 cursor-pointer ${
-                activeTab === "details"
-                  ? "border-slate-900 text-slate-900 font-semibold"
-                  : "border-transparent text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              <Tag className="w-3.5 h-3.5" />
-              <span>Details</span>
             </button>
 
             <button
@@ -847,40 +835,7 @@ export default function TicketWorkspacePage() {
             </div>
           )}
 
-          {/* TAB 2: DETAILS */}
-          {activeTab === "details" && (
-            <div className="bg-white p-5 rounded-md border border-slate-200 shadow-xs space-y-4">
-              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Ticket Specifications</h3>
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div>
-                  <span className="text-slate-400 block mb-1">Ticket Number</span>
-                  <span className="font-mono font-medium text-slate-900">#{ticketData.ticketNumber}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-1">Category</span>
-                  <CategoryBadge category={ticketData.category} />
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-1">Priority</span>
-                  <PriorityBadge priority={ticketData.priority} />
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-1">Status</span>
-                  <StatusBadge status={ticketData.status} />
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-1">Created At</span>
-                  <span className="text-slate-800 tabular-nums">{new Date(ticketData.createdAt).toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-1">Last Updated</span>
-                  <span className="text-slate-800 tabular-nums">{new Date(ticketData.updatedAt).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: COLLABORATORS */}
+          {/* TAB 2: COLLABORATORS */}
           {activeTab === "collaborators" && (
             <div className="bg-white p-5 rounded-md border border-slate-200 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
@@ -996,7 +951,7 @@ export default function TicketWorkspacePage() {
         <div className="lg:col-span-5 xl:col-span-4 space-y-5 lg:sticky lg:top-4">
           {/* Customer Review Card (when CSAT submitted) */}
           {ticketData.satisfaction && (
-            <div className="bg-white p-5 rounded-md border border-amber-200/80 shadow-xs space-y-3 bg-gradient-to-b from-amber-50/40 to-white">
+            <div className="bg-white p-4 rounded-md border border-amber-200/80 shadow-xs space-y-3">
               <div className="flex items-center justify-between border-b border-amber-100 pb-2.5">
                 <div className="flex items-center gap-1.5">
                   <Star className="w-4 h-4 text-amber-500 fill-amber-500" />

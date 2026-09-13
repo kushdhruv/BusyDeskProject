@@ -74,11 +74,11 @@ export function CustomerDashboard({ user }: CustomerDashboardProps) {
       <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              BUSY Infotech Help Center
+            <span className="text-[10px] font-medium text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded uppercase tracking-wider">
+              Help Center
             </span>
             <span className="text-xs text-slate-400">·</span>
-            <span className="text-xs text-slate-500 font-medium">Accounting & GST Support</span>
+            <span className="text-xs text-slate-500">BUSY Accounting & GST Support</span>
           </div>
           <h1 className="text-lg font-bold text-slate-900 tracking-tight mt-1">
             Welcome back, {user.name}

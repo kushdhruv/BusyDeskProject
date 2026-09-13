@@ -47,7 +47,7 @@ export function CustomerPortalLayout({
                     BUSY INFOTECH
                   </span>
                 </div>
-                <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-medium text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
                   Customer Portal
                 </span>
               </div>
@@ -106,9 +106,9 @@ export function CustomerPortalLayout({
       <footer className="border-t border-slate-200 bg-white py-4 mt-auto">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
           <p>© 2026 BUSY Infotech Pvt. Ltd. · Business Accounting Software Help Center</p>
-          <p className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-            <span>Enterprise SLA & GST Compliance Guaranteed</span>
+          <p className="flex items-center gap-1.5 text-slate-500">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+            <span>Support Systems Operational</span>
           </p>
         </div>
       </footer>

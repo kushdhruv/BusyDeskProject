@@ -112,10 +112,6 @@ export function TopBar({
 
       {/* Right side Action Center */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-        <span className="hidden lg:inline-flex items-center gap-1.5 text-[11px] font-medium text-sky-800 bg-sky-50 border border-sky-200/80 px-2.5 py-1 rounded-md">
-          <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
-          BUSY Accounting Support
-        </span>
         {/* Email Digest Trigger Button */}
         {onOpenDigest && (
           <button

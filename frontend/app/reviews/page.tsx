@@ -156,38 +156,25 @@ export default function ReviewsPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-150">
+    <div className="space-y-5 pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              {isSupervisor ? "Customer Reviews & Agent CSAT" : "My Customer Reviews"}
-            </h1>
-            <span className="px-2 py-0.5 text-[11px] font-semibold bg-amber-50 text-amber-800 rounded-md border border-amber-200 flex items-center gap-1">
-              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-              {isSupervisor ? "Supervisor Analytics" : "My CSAT Score"}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <h1 className="text-base font-semibold text-slate-900 tracking-tight">
+            {isSupervisor ? "Customer Reviews & Agent CSAT" : "My Customer Reviews"}
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
             {isSupervisor
               ? "Analyze customer satisfaction scores, evaluate agent performance records, and inspect team feedback."
               : "Review your customer feedback, star rating distributions, and satisfaction metrics on your assigned tickets."}
           </p>
         </div>
-
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 rounded-md transition-colors self-start sm:self-auto"
-        >
-          <span>← Back to Dashboard</span>
-        </Link>
       </div>
 
       {/* Top Metric Cards */}
       {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 bg-white rounded-lg border border-slate-200 shadow-2xs">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+          <div className="p-4 bg-white rounded-md border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">
                 {isSupervisor ? "Overall CSAT Score" : "My CSAT Score"}
@@ -212,7 +199,7 @@ export default function ReviewsPage() {
             </div>
           </div>
 
-          <div className="p-4 bg-white rounded-lg border border-slate-200 shadow-2xs">
+          <div className="p-4 bg-white rounded-md border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">
                 {isSupervisor ? "Total Reviews" : "My Total Reviews"}
@@ -223,7 +210,7 @@ export default function ReviewsPage() {
             <p className="text-[11px] text-slate-400 mt-1">Verified customer submissions</p>
           </div>
 
-          <div className="p-4 bg-white rounded-lg border border-slate-200 shadow-2xs">
+          <div className="p-4 bg-white rounded-md border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">
                 {isSupervisor ? "Satisfaction Rate" : "My Satisfaction Rate"}
@@ -231,10 +218,10 @@ export default function ReviewsPage() {
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             </div>
             <p className="text-2xl font-bold text-emerald-600 mt-1 tabular-nums">{summary.satisfactionRate}%</p>
-            <p className="text-[11px] text-emerald-700 mt-1">4★ & 5★ positive reviews</p>
+            <p className="text-[11px] text-slate-400 mt-1">4★ & 5★ positive ratings</p>
           </div>
 
-          <div className="p-4 bg-white rounded-lg border border-slate-200 shadow-2xs">
+          <div className="p-4 bg-white rounded-md border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">
                 {isSupervisor ? "5-Star Ratings" : "My 5-Star Ratings"}
@@ -255,7 +242,7 @@ export default function ReviewsPage() {
 
       {/* Supervisor Agent Performance & CSAT Scorecards (Supervisor Only) */}
       {isSupervisor && (
-        <div className="bg-white border border-slate-200 rounded-lg shadow-2xs overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-md shadow-xs overflow-hidden">
           <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">

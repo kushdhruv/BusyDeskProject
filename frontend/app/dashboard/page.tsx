@@ -106,15 +106,8 @@ export default function DashboardPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              {isSupervisor ? "Supervisor Operations" : "Agent Workspace"}
-            </span>
-            <span className="text-xs text-slate-400">·</span>
-            <span className="text-xs text-slate-500 font-medium">BUSYDesk</span>
-          </div>
-          <h1 className="text-base font-bold text-slate-900 tracking-tight mt-1">
-            {isSupervisor ? "Supervisor Operations Dashboard" : "My Work Console"}
+          <h1 className="text-base font-semibold text-slate-900 tracking-tight">
+            {isSupervisor ? "Operations Overview" : "My Work Console"}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {isSupervisor

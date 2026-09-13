@@ -290,24 +290,20 @@ export default function NewTicketPage() {
             aria-label="Back"
           />
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                BUSY Infotech Support
-              </span>
-              <span className="text-xs text-slate-400">·</span>
-              <span className="text-xs text-slate-500 font-medium">
-                {isCustomer ? "Customer Help Center" : "Staff Console"}
-              </span>
-            </div>
-            <h1 className="text-lg font-bold text-slate-900 tracking-tight mt-0.5">
+            <h1 className="text-base font-semibold text-slate-900 tracking-tight">
               {isCustomer ? "Submit a Support Request" : "Create New Support Ticket"}
             </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isCustomer
+                ? "Describe your inquiry and our support team will assist you within SLA targets."
+                : "Record an inbound support inquiry with designated priority and category."}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-100/70 border border-slate-200 px-3 py-1.5 rounded-md">
-          <Clock className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-          <span>Estimated Response: <strong className="text-slate-900">{slaInfo.time}</strong></span>
+        <div className="flex items-center gap-2 text-xs text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-md shadow-xs">
+          <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          <span>SLA Target: <strong className="text-slate-900">{slaInfo.time}</strong></span>
         </div>
       </div>
 
@@ -322,22 +318,22 @@ export default function NewTicketPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Main Content: Left 8 Columns */}
           <div className="lg:col-span-8 space-y-5">
-            {/* Step 1: Category Selection Grid (LeetCode / Linear Style) */}
-            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs space-y-3">
+            {/* Category Selection Grid */}
+            <div className="bg-white rounded-md border border-slate-200 p-4 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>1. Select Issue Category</span>
+                  <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1">
+                    <span>Category</span>
                     <span className="text-rose-500">*</span>
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Choose the category that best matches your question or problem.
+                    Select the domain that best describes the request.
                   </p>
                 </div>
                 <CategoryBadge category={category} />
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 pt-1">
                 {CATEGORIES.map((cat) => {
                   const Icon = cat.icon;
                   const isSelected = category === cat.id;
@@ -346,32 +342,34 @@ export default function NewTicketPage() {
                       key={cat.id}
                       type="button"
                       onClick={() => setCategory(cat.id)}
-                      className={`relative flex flex-col items-start p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                      className={`relative flex flex-col items-start p-2.5 rounded-md border text-left transition-colors cursor-pointer ${
                         isSelected
-                          ? "bg-sky-50/70 border-sky-500 ring-2 ring-sky-500/20 shadow-xs"
-                          : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/80"
+                          ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                          : "bg-white border-slate-200 text-slate-800 hover:border-slate-300 hover:bg-slate-50"
                       }`}
                     >
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-sky-600 text-white flex items-center justify-center">
-                          <Check className="w-2.5 h-2.5" />
+                      <div className="flex items-center justify-between w-full mb-1.5">
+                        <div
+                          className={`w-6 h-6 rounded flex items-center justify-center ${
+                            isSelected ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
                         </div>
-                      )}
-                      <div
-                        className={`w-7 h-7 rounded-md flex items-center justify-center mb-2 ${
-                          isSelected ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
+                        {isSelected && <Check className="w-3 h-3 text-emerald-400" />}
                       </div>
                       <span
-                        className={`text-xs font-semibold leading-tight line-clamp-1 ${
-                          isSelected ? "text-sky-900" : "text-slate-800"
+                        className={`text-xs font-medium leading-tight truncate w-full ${
+                          isSelected ? "text-white" : "text-slate-900"
                         }`}
                       >
                         {cat.shortLabel}
                       </span>
-                      <span className="text-[10px] text-slate-500 line-clamp-2 mt-1 leading-snug">
+                      <span
+                        className={`text-[10px] line-clamp-2 mt-0.5 leading-snug ${
+                          isSelected ? "text-slate-300" : "text-slate-500"
+                        }`}
+                      >
                         {cat.description}
                       </span>
                     </button>
@@ -380,10 +378,10 @@ export default function NewTicketPage() {
               </div>
             </div>
 
-            {/* Step 2: Subject & Description */}
-            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs space-y-4">
+            {/* Issue Details & Summary */}
+            <div className="bg-white rounded-md border border-slate-200 p-4 shadow-xs space-y-4">
               <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
-                2. Issue Details & Summary
+                Issue Details
               </h2>
 
               <div>
@@ -396,9 +394,6 @@ export default function NewTicketPage() {
                   placeholder="e.g. GST E-Way Bill JSON generation failed with error 400"
                   required
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Keep it clear and specific so our engineers can quickly identify the problem.
-                </p>
               </div>
 
               <div>
@@ -406,35 +401,31 @@ export default function NewTicketPage() {
                   <label className="block text-xs font-medium text-slate-700">
                     Detailed Description <span className="text-rose-500">*</span>
                   </label>
-                  <span className="text-[11px] text-sky-600 font-medium flex items-center gap-1">
-                    <Info className="w-3 h-3" /> Template hint for {activeCategoryDef.shortLabel}
+                  <span className="text-[11px] text-slate-400">
+                    {description.length} characters
                   </span>
                 </div>
                 <Textarea
-                  rows={8}
+                  rows={7}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={activeCategoryDef.placeholder}
                   required
                   className="font-mono text-xs leading-relaxed"
                 />
-                <div className="flex items-center justify-between mt-1 text-[11px] text-slate-400">
-                  <span>Formatting: Markdown and plain text supported</span>
-                  <span>{description.length} characters</span>
-                </div>
               </div>
             </div>
 
-            {/* Step 3: File Attachment Dropzone */}
-            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs space-y-3">
+            {/* File Attachment Dropzone */}
+            <div className="bg-white rounded-md border border-slate-200 p-4 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>3. Attach Files & Logs</span>
+                  <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1">
+                    <span>Attachments</span>
                     <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Attach screenshots, log files, exported reports, or receipts to expedite resolution.
+                    Attach screenshots, log files, exported reports, or receipts.
                   </p>
                 </div>
                 <Paperclip className="w-4 h-4 text-slate-400" />
@@ -442,9 +433,9 @@ export default function NewTicketPage() {
 
               {attachedFile ? (
                 /* Uploaded File Chip */
-                <div className="p-3 rounded-lg border border-sky-200 bg-sky-50/40 flex items-center justify-between gap-3">
+                <div className="p-3 rounded-md border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-md bg-white border border-sky-200 text-sky-700 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-md bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div className="truncate min-w-0">
@@ -452,7 +443,7 @@ export default function NewTicketPage() {
                         {attachedFile.name}
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        {formatFileSize(attachedFile.size)} · Uploaded ready
+                        {formatFileSize(attachedFile.size)} · Ready to submit
                       </div>
                     </div>
                   </div>
@@ -460,7 +451,7 @@ export default function NewTicketPage() {
                   <button
                     type="button"
                     onClick={() => setAttachedFile(null)}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
                     title="Remove attachment"
                   >
                     <X className="w-4 h-4" />
@@ -476,10 +467,10 @@ export default function NewTicketPage() {
                   onDragLeave={() => setIsDragOver(false)}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                  className={`border border-dashed rounded-md p-5 text-center transition-colors cursor-pointer ${
                     isDragOver
-                      ? "border-sky-500 bg-sky-50/50"
-                      : "border-slate-300 hover:border-sky-400 hover:bg-slate-50/60 bg-slate-50/30"
+                      ? "border-slate-900 bg-slate-100/70"
+                      : "border-slate-300 hover:border-slate-400 bg-slate-50/50 hover:bg-slate-50"
                   }`}
                 >
                   <input
@@ -494,12 +485,12 @@ export default function NewTicketPage() {
                     accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.zip,.log"
                   />
 
-                  <div className="flex flex-col items-center justify-center gap-1.5">
-                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mb-1">
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <div className="w-8 h-8 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 mb-1 shadow-xs">
                       {uploadingAttachment ? (
-                        <div className="w-5 h-5 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <UploadCloud className="w-5 h-5 text-sky-600" />
+                        <UploadCloud className="w-4 h-4 text-slate-600" />
                       )}
                     </div>
                     <p className="text-xs font-medium text-slate-800">
@@ -507,7 +498,7 @@ export default function NewTicketPage() {
                         "Uploading attachment..."
                       ) : (
                         <>
-                          <span className="text-sky-600 underline font-semibold">Click to upload</span> or drag and drop
+                          <span className="font-semibold text-slate-900 underline">Click to upload</span> or drag and drop
                         </>
                       )}
                     </p>
@@ -523,7 +514,7 @@ export default function NewTicketPage() {
           {/* Right Sidebar: Preview & Properties (4 Columns) */}
           <div className="lg:col-span-4 space-y-4">
             {/* Properties Card */}
-            <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs space-y-4">
+            <div className="bg-white rounded-md border border-slate-200 p-4 shadow-xs space-y-4">
               <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
                 Routing & Priority
               </h3>
@@ -540,22 +531,22 @@ export default function NewTicketPage() {
                         val: "LOW",
                         label: "Low Urgency",
                         sub: "General question · 72h SLA",
-                        color: "border-slate-200 hover:bg-slate-50",
-                        selected: "border-emerald-500 bg-emerald-50/50 text-emerald-950 ring-1 ring-emerald-500",
+                        color: "border-slate-200 hover:bg-slate-50 text-slate-800",
+                        selected: "border-slate-900 bg-slate-900 text-white shadow-xs",
                       },
                       {
                         val: "NORMAL",
                         label: "Normal Urgency",
                         sub: "Standard issue · 24h SLA",
-                        color: "border-slate-200 hover:bg-slate-50",
-                        selected: "border-sky-500 bg-sky-50/60 text-sky-950 ring-1 ring-sky-500",
+                        color: "border-slate-200 hover:bg-slate-50 text-slate-800",
+                        selected: "border-slate-900 bg-slate-900 text-white shadow-xs",
                       },
                       {
                         val: "HIGH",
                         label: "High Urgency",
                         sub: "Blocking daily work · 8h SLA",
-                        color: "border-slate-200 hover:bg-slate-50",
-                        selected: "border-rose-500 bg-rose-50/60 text-rose-950 ring-1 ring-rose-500",
+                        color: "border-slate-200 hover:bg-slate-50 text-slate-800",
+                        selected: "border-rose-600 bg-rose-600 text-white shadow-xs",
                       },
                     ].map((item) => {
                       const isChecked = customerUrgency === item.val;
@@ -569,10 +560,10 @@ export default function NewTicketPage() {
                           }`}
                         >
                           <div>
-                            <div className="font-semibold">{item.label}</div>
-                            <div className="text-[10px] text-slate-500">{item.sub}</div>
+                            <div className="font-semibold leading-tight">{item.label}</div>
+                            <div className={`text-[10px] mt-0.5 ${isChecked ? "text-slate-200" : "text-slate-500"}`}>{item.sub}</div>
                           </div>
-                          {isChecked && <Check className="w-3.5 h-3.5 text-sky-700 shrink-0" />}
+                          {isChecked && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
                         </button>
                       );
                     })}
@@ -649,7 +640,7 @@ export default function NewTicketPage() {
                   variant="primary"
                   size="md"
                   loading={loading}
-                  className="w-full justify-center bg-slate-900 hover:bg-slate-800 text-white shadow-xs"
+                  className="w-full justify-center shadow-xs"
                 >
                   {isCustomer ? "Submit Support Request" : "Create Ticket"}
                 </Button>
@@ -665,13 +656,13 @@ export default function NewTicketPage() {
               </div>
             </div>
 
-            {/* Ticket Preview Card (LeetCode Style Live Summary) */}
-            <div className="bg-slate-50/80 rounded-lg border border-slate-200 p-4 shadow-2xs space-y-3">
+            {/* Ticket Preview Card */}
+            <div className="bg-white rounded-md border border-slate-200 p-4 shadow-xs space-y-3">
               <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Live Request Summary
               </h3>
 
-              <div className="p-3 bg-white rounded-md border border-slate-200 space-y-2 text-xs">
+              <div className="p-3 bg-slate-50/60 rounded-md border border-slate-200 space-y-2 text-xs">
                 <div className="flex items-center justify-between gap-2">
                   <CategoryBadge category={category} />
                   <span className="text-[10px] font-mono text-slate-400">#NEW</span>
@@ -683,24 +674,16 @@ export default function NewTicketPage() {
                   {description.trim() || "No description provided yet..."}
                 </p>
                 {attachedFile && (
-                  <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 text-[10px] text-slate-600 font-medium">
-                    <Paperclip className="w-3 h-3 text-sky-600" />
+                  <div className="pt-2 border-t border-slate-200/80 flex items-center gap-1.5 text-[10px] text-slate-600 font-medium">
+                    <Paperclip className="w-3 h-3 text-slate-500" />
                     <span className="truncate">{attachedFile.name}</span>
                   </div>
                 )}
               </div>
 
-              {/* Busy Infotech Service Guarantee */}
-              <div className="p-3 rounded-md bg-sky-50/70 border border-sky-200 space-y-1.5 text-xs">
-                <div className="flex items-center gap-1.5 text-sky-900 font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                  <span>BUSY Infotech Guarantee</span>
-                </div>
-                <ul className="text-[11px] text-sky-800 space-y-1 list-disc list-inside">
-                  <li>Direct routing to certified GST/accounting engineers</li>
-                  <li>SLA-tracked response with email confirmation</li>
-                  <li>Complete privacy & secure audit log</li>
-                </ul>
+              <div className="p-2.5 rounded bg-slate-50 border border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+                <span>Response Target:</span>
+                <span className="font-semibold text-slate-900">{slaInfo.time}</span>
               </div>
             </div>
           </div>
