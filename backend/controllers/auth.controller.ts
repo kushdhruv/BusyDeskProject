@@ -105,7 +105,10 @@ export class AuthController {
    */
   static async getAllUsers() {
     return prisma.user.findMany({
-      where: { role: { in: [Role.SUPERVISOR, Role.AGENT] } },
+      where: {
+        role: { in: [Role.SUPERVISOR, Role.AGENT] },
+        status: "ACTIVE",
+      },
       select: {
         id: true,
         email: true,

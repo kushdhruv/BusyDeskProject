@@ -73,6 +73,8 @@ export const API_ROUTE_REGISTRY = [
   { method: "GET", path: "/api/agents", handler: "getTeamDirectoryRoute", authRequired: true, desc: "Retrieve internal staff team directory with workload metrics" },
   { method: "POST", path: "/api/agents/invite", handler: "inviteAgentRoute", authRequired: true, desc: "Supervisor invites a new agent with 24-hour one-time token" },
   { method: "POST", path: "/api/agents/[id]/resend-invite", handler: "resendInviteRoute", authRequired: true, desc: "Supervisor resends invitation with freshly rotated token" },
+  { method: "PATCH", path: "/api/agents/[id]", handler: "updateAgentRoute", authRequired: true, desc: "Supervisor updates agent role (Supervisor <-> Agent), suspends/reactivates account, and reassigns tickets" },
+  { method: "DELETE", path: "/api/agents/[id]", handler: "cancelAgentInvitationRoute", authRequired: true, desc: "Supervisor cancels pending agent invitation" },
   { method: "GET", path: "/api/auth/invitation", handler: "validateInvitationRoute", authRequired: false, desc: "Validate one-time invitation token without consuming it" },
   { method: "POST", path: "/api/auth/setup-account", handler: "setupAccountRoute", authRequired: false, desc: "Consume invitation token, set password, and sign in" },
 

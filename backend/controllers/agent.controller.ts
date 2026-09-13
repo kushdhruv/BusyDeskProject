@@ -255,4 +255,200 @@ export class AgentController {
       };
     });
   }
+
+  /**
+   * Updates an agent's role (SUPERVISOR <-> AGENT) and/or account status (ACTIVE <-> SUSPENDED).
+   * Supports atomic bulk reassignment of active tickets when suspending an agent.
+   * Security Invariant: Only SUPERVISOR can invoke this.
+   */
+  static async updateAgent(
+    supervisor: SessionUser,
+    agentId: string,
+    data: {
+      role?: Role;
+      status?: UserStatus;
+      reassignTicketsToId?: string | null;
+    }
+  ) {
+    if (supervisor.role !== Role.SUPERVISOR) {
+      throw new Error("Forbidden: Only supervisors can update staff roles and account statuses.");
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: agentId },
+      include: {
+        assignedTickets: {
+          where: {
+            archivedAt: null,
+            status: { in: ["NEW", "OPEN", "PENDING"] },
+          },
+          select: { id: true, ticketNumber: true, subject: true },
+        },
+      },
+    });
+
+    if (!targetUser) {
+      throw new Error("Agent record not found.");
+    }
+
+    if (targetUser.role === Role.CUSTOMER) {
+      throw new Error("Invalid operation: Cannot manage customer accounts through staff administration.");
+    }
+
+    // Safeguard 1: Prevent self-suspension
+    if (supervisor.id === agentId && data.status === UserStatus.SUSPENDED) {
+      throw new Error("Security constraint: You cannot suspend your own supervisor account.");
+    }
+
+    // Safeguard 2: Prevent leaving zero active supervisors if demoting or suspending
+    if (
+      (data.role === Role.AGENT && targetUser.role === Role.SUPERVISOR) ||
+      (data.status === UserStatus.SUSPENDED && targetUser.role === Role.SUPERVISOR)
+    ) {
+      const activeSupervisorCount = await prisma.user.count({
+        where: {
+          role: Role.SUPERVISOR,
+          status: UserStatus.ACTIVE,
+          id: { not: agentId },
+        },
+      });
+
+      if (activeSupervisorCount === 0) {
+        throw new Error("Cannot demote or suspend the sole active supervisor. Promote another supervisor first.");
+      }
+    }
+
+    // Validate reassignment target if provided
+    let reassignTargetUser: { id: string; name: string; email: string } | null = null;
+    if (data.reassignTicketsToId && data.reassignTicketsToId !== "unassign") {
+      const candidate = await prisma.user.findUnique({
+        where: { id: data.reassignTicketsToId },
+        select: { id: true, name: true, email: true, role: true, status: true },
+      });
+
+      if (!candidate || candidate.status !== UserStatus.ACTIVE || candidate.role === Role.CUSTOMER) {
+        throw new Error("Selected reassignment agent is invalid or inactive.");
+      }
+      reassignTargetUser = candidate;
+    }
+
+    const updatePayload: any = {};
+    if (data.role && (data.role === Role.SUPERVISOR || data.role === Role.AGENT)) {
+      updatePayload.role = data.role;
+    }
+    if (data.status && (data.status === UserStatus.ACTIVE || data.status === UserStatus.SUSPENDED)) {
+      updatePayload.status = data.status;
+    }
+
+    const reassignedCount = targetUser.assignedTickets.length;
+
+    // Execute updates and ticket reassignments in a single ACID transaction
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // 1. Update User record
+      const user = await tx.user.update({
+        where: { id: agentId },
+        data: updatePayload,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          status: true,
+          updatedAt: true,
+        },
+      });
+
+      // 2. If suspending and reassignment specified, reassign active tickets
+      if (
+        data.status === UserStatus.SUSPENDED &&
+        (data.reassignTicketsToId || data.reassignTicketsToId === "unassign") &&
+        targetUser.assignedTickets.length > 0
+      ) {
+        const newAssigneeId = reassignTargetUser ? reassignTargetUser.id : null;
+        const newAssigneeName = reassignTargetUser ? reassignTargetUser.name : "Unassigned";
+
+        for (const ticket of targetUser.assignedTickets) {
+          await tx.ticket.update({
+            where: { id: ticket.id },
+            data: { primaryAssigneeId: newAssigneeId },
+          });
+
+          // Record immutable audit log
+          await tx.auditLog.create({
+            data: {
+              ticketId: ticket.id,
+              actorId: supervisor.id,
+              actorName: supervisor.name,
+              eventType: "REASSIGNED" as any,
+              oldValue: {
+                assigneeId: targetUser.id,
+                assigneeName: targetUser.name,
+              },
+              newValue: {
+                assigneeId: newAssigneeId,
+                assigneeName: newAssigneeName,
+                reason: `Agent ${targetUser.name} suspended by ${supervisor.name}`,
+              },
+            },
+          });
+        }
+      }
+
+      return user;
+    });
+
+    return {
+      success: true,
+      user: updatedUser,
+      reassignedTicketsCount:
+        data.status === UserStatus.SUSPENDED && data.reassignTicketsToId !== undefined
+          ? reassignedCount
+          : 0,
+      reassignedTo: reassignTargetUser ? reassignTargetUser.name : data.reassignTicketsToId === "unassign" ? "Unassigned" : null,
+    };
+  }
+
+  /**
+   * Cancels a pending agent invitation and deletes the unprovisioned user record.
+   * Security Invariant: Only SUPERVISOR can invoke this, and only on PENDING_SETUP accounts.
+   */
+  static async cancelInvitation(supervisor: SessionUser, agentId: string) {
+    if (supervisor.role !== Role.SUPERVISOR) {
+      throw new Error("Forbidden: Only supervisors can cancel agent invitations.");
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: agentId },
+      include: {
+        assignedTickets: true,
+        invitations: true,
+      },
+    });
+
+    if (!targetUser) {
+      throw new Error("Agent record not found.");
+    }
+
+    if (targetUser.status !== UserStatus.PENDING_SETUP) {
+      throw new Error("Only pending agent invitations can be cancelled. Use account suspension for active members.");
+    }
+
+    if (targetUser.assignedTickets.length > 0) {
+      throw new Error("Cannot delete agent with assigned tickets.");
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.agentInvitation.deleteMany({
+        where: { userId: agentId },
+      });
+      await tx.user.delete({
+        where: { id: agentId },
+      });
+    });
+
+    return {
+      success: true,
+      message: `Invitation for ${targetUser.email} has been revoked and removed.`,
+    };
+  }
 }

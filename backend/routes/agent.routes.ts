@@ -140,3 +140,72 @@ export async function setupAccountRoute(req: Request): Promise<NextResponse> {
     );
   }
 }
+
+/**
+ * PATCH /api/agents/[id]
+ * Supervisor updates an agent's role (SUPERVISOR <-> AGENT) and/or account status (ACTIVE <-> SUSPENDED),
+ * with optional bulk ticket reassignment.
+ */
+export async function updateAgentRoute(
+  req: Request,
+  { params }: { params: { id: string } }
+): Promise<NextResponse> {
+  try {
+    const sessionUser = await getSessionUser();
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (sessionUser.role !== "SUPERVISOR") {
+      return NextResponse.json(
+        { error: "Forbidden: Only supervisors can manage agent permissions and account statuses." },
+        { status: 403 }
+      );
+    }
+
+    const body = await req.json();
+    const result = await AgentController.updateAgent(sessionUser, params.id, {
+      role: body.role,
+      status: body.status,
+      reassignTicketsToId: body.reassignTicketsToId,
+    });
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to update agent." },
+      { status: error.message?.includes("Forbidden") ? 403 : 400 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/agents/[id]
+ * Supervisor cancels a pending agent invitation.
+ */
+export async function cancelAgentInvitationRoute(
+  _req: Request,
+  { params }: { params: { id: string } }
+): Promise<NextResponse> {
+  try {
+    const sessionUser = await getSessionUser();
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (sessionUser.role !== "SUPERVISOR") {
+      return NextResponse.json(
+        { error: "Forbidden: Only supervisors can cancel agent invitations." },
+        { status: 403 }
+      );
+    }
+
+    const result = await AgentController.cancelInvitation(sessionUser, params.id);
+    return NextResponse.json(result);
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to cancel invitation." },
+      { status: error.message?.includes("Forbidden") ? 403 : 400 }
+    );
+  }
+}
