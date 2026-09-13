@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { User as SessionUser } from "@/lib/types";
+import { useSession } from "@/lib/session-context";
 import { Headphones, Plus, LogOut, Ticket as TicketIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -16,15 +17,10 @@ export function CustomerPortalLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { logout } = useSession();
 
   const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/login");
-      router.refresh();
-    } catch {
-      router.push("/login");
-    }
+    await logout();
   };
 
   return (

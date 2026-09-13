@@ -152,12 +152,16 @@ npm test
 
 | Role | Name | Email | Password | Primary Capabilities |
 |---|---|---|---|---|
-| **Supervisor** | Suresh Menon | `supervisor@busy.com` | `password123` | Full access, Close/Reopen, Reassign, Bulk Operations, CSV Export, Metrics |
-| **Senior Agent** | Sarah Jenkins | `sarah@busy.com` | `password123` | Assigned urgent breached tickets, collaborators, pending customer replies |
-| **Support Agent** | Alex Rivera | `alex@busy.com` | `password123` | High priority due-soon tickets, team collaborations, ticket resolution |
-| **Tier 1 Agent** | Jordan Lee | `jordan@busy.com` | `password123` | Low/medium tickets, resolved incident tickets |
-| **Customer (Alice)** | Alice Henderson | `alice@customer.com` | `password123` | Customer Portal: Submit tickets, view own tickets, submit replies, rate CSAT |
-| **Customer (Bob)** | Bob Martinez | `bob@customer.com` | `password123` | Customer Portal: Separate isolated account, open/pending tickets |
+| **Supervisor** | Suresh Menon | `supervisor@busy.com` | `password123` | Full administrative access, Close/Reopen, Reassign, Bulk Operations, CSV Export, Metrics |
+| **Incident & Security Lead** | Sarah Jenkins | `sarah@busy.com` | `password123` | Senior agent assigned urgent breached tickets, security investigations, 2FA lockouts |
+| **Integrations Specialist** | Alex Rivera | `alex@busy.com` | `password123` | High-priority due-soon tickets, webhooks, Stripe connect, and SAML SSO |
+| **Billing Operations** | Jordan Lee | `jordan@busy.com` | `password123` | Invoices, VAT exemptions, proration adjustments, and refund operations |
+| **Performance Engineer** | Priya Sharma | `priya@busy.com` | `password123` | Database query tuning, composite indexes, connection pool optimization |
+| **Onboarding & Success** | Marcus Vance | `marcus@busy.com` | `password123` | Account lockouts, password resets, agent invitations, and workspace setup |
+| **Customer (Alice)** | Alice Henderson (ACME Corp) | `alice@customer.com` | `password123` | Enterprise Portal: Submit tickets, view own tickets, submit replies, rate CSAT |
+| **Customer (Bob)** | Bob Martinez (Globex Corp) | `bob@customer.com` | `password123` | Mid-Market Portal: Separate isolated account, billing and invoice tickets |
+| **Customer (Carol)** | Carol Danvers (Apex Technologies) | `carol@startup.io` | `password123` | Developer Portal: Webhook integration tickets, SSO configuration |
+| **Customer (David)** | David Chen (FinTech Global) | `david@fintech.co` | `password123` | High-Volume Financial Services: Database latency & audit export tickets |
 
 ---
 

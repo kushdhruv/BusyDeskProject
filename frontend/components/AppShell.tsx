@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react";
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading } = useSession();
+  const { user, loading, refreshUser } = useSession();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [sidebarWidth, setSidebarWidth] = useState<number>(240);
   const [mobileOpen, setMobileOpen] = useState<boolean>(false);
@@ -23,6 +23,13 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const isAuthPage =
     pathname === "/login" || pathname === "/register" || pathname === "/setup-account";
   const isHomePage = pathname === "/";
+
+  // Re-verify session when landing on any protected route
+  useEffect(() => {
+    if (!isAuthPage && !isHomePage) {
+      refreshUser();
+    }
+  }, [pathname, isAuthPage, isHomePage, refreshUser]);
 
   // Restore user preferences for sidebar width and collapse state
   useEffect(() => {
@@ -69,11 +76,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     setMobileOpen(false);
   }, [pathname]);
 
+  // Strict route guard: redirect unauthenticated users away from protected routes immediately
   useEffect(() => {
     if (!loading && !user && !isAuthPage && !isHomePage) {
       const currentPath = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
       const redirectParam = currentPath && currentPath !== "/" ? `?redirect=${encodeURIComponent(currentPath)}` : "";
-      router.push(`/login${redirectParam}`);
+      router.replace(`/login${redirectParam}`);
     }
   }, [loading, user, isAuthPage, isHomePage, router]);
 

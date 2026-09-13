@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { User as SessionUser } from "@/lib/types";
+import { useSession } from "@/lib/session-context";
 import {
   LayoutDashboard,
   Inbox,
@@ -105,11 +106,11 @@ export function Sidebar({
     };
   }, [isResizing, onWidthChange]);
 
+  const { logout } = useSession();
+
   const handleLogout = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    await logout();
   };
 
   // Toggle in / toggle out when clicking on empty space

@@ -114,12 +114,20 @@ export const SmartAssistPanel: React.FC<SmartAssistPanelProps> = ({
     handleSendFeedback(item, "up");
   };
 
-  // State 1: Silent fallback if loading failed or zero relevant matches
+  // State 1: Informative Copilot indicator if zero relevant matches
   if (
     !loading &&
     (!data || (data.highConfidence.length === 0 && data.related.length === 0))
   ) {
-    return null;
+    return (
+      <div className="rounded-md border border-slate-200 bg-slate-50/60 p-3 mb-4 text-xs text-slate-500 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+          <span className="font-medium text-slate-600">Knowledge Copilot:</span>
+          <span>No exact historical duplicate found ({data?.scannedCount || 0} resolutions scanned). New solution will be indexed upon resolution.</span>
+        </div>
+      </div>
+    );
   }
 
   // State 2: Shimmer loading state

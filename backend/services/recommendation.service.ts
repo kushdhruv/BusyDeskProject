@@ -26,8 +26,8 @@ export interface RecommendationResponse {
 }
 
 export class RecommendationService {
-  public static readonly HIGH_CONFIDENCE_THRESHOLD = 0.85;
-  public static readonly MIN_SIMILARITY_THRESHOLD = 0.72;
+  public static readonly HIGH_CONFIDENCE_THRESHOLD = 0.52;
+  public static readonly MIN_SIMILARITY_THRESHOLD = 0.22;
 
   /**
    * Retrieves semantic recommendations for an active ticket.
@@ -48,7 +48,7 @@ export class RecommendationService {
     }
 
     // Build context query from Subject and Description
-    const queryContext = `Subject: ${currentTicket.subject}\nDescription: ${currentTicket.description}`;
+    const queryContext = `Subject: ${currentTicket.subject}\nCategory: ${currentTicket.category}\nDescription: ${currentTicket.description}`;
     const queryVector = await EmbeddingService.generateEmbedding(queryContext);
 
     // Fetch resolved historical tickets to compare
@@ -80,15 +80,20 @@ export class RecommendationService {
 
     // 1. Evaluate Historical Tickets
     for (const hist of historicalTickets) {
-      // Guardrail: Skip tickets with poor CSAT (< 4)
+      // Guardrail: Skip tickets with poor CSAT (< 4) for recommendations
       if (hist.satisfaction && hist.satisfaction.rating < 4) {
         continue;
       }
 
       const resolutionText = hist.replies[0]?.body || hist.description;
-      const histContext = `Subject: ${hist.subject}\nDescription: ${hist.description}\nResolution: ${resolutionText}`;
+      const histContext = `Subject: ${hist.subject}\nCategory: ${hist.category}\nDescription: ${hist.description}\nResolution: ${resolutionText}`;
       const histVector = await EmbeddingService.generateEmbedding(histContext);
-      const similarity = EmbeddingService.cosineSimilarity(queryVector, histVector);
+      let similarity = EmbeddingService.cosineSimilarity(queryVector, histVector);
+
+      // Category match affinity bonus
+      if (hist.category === currentTicket.category) {
+        similarity = Math.min(0.98, similarity + 0.12);
+      }
 
       if (similarity >= this.MIN_SIMILARITY_THRESHOLD) {
         candidateMatches.push({
@@ -107,9 +112,14 @@ export class RecommendationService {
 
     // 2. Evaluate Knowledge Base Articles
     for (const kb of kbArticles) {
-      const kbContext = `Title: ${kb.title}\nContent: ${kb.content}`;
+      const kbContext = `Title: ${kb.title}\nCategory: ${kb.category}\nContent: ${kb.content}`;
       const kbVector = await EmbeddingService.generateEmbedding(kbContext);
-      const similarity = EmbeddingService.cosineSimilarity(queryVector, kbVector);
+      let similarity = EmbeddingService.cosineSimilarity(queryVector, kbVector);
+
+      // Category match affinity bonus
+      if (kb.category === currentTicket.category) {
+        similarity = Math.min(0.98, similarity + 0.15);
+      }
 
       if (similarity >= this.MIN_SIMILARITY_THRESHOLD) {
         candidateMatches.push({
@@ -127,9 +137,21 @@ export class RecommendationService {
     // Sort descending by similarity
     candidateMatches.sort((a, b) => b.similarity - a.similarity);
 
+    let highConfidence = candidateMatches.filter((m) => m.similarity >= this.HIGH_CONFIDENCE_THRESHOLD);
+    let related = candidateMatches.filter((m) => m.similarity < this.HIGH_CONFIDENCE_THRESHOLD);
+
+    // If top candidate has solid relevance (>= 0.32) but just below 0.52, promote it to high confidence
+    // so the agent always gets an actionable suggested answer
+    if (highConfidence.length === 0 && candidateMatches.length > 0 && candidateMatches[0].similarity >= 0.30) {
+      highConfidence = [candidateMatches[0]];
+      related = candidateMatches.slice(1, 4);
+    } else {
+      related = related.slice(0, 3);
+    }
+
     return {
-      highConfidence: candidateMatches.filter((m) => m.similarity >= this.HIGH_CONFIDENCE_THRESHOLD),
-      related: candidateMatches.filter((m) => m.similarity < this.HIGH_CONFIDENCE_THRESHOLD).slice(0, 3),
+      highConfidence,
+      related,
       scannedCount: historicalTickets.length + kbArticles.length,
     };
   }
@@ -148,11 +170,11 @@ export class RecommendationService {
     const results: SolutionRecommendation[] = [];
 
     for (const article of articles) {
-      const context = `Title: ${article.title}\nContent: ${article.content}`;
+      const context = `Title: ${article.title}\nCategory: ${article.category}\nContent: ${article.content}`;
       const vector = await EmbeddingService.generateEmbedding(context);
       const similarity = EmbeddingService.cosineSimilarity(queryVector, vector);
 
-      if (similarity >= 0.65) {
+      if (similarity >= this.MIN_SIMILARITY_THRESHOLD) {
         results.push({
           sourceType: "KB",
           sourceId: article.id,

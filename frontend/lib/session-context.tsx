@@ -9,6 +9,7 @@ interface SessionContextType {
   loading: boolean;
   refreshUser: () => Promise<void>;
   refreshAgents: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextType>({
@@ -17,6 +18,7 @@ const SessionContext = createContext<SessionContextType>({
   loading: true,
   refreshUser: async () => {},
   refreshAgents: async () => {},
+  logout: async () => {},
 });
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -38,6 +40,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const logout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // ignore
+    }
+    setUser(null);
+    setAgents([]);
+    // Crucial: window.location.replace removes the protected page from the history stack
+    // so pressing the browser Back button will not take the user back to the authenticated view.
+    window.location.replace("/login");
+  }, []);
+
   const refreshAgents = useCallback(async () => {
     try {
       const res = await fetch("/api/users");
@@ -49,6 +64,26 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setAgents([]);
     }
   }, []);
+
+  // Listen for browser Back/Forward navigation and bfcache restoration
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        refreshUser();
+      }
+    };
+
+    const handlePopState = () => {
+      refreshUser();
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [refreshUser]);
 
   useEffect(() => {
     let isMounted = true;
@@ -89,6 +124,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         loading,
         refreshUser,
         refreshAgents,
+        logout,
       }}
     >
       {children}

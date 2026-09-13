@@ -10,13 +10,13 @@ Fill this in and commit it. This is the first file we open.
 ## Notes for the reviewer
 
 - **Decoupled Architecture**: Built as two independent, decoupled services (`frontend/` on Port 3000 and `backend/` on Port 3001) with separate `package.json` files, isolated dependencies, and reverse-proxy API routing (`/api/*`).
-- **Database & Pre-seeded Data**: Hosted on managed Supabase PostgreSQL (`ap-northeast-2`). The database is seeded with rich, realistic support data: 1 Supervisor, 3 Support Agents, 2 Customers, 35+ tickets across all lifecycle states, active and historical SLA breaches, 8 weeks of resolution history, and 8 Knowledge Base articles.
+- **Database & Pre-seeded Data**: Hosted on managed Supabase PostgreSQL (`ap-northeast-2`). The database is seeded with curated, realistic support operations data: 1 Supervisor, 5 Specialized Support Agents, 4 Customers, 30+ tickets across all 10 categories, active and historical SLA breaches, 8 weeks of resolution history with dynamic 1–5 star CSAT feedback, and 10 Knowledge Base articles.
 - **Three-Role Access Control**:
   - **Supervisor (`supervisor@busy.com`)**: Global queue visibility, reassign any ticket, close/reopen within 7 days, execute bulk actions, export RFC-4180 CSV, manage tag taxonomies, and view department-wide KPI analytics.
-  - **Agents (`sarah@busy.com`, `alex@busy.com`, `jordan@busy.com`)**: Scoped to assigned tickets, collaborated tickets, and unassigned queues. Can reply, add internal notes, and attach collaborators. Cannot close tickets or reassign tickets away from themselves.
-  - **Customers (`alice@customer.com`, `bob@customer.com`)**: Dedicated self-service Customer Portal. Strict row-level isolation ensures customers only see their own tickets (`requesterId == user.id`), can only submit public replies, and can rate resolved tickets (1–5 star CSAT). Internal notes, staff audit logs, and SLA internals are completely stripped at the database query level.
+  - **Agents (`sarah@busy.com`, `alex@busy.com`, `jordan@busy.com`, `priya@busy.com`, `marcus@busy.com`)**: Scoped to assigned tickets, collaborated tickets, and unassigned queues. Can reply, add internal notes, and attach collaborators. Cannot close tickets or reassign tickets away from themselves.
+  - **Customers (`alice@customer.com`, `bob@customer.com`, `carol@startup.io`, `david@fintech.co`)**: Dedicated self-service Customer Portal. Strict row-level isolation ensures customers only see their own tickets (`requesterId == user.id`), can only submit public replies, and can rate resolved tickets (1–5 star CSAT). Internal notes, staff audit logs, and SLA internals are completely stripped at the database query level.
 - **SLA Engine**: Mathematical deadline tracking (`slaDueAt = createdAt + targetMinutes`). When a ticket enters `PENDING`, remaining seconds are frozen once. When a customer replies, the clock automatically unpauses and resumes with mathematical precision.
-- **Semantic Knowledge Copilot / Smart Assist**: Integrated Google Gemini embedding service with deterministic vector fallback. Recommends semantically similar resolved tickets and KB articles directly above the agent reply composer.
+- **Semantic Knowledge Copilot / Smart Assist**: Integrated Google Gemini embedding service with high-signal deterministic vector fallback. Recommends semantically similar resolved tickets and KB articles directly above the agent reply composer.
 - **Transactional Email & Agent Invitation**: One-time 24-hour setup tokens stored as SHA-256 hashes with Resend transactional email integration and dev console fallback.
 
 ## Demo credentials
@@ -24,11 +24,15 @@ Fill this in and commit it. This is the first file we open.
 | Role | Email | Password | Details |
 |------|-------|----------|---------|
 | **Supervisor** | `supervisor@busy.com` | `password123` | Suresh Menon — Global queue access, bulk reassign/close, CSAT analytics, team invites. |
-| **Senior Agent** | `sarah@busy.com` | `password123` | Sarah Jenkins — Primary assignee on urgent breached tickets; collaborator on others. |
-| **Support Agent** | `alex@busy.com` | `password123` | Alex Rivera — Assigned high-priority due-soon tickets; active collaborations. |
-| **Tier 1 Agent** | `jordan@busy.com` | `password123` | Jordan Lee — Assigned low/medium tickets; recently closed resolution. |
-| **Customer (Alice)** | `alice@customer.com` | `password123` | Alice Henderson (ACME Corp) — Customer requester with open and pending tickets; can reply and rate CSAT. |
-| **Customer (Bob)** | `bob@customer.com` | `password123` | Bob Martinez (Globex Corp) — Customer requester with separate isolated tickets. |
+| **Incident & Security Lead** | `sarah@busy.com` | `password123` | Sarah Jenkins — Primary assignee on urgent breached tickets; collaborator on others. |
+| **Integrations Specialist** | `alex@busy.com` | `password123` | Alex Rivera — Assigned high-priority due-soon tickets; webhook & API integrations. |
+| **Billing Operations** | `jordan@busy.com` | `password123` | Jordan Lee — Assigned billing mismatch, VAT, and proration tickets. |
+| **Performance Engineer** | `priya@busy.com` | `password123` | Priya Sharma — Database latency, connection pooling, and query optimization. |
+| **Onboarding & Success** | `marcus@busy.com` | `password123` | Marcus Vance — User account lockouts, agent invitations, and workspace onboarding. |
+| **Customer (Alice)** | `alice@customer.com` | `password123` | Alice Henderson (ACME Corp) — Enterprise customer with open and pending tickets; CSAT reviews. |
+| **Customer (Bob)** | `bob@customer.com` | `password123` | Bob Martinez (Globex Corp) — Mid-market customer with separate isolated tickets. |
+| **Customer (Carol)** | `carol@startup.io` | `password123` | Carol Danvers (Apex Technologies) — Developer customer with webhook and SSO tickets. |
+| **Customer (David)** | `david@fintech.co` | `password123` | David Chen (FinTech Global) — High-volume enterprise customer with database & security tickets. |
 
 *You can also register a new customer account at `/register` or invite an agent at `/team`.*
 
