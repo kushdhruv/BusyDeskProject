@@ -14,6 +14,7 @@ export * from "./export.routes";
 export * from "./dashboard.routes";
 export * from "./user.routes";
 export * from "./agent.routes";
+export * from "./reviews.routes";
 export * from "./health.routes";
 export * from "./recommendation.routes";
 
@@ -72,4 +73,8 @@ export const API_ROUTE_REGISTRY = [
   { method: "POST", path: "/api/agents/[id]/resend-invite", handler: "resendInviteRoute", authRequired: true, desc: "Supervisor resends invitation with freshly rotated token" },
   { method: "GET", path: "/api/auth/invitation", handler: "validateInvitationRoute", authRequired: false, desc: "Validate one-time invitation token without consuming it" },
   { method: "POST", path: "/api/auth/setup-account", handler: "setupAccountRoute", authRequired: false, desc: "Consume invitation token, set password, and sign in" },
+
+  // Reviews & Performance
+  { method: "GET", path: "/api/reviews", handler: "getAllReviewsRoute", authRequired: true, desc: "Fetch all customer satisfaction reviews and filters" },
+  { method: "GET", path: "/api/reviews/agents", handler: "getAgentPerformanceRoute", authRequired: true, desc: "Retrieve agent CSAT scorecards with sorting" },
 ] as const;

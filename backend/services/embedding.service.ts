@@ -9,6 +9,8 @@ export class EmbeddingService {
 
   /**
    * Sanitizes input text and generates a 1536-dimensional embedding vector.
+   * Prioritizes free Google Gemini API or OpenAI API, with automatic graceful fallback to
+   * deterministic local embeddings if keys are missing, invalid, or rate-limited (HTTP 429).
    */
   static async generateEmbedding(text: string): Promise<number[]> {
     const sanitized = (text || "").replace(/\s+/g, " ").trim().slice(0, 8000);
@@ -17,16 +19,55 @@ export class EmbeddingService {
       return new Array(this.EMBEDDING_DIMENSION).fill(0);
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
 
-    // Production Path: If OpenAI API key is configured
-    if (apiKey && process.env.NODE_ENV === "production") {
+    // 1. Try Google Gemini text-embedding-004 (100% Free via Google AI Studio)
+    if (geminiKey) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${geminiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "models/text-embedding-004",
+              content: { parts: [{ text: sanitized }] },
+              outputDimensionality: this.EMBEDDING_DIMENSION,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const json = await response.json();
+          if (json.embedding && Array.isArray(json.embedding.values)) {
+            let vec: number[] = json.embedding.values;
+            // Ensure 1536 dimensions
+            if (vec.length < this.EMBEDDING_DIMENSION) {
+              vec = [...vec, ...new Array(this.EMBEDDING_DIMENSION - vec.length).fill(0)];
+            } else if (vec.length > this.EMBEDDING_DIMENSION) {
+              vec = vec.slice(0, this.EMBEDDING_DIMENSION);
+            }
+            return this.normalizeVector(vec);
+          }
+        } else if (response.status === 429) {
+          console.warn("[EmbeddingService] Gemini API free tier rate limit reached (HTTP 429). Falling back to deterministic embedding.");
+        } else {
+          console.warn(`[EmbeddingService] Gemini API returned status ${response.status}. Falling back to deterministic embedding.`);
+        }
+      } catch (err) {
+        console.warn("[EmbeddingService] Gemini embedding call failed, falling back:", err);
+      }
+    }
+
+    // 2. Try OpenAI text-embedding-3-small
+    if (openaiKey) {
       try {
         const response = await fetch("https://api.openai.com/v1/embeddings", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${openaiKey}`,
           },
           body: JSON.stringify({
             model: "text-embedding-3-small",
@@ -38,17 +79,33 @@ export class EmbeddingService {
         if (response.ok) {
           const json = await response.json();
           if (json.data && json.data[0] && json.data[0].embedding) {
-            return json.data[0].embedding;
+            return this.normalizeVector(json.data[0].embedding);
           }
+        } else if (response.status === 429) {
+          console.warn("[EmbeddingService] OpenAI rate limit reached (HTTP 429). Falling back to deterministic embedding.");
+        } else {
+          console.warn(`[EmbeddingService] OpenAI API returned status ${response.status}. Falling back to deterministic embedding.`);
         }
       } catch (err) {
-        console.warn("OpenAI embedding API call failed, falling back to deterministic embedding:", err);
+        console.warn("[EmbeddingService] OpenAI embedding API call failed, falling back:", err);
       }
     }
 
-    // Deterministic Offline & Test Fallback:
-    // Produces a stable, normalized 1536-dimensional vector based on semantic token hashing
+    // 3. Resilient Fallback: Deterministic Normalized Semantic Vector (Offline / No Key / Rate Limited)
     return this.generateDeterministicVector(sanitized);
+  }
+
+  /**
+   * L2 normalizes any numeric vector
+   */
+  private static normalizeVector(vector: number[]): number[] {
+    let norm = 0;
+    for (let i = 0; i < vector.length; i++) {
+      norm += vector[i] * vector[i];
+    }
+    norm = Math.sqrt(norm);
+    if (norm === 0) return vector;
+    return vector.map((v) => v / norm);
   }
 
   /**

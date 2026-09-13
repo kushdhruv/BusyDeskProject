@@ -507,9 +507,18 @@ export default function DashboardPage() {
                 Latest customer feedback and satisfaction ratings
               </p>
             </div>
-            <span className="text-xs text-slate-500 tabular-nums font-medium">
-              {metrics.recentReviews.length} latest reviews
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-500 tabular-nums font-medium hidden sm:inline">
+                {metrics.recentReviews.length} latest reviews
+              </span>
+              <a
+                href="/reviews"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-900 hover:text-blue-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md border border-slate-200 transition-colors"
+              >
+                <span>View All Reviews</span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-slate-500" />
+              </a>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">

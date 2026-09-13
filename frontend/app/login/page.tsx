@@ -31,8 +31,7 @@ export default function LoginPage() {
         throw new Error(data.error || "Invalid email or password.");
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      window.location.href = "/dashboard";
     } catch (err: any) {
       setError(err.message || "Failed to sign in. Please check your credentials.");
     } finally {

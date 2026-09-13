@@ -18,6 +18,7 @@ import {
   PanelLeftClose,
   X,
   UserPlus,
+  Star,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -289,6 +290,19 @@ export function Sidebar({
                 </div>
               </Link>
             )}
+
+            <Link
+              href="/reviews"
+              prefetch={true}
+              onClick={handleNavClick}
+              title={collapsed ? "Customer Reviews" : undefined}
+              className={navItemClass(pathname === "/reviews")}
+            >
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                {!collapsed && <span>Customer Reviews</span>}
+              </div>
+            </Link>
           </nav>
         </div>
 
@@ -343,25 +357,12 @@ export function Sidebar({
               href="/tickets?scope=due_soon"
               prefetch={true}
               onClick={handleNavClick}
-              title={collapsed ? "Due Soon" : undefined}
+              title={collapsed ? "At Risk (Due Soon)" : undefined}
               className={navItemClass(pathname.startsWith("/tickets") && currentScope === "due_soon")}
             >
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                {!collapsed && <span>Due Soon</span>}
-              </div>
-            </Link>
-
-            <Link
-              href="/tickets?scope=breached"
-              prefetch={true}
-              onClick={handleNavClick}
-              title={collapsed ? "SLA Breached" : undefined}
-              className={navItemClass(pathname.startsWith("/tickets") && currentScope === "breached")}
-            >
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                {!collapsed && <span>SLA Breached</span>}
+                {!collapsed && <span>At Risk (Due Soon)</span>}
               </div>
             </Link>
 
