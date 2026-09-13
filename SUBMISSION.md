@@ -27,6 +27,24 @@
   - Automated morning briefings for agents and weekly team summaries for supervisors, configured for Vercel Cron.
   - Smart suppression algorithm suppresses digests when agents have zero active tickets, zero breaches, and zero pending replies, preventing alert fatigue.
   - In-app interactive preview modal with responsive HTML rendering and supervisor test dispatch.
+- **Role-Scoped Dashboards (Supervisor vs Agent)**:
+  - **Supervisor Dashboard**: Displays department-wide queue throughput, global agent workload distribution, organization-wide 8-week historical resolution trends, and company-wide customer reviews with agent performance sorting.
+  - **Agent Work Console**: Strictly scoped to the logged-in agent. All headline metric counts, queue status breakdowns, weekly resolution volume trends, and CSAT scores reflect **only tickets assigned to or collaborated on by the agent**. Displays a dedicated personal workload card with quick launcher buttons.
+- **Modern Ticket Generation & Customer Portal (LeetCode/Linear Inspired)**:
+  - Visual 10-category selection grid with distinct icons, subtitles, and active ring indicators.
+  - Contextual template placeholders that automatically adapt guidance based on the selected category (reproduction steps for bugs, license numbers for billing, portal names for integrations).
+  - Interactive urgency picker with estimated SLA response badges.
+  - Live real-time summary preview card with the BUSY Infotech Priority Support guarantee.
+- **File Attachments for Tickets and Replies**:
+  - Drag-and-drop file upload zone supporting images, PDFs, text logs, and documents up to 10MB via `/api/upload`.
+  - Stored directly in the `Ticket` model (`attachmentUrl`, `attachmentName`, `attachmentSize`, `attachmentType`) and rendered inline with preview chips on both customer and agent detail workspaces.
+- **10 Consistent Categories Across Entire Platform**:
+  - `BUG`, `BILLING`, `FEATURE`, `QUESTION`, `ACCOUNT`, `INTEGRATION`, `PERFORMANCE`, `SECURITY`, `ONBOARDING`, `OTHER` consistently enforced across the Prisma schema, type definitions, ticket creation forms, filter bars, customer portal, and queue badges with distinct color palettes.
+- **Busy Infotech Branding & Theme**:
+  - Styled after BUSY Accounting Software (`busy.in`): signature light blue (`#0284c7` / `sky-50`), deep slate / black, and crisp white cards, featuring `BUSYDesk` and `BUSY Infotech Support` wordmarks.
+- **Secure Single-Use Agent Invitation Architecture**:
+  - Supervisors can invite agents via email at `/team`. Backend generates a cryptographically secure 24-hour token, stores only its SHA-256 hash in `agent_invitations`, and transmits the setup link to the agent.
+  - Account setup at `/setup-account` securely verifies the token, hashes the agent's password, sets user status to `ACTIVE`, marks the invitation used, and establishes an authenticated session.
 - **Closed Ticket Reopening Rule**:
   - Ticket `#4` was closed recently (can be reopened by Supervisor), while Ticket `#5` was closed 15 days ago (reopening is rejected by the server with an explanatory 7-day expiration message).
 
