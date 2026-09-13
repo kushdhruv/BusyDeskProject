@@ -19,6 +19,14 @@
 - **Post-Resolution CSAT Ratings**:
   - Customers can rate resolved/closed tickets with a 1–5 star rating and feedback comment. Submissions are atomic (CSAT record + `CSAT_SUBMITTED` audit event in 1 transaction) and immutable.
   - Supervisors can view aggregated CSAT scores and rating distributions on the Supervisor Dashboard.
+- **Free-Form Tagging & Grouped Taxonomy System**:
+  - Tags are organized into logical groups (`Platform`, `Environment`, `Component`, `Impact`, `Workflow`) with group exclusivity enforcement (e.g. setting `Environment: Production` automatically replaces `Environment: Staging`).
+  - Supervisors have full governance at `/settings/tags` including tag merging with batch retagging. Agents can attach and detach tags directly from tickets.
+  - Multi-tag queue filtering and full append-only audit tracking (`TAG_ADDED`, `TAG_REMOVED`).
+- **Email Queue Digest & Smart Suppression**:
+  - Automated morning briefings for agents and weekly team summaries for supervisors, configured for Vercel Cron.
+  - Smart suppression algorithm suppresses digests when agents have zero active tickets, zero breaches, and zero pending replies, preventing alert fatigue.
+  - In-app interactive preview modal with responsive HTML rendering and supervisor test dispatch.
 - **Closed Ticket Reopening Rule**:
   - Ticket `#4` was closed recently (can be reopened by Supervisor), while Ticket `#5` was closed 15 days ago (reopening is rejected by the server with an explanatory 7-day expiration message).
 
@@ -59,12 +67,14 @@
 | 9 | History you cannot rewrite | **Done** | Append-only `AuditLog` table capturing actor, action, and old/new JSON diffs for all mutations including `CSAT_SUBMITTED`. Strictly read-only API contracts with zero edit/delete routes. |
 | 10 | SLA alerts | **Done** | Response clock measured against target response times by priority; active and due-soon alerts with nav count badge. Cycle-based alert acknowledgement that automatically returns if a reopened ticket breaches again. |
 | 11 | Customer Portal & CSAT | **Done** | Customer self-registration, server-managed urgency mapping (`LOW`/`NORMAL`/`HIGH`), 1–5 star post-resolution CSAT surveys with atomic logging and supervisor CSAT aggregation. |
+| 12 | Free-Form Tagging & Taxonomy | **Done** | Full tag group taxonomy (`Platform`, `Environment`, `Component`, `Impact`, `Workflow`), group exclusivity enforcement, autocomplete typeahead, tag merging with batch retagging, multi-tag queue filtering, and append-only audit tracking. |
+| 13 | Email Queue Digest | **Done** | Role-aware daily agent briefings and weekly supervisor department rollups, smart suppression against alert fatigue, in-app interactive preview modal, and automated Vercel Cron integration. |
 
 ## Automated Test Suite
 
-- **24 Test Suites / 177 Unit, Integration, Security & Fuzz Tests** passing with 100% green status (`npm test` in `backend/`):
-  - `tests/integration/sla-concurrency.integration.test.ts`: [NEW] Concurrency integration test executing 10 simultaneous polling clients, verifying transaction advisory locking (`pg_try_advisory_xact_lock`), zero deadlocks, and zero duplicate alerts under database engine unique constraint (`@@unique([ticketId, breachCycle])`).
-  - `tests/integration/dashboard-and-metrics.integration.test.ts`: Integration tests verifying 4 headline metrics, status distributions, and 8 continuous Monday-aligned weekly buckets with strict UTC timezone and PostgreSQL `date_trunc('week', ...)` alignment.
+- **25 Test Suites / 195 Unit, Integration, Security & Fuzz Tests** passing with 100% green status (`npm test` in `backend/`):
+  - `tests/unit/tag.test.ts`: 15 unit tests verifying complete 3-role tag permissions matrix, slug generation, group exclusivity enforcement, and ticket tag association rules.
+  - `tests/unit/digest.test.ts`: 4 unit tests verifying role-based agent and supervisor email HTML generation, metric formatting, and smart inbox suppression logic.
   - `tests/integration/route-handlers.integration.test.ts`: 10 end-to-end integration tests executing HTTP route handlers directly against live Supabase PostgreSQL (health diagnostics, ticket creation, queue query, timeline fetch, customer reply, reassignment, agent reply, status change to resolved, 5-star CSAT submission, and bulk close).
   - `tests/unit/api-routes-comprehensive.test.ts`: 21 comprehensive route validation tests ensuring strict 401 Unauthorized and 400 Bad Request enforcement across all API route handlers.
   - `tests/unit/cors-and-security.test.ts`: 6 tests validating dynamic CORS origin reflection, `credentials: true`, wildcard preflight options, production SameSite=None secure cookie transmission, and localhost development fallback.
@@ -75,12 +85,3 @@
   - `tests/unit/sla-service.test.ts`: 10 tests verifying target minutes calculation, pause & resume math, and cycle management.
   - `tests/business-rules.test.ts`: 11 core SLA and lifecycle state machine invariant tests.
   - `tests/fuzz/*`: Injection, Unicode edge cases, query bounds fuzzing, and 10-parallel concurrent request race condition testing under ACID transactions.
-
-## Scalability & Performance Engineering
-
-Full empirical report available in [`docs/scalability.md`](file:///docs/scalability.md). Key verified optimizations:
-- **Set-Based SLA Synchronization**: Replaced $O(N)$ candidate ticket loops with set-based PostgreSQL queries and transaction advisory locking. Dropped SLA polling p50 latency from **67,976 ms** to **4,045 ms** (sequential) and **2,362 ms** (concurrent) — a **94.0% reduction in latency (16.8×–28.7× faster)**.
-- **Duplicate Alert Prevention**: Added `@@unique([ticketId, breachCycle])` to the `SlaAlert` model in `schema.prisma`, resolving a real race condition where concurrent 15-second polling created duplicate alerts.
-- **Dashboard SQL Aggregation**: Replaced in-memory row iteration with PostgreSQL `date_trunc('week', "resolvedAt")` and `LEFT JOIN ... GROUP BY` on agents with `idx_tickets_archived_resolved`. Dropped dashboard p50 from **3,942 ms** to **873 ms** (**77.8% latency reduction / 4.5× faster**).
-- **Trigram Search Indexing**: Added `pg_trgm` GIN indexes on `subject`, `description`, `requesterName`, and `requesterEmail` alongside a partial B-Tree index on SLA-eligible tickets (`idx_tickets_sla_eligible`), verified via `EXPLAIN (ANALYZE, BUFFERS)`.
-- **Authorization Correctness**: Retained indexed database user validation in `auth.middleware.ts` to prevent stale 7-day tokens on deactivated or demoted accounts, avoiding multi-instance-unsafe in-memory sets.
