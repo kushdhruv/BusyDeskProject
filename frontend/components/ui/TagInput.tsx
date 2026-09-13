@@ -178,12 +178,12 @@ export const TagInput: React.FC<TagInputProps> = ({
             inputRef.current?.focus();
           }
         }}
-        className={`flex flex-wrap items-center gap-1.5 p-2 rounded-lg border bg-white dark:bg-zinc-900 transition-all ${
+        className={`flex flex-wrap items-center gap-1.5 p-1.5 rounded-md border bg-white transition-colors ${
           disabled
-            ? "opacity-60 cursor-not-allowed bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
+            ? "opacity-60 cursor-not-allowed bg-slate-50 border-slate-200"
             : isOpen
-            ? "border-primary-500 ring-2 ring-primary-500/10 dark:border-primary-500"
-            : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
+            ? "border-slate-900 ring-1 ring-slate-900"
+            : "border-slate-200 hover:border-slate-300"
         }`}
       >
         {selectedTags.map((tag) => (
@@ -208,52 +208,52 @@ export const TagInput: React.FC<TagInputProps> = ({
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={selectedTags.length === 0 ? placeholder : ""}
-            className="flex-1 min-w-[120px] bg-transparent outline-hidden text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 text-sm py-0.5"
+            className="flex-1 min-w-[100px] bg-transparent outline-none text-slate-900 placeholder-slate-400 text-xs py-0.5"
           />
         )}
       </div>
 
       {/* Error alert if any */}
       {errorMsg && (
-        <p className="mt-1 text-xs text-red-500 font-medium px-1">{errorMsg}</p>
+        <p className="mt-1 text-xs text-rose-600 font-medium px-1">{errorMsg}</p>
       )}
 
       {/* Autocomplete Dropdown */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 left-0 right-0 mt-1 max-h-72 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl p-1.5 space-y-2">
+        <div className="absolute z-50 left-0 right-0 mt-1 max-h-72 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg p-1.5 space-y-2">
           {/* Create new tag action if user typed something new */}
           {query.trim() && !hasExactMatch && (
             <button
               type="button"
               onClick={handleCreateAndAdd}
               disabled={isCreating}
-              className="w-full flex items-center justify-between px-3 py-2 text-left rounded-md text-sm text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/40 transition-colors font-medium cursor-pointer"
+              className="w-full flex items-center justify-between px-2.5 py-1.5 text-left rounded text-xs text-slate-900 hover:bg-slate-100 transition-colors font-medium cursor-pointer"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-xs bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 px-1.5 py-0.5 rounded-sm">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] bg-slate-100 border border-slate-200 text-slate-700 px-1.5 py-0.2 rounded">
                   + Create
                 </span>
                 <span className="truncate">"{query.trim()}"</span>
               </div>
-              <span className="text-xs text-zinc-400">Press Enter</span>
+              <span className="text-[10px] text-slate-400">Press Enter</span>
             </button>
           )}
 
           {isLoading ? (
-            <div className="py-4 text-center text-xs text-zinc-400">
+            <div className="py-3 text-center text-xs text-slate-400">
               Searching tags...
             </div>
           ) : searchResults.length === 0 && !query.trim() ? (
-            <div className="py-4 text-center text-xs text-zinc-400">
+            <div className="py-3 text-center text-xs text-slate-400">
               No tags available. Type to create one.
             </div>
           ) : (
             groupedResults.map((groupItem) => (
               <div key={groupItem.group?.id || "ungrouped"} className="space-y-1">
-                <div className="flex items-center justify-between px-2 pt-1.5 text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                <div className="flex items-center justify-between px-2 pt-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                   <span>{groupItem.group?.name || "Other Tags"}</span>
                   {groupItem.group?.isExclusive && (
-                    <span className="text-[10px] text-amber-500 lowercase font-normal">
+                    <span className="text-[10px] text-amber-600 lowercase font-normal">
                       exclusive
                     </span>
                   )}
@@ -273,19 +273,19 @@ export const TagInput: React.FC<TagInputProps> = ({
                             handleSelectTag(tag);
                           }
                         }}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer border ${
+                        className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer border ${
                           isSelected
-                            ? "bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
-                            : "bg-zinc-50 dark:bg-zinc-800/40 border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                            ? "bg-slate-100 border-slate-300 text-slate-900 font-semibold"
+                            : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700"
                         }`}
                       >
                         <span
                           className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: tag.color || "#6B7280" }}
+                          style={{ backgroundColor: tag.color || "#64748b" }}
                         />
                         <span>{tag.name}</span>
                         {isSelected && (
-                          <svg className="w-3 h-3 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                          <svg className="w-3 h-3 text-slate-900" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         )}

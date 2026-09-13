@@ -7,6 +7,7 @@ async function main() {
   console.log("Seeding database...");
 
   // Clean existing data
+  await prisma.agentInvitation.deleteMany();
   await prisma.ticketTag.deleteMany();
   await prisma.tag.deleteMany();
   await prisma.tagGroup.deleteMany();
