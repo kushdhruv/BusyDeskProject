@@ -79,15 +79,16 @@ export function TopBar({
           <Menu className="w-4 h-4" />
         </button>
 
-        {/* Desktop Collapse / Pop-up Sidebar Button (shows when collapsed for quick pop-out) */}
+        {/* Desktop Expand Sidebar Button (clean dynamic toggle when collapsed) */}
         {sidebarCollapsed && onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
-            title="Expand sidebar (Pop up)"
-            className="hidden lg:flex p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+            title="Expand navigation sidebar"
+            className="hidden lg:flex items-center gap-1.5 px-2 py-1 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md transition-colors cursor-pointer shadow-2xs text-xs font-medium"
             aria-label="Expand sidebar"
           >
-            <PanelLeftOpen className="w-4 h-4" />
+            <PanelLeftOpen className="w-3.5 h-3.5 text-slate-600" />
+            <span className="text-[11px]">Expand</span>
           </button>
         )}
 

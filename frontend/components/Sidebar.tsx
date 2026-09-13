@@ -17,6 +17,7 @@ import {
   LogOut,
   Headphones,
   PanelLeftClose,
+  PanelLeftOpen,
   X,
   UserPlus,
   Star,
@@ -155,11 +156,7 @@ export function Sidebar({
     }`;
 
   const renderSidebarContent = (isMobile: boolean) => (
-    <div
-      className={`flex flex-col h-full select-none ${collapsed && !isMobile ? "cursor-pointer" : ""}`}
-      onClick={handleEmptySpaceClick}
-      title={collapsed && !isMobile ? "Click empty space to expand sidebar" : undefined}
-    >
+    <div className="flex flex-col h-full select-none">
       {/* Brand Header */}
       <div
         className={`h-14 flex items-center border-b border-slate-200 flex-shrink-0 ${
@@ -170,7 +167,7 @@ export function Sidebar({
           href="/"
           onClick={handleNavClick}
           className="flex items-center gap-2.5 min-w-0 cursor-pointer group"
-          title={collapsed && !isMobile ? "Return to Homepage" : "BUSYDesk Homepage"}
+          title="Return to BUSYDesk Homepage"
         >
           <div className="w-7 h-7 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 flex-shrink-0 shadow-2xs group-hover:bg-slate-800 transition-colors">
             <Headphones className="w-3.5 h-3.5" />
@@ -201,14 +198,14 @@ export function Sidebar({
           </button>
         )}
 
-        {/* Desktop: Collapse Toggle Button (ONLY visible in expanded mode to eliminate overlap) */}
+        {/* Desktop: Collapse Toggle Button (when expanded) */}
         {!isMobile && !collapsed && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleCollapse();
             }}
-            title="Collapse sidebar (Go in)"
+            title="Collapse sidebar"
             className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
             aria-label="Collapse sidebar"
           >
@@ -219,6 +216,23 @@ export function Sidebar({
 
       {/* Navigation Sections */}
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+        {/* Dynamic Expand Button when Collapsed on Desktop */}
+        {!isMobile && collapsed && (
+          <div className="pb-2 mb-1 border-b border-slate-200/70 flex justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleCollapse();
+              }}
+              title="Expand sidebar (Toggle out)"
+              className="w-8 h-8 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/80 transition-colors cursor-pointer"
+              aria-label="Expand sidebar"
+            >
+              <PanelLeftOpen className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Main Section */}
         <div>
           {!collapsed && (
