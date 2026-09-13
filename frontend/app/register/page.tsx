@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Headphones, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Headphones, Eye, EyeOff, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
@@ -44,12 +44,25 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-[85vh] flex flex-col items-center justify-center py-12 px-4">
+      {/* Top Back Link */}
+      <div className="w-full max-w-sm mb-3 flex items-center justify-start">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors group cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Back to Homepage</span>
+        </Link>
+      </div>
+
       {/* Brand Header */}
       <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-slate-900 text-white mb-2 shadow-xs">
-          <Headphones className="w-4 h-4" />
-        </div>
-        <h1 className="text-lg font-semibold text-slate-900 tracking-tight">Customer Support Portal</h1>
+        <Link href="/" className="inline-flex flex-col items-center group cursor-pointer">
+          <div className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-slate-900 text-white mb-2 shadow-xs group-hover:bg-slate-800 transition-colors">
+            <Headphones className="w-4 h-4 text-sky-400" />
+          </div>
+          <h1 className="text-lg font-semibold text-slate-900 tracking-tight group-hover:text-slate-700 transition-colors">Customer Support Portal</h1>
+        </Link>
         <p className="text-xs text-slate-500 mt-0.5">
           Submit and track your requests with our support engineering team
         </p>
@@ -137,13 +150,19 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <div className="mt-5 pt-3 border-t border-slate-100 text-center">
+        <div className="mt-5 pt-3 border-t border-slate-100 flex flex-col items-center gap-1.5 text-center">
           <p className="text-xs text-slate-500">
             Already registered?{" "}
             <Link href="/login" className="font-medium text-slate-900 hover:underline">
               Sign in here
             </Link>
           </p>
+          <Link
+            href="/"
+            className="text-[11px] text-slate-400 hover:text-slate-700 transition-colors pt-1"
+          >
+            ← Return to Homepage
+          </Link>
         </div>
       </div>
     </div>
