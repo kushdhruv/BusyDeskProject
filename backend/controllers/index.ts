@@ -15,3 +15,6 @@ export * from "./export.controller";
 export * from "./bulk.controller";
 export * from "./audit.controller";
 export * from "./timeline.controller";
+export * from "./reviews.controller";
+export * from "./tag.controller";
+export * from "./digest.controller";

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User as SessionUser } from "@/lib/types";
-import { Search, Bell, Plus, Command, Menu, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { Search, Bell, Plus, Command, Menu, PanelLeftOpen, PanelLeftClose, Mail } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 interface TopBarProps {
@@ -12,6 +12,7 @@ interface TopBarProps {
   onToggleMobile?: () => void;
   sidebarCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onOpenDigest?: () => void;
 }
 
 export function TopBar({
@@ -19,6 +20,7 @@ export function TopBar({
   onToggleMobile,
   sidebarCollapsed,
   onToggleCollapse,
+  onOpenDigest,
 }: TopBarProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -110,6 +112,19 @@ export function TopBar({
 
       {/* Right side Action Center */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        {/* Email Digest Trigger Button */}
+        {onOpenDigest && (
+          <button
+            type="button"
+            onClick={onOpenDigest}
+            className="relative p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+            title="Email Queue Digest Preferences & Preview"
+            aria-label="Email Queue Digest"
+          >
+            <Mail className="w-4 h-4" />
+          </button>
+        )}
+
         {/* SLA Alert Notification Bell */}
         <Link
           href="/alerts"

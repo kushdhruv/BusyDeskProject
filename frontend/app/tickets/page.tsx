@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Priority, Category, Status, BulkActionResponse } from "@/lib/types";
+import { Priority, Category, Status, BulkActionResponse, Tag as TagType } from "@/lib/types";
 import { useSession } from "@/lib/session-context";
 import { QueueTableSkeleton } from "@/components/ui/Skeletons";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PriorityBadge, CategoryBadge } from "@/components/PriorityBadge";
+import { TagBadge } from "@/components/ui/TagBadge";
 import { SlaCountdown } from "@/components/SlaCountdown";
 import { BulkResultsModal } from "@/components/BulkResultsModal";
 import { ContextMenu } from "@/components/ContextMenu";
@@ -52,6 +53,7 @@ interface TicketItem {
   createdAt: string;
   updatedAt: string;
   satisfaction?: { id: string; rating: number; comment?: string | null; createdAt: string } | null;
+  tags?: { id: string; tag: TagType }[];
   _count: { replies: number };
 }
 
@@ -98,6 +100,18 @@ function TicketsQueueContent() {
     singleTicketSubject?: string;
   } | null>(null);
 
+  const [tagId, setTagId] = useState<string>(searchParams.get("tagId") || "");
+  const [availableTags, setAvailableTags] = useState<TagType[]>([]);
+
+  useEffect(() => {
+    fetch("/api/tags")
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        if (data.tags) setAvailableTags(data.tags);
+      })
+      .catch(() => {});
+  }, []);
+
   // Synchronize state whenever URL query params change (sidebar navigation or browser back/forward)
   useEffect(() => {
     const urlSearch = searchParams.get("search") || "";
@@ -105,6 +119,7 @@ function TicketsQueueContent() {
     const urlPriority = searchParams.get("priority") || "";
     const urlCategory = searchParams.get("category") || "";
     const urlAssigneeId = searchParams.get("assigneeId") || "";
+    const urlTagId = searchParams.get("tagId") || "";
     const urlScope = searchParams.get("scope") || "all";
     const urlSort = searchParams.get("sort") || "createdAt";
     const urlOrder = searchParams.get("order") || "desc";
@@ -115,6 +130,7 @@ function TicketsQueueContent() {
     setPriority(urlPriority);
     setCategory(urlCategory);
     setAssigneeId(urlAssigneeId);
+    setTagId(urlTagId);
     setScope(urlScope);
     setSort(urlSort);
     setOrder(urlOrder);
@@ -130,6 +146,7 @@ function TicketsQueueContent() {
     if (priority) query.set("priority", priority);
     if (category) query.set("category", category);
     if (assigneeId) query.set("assigneeId", assigneeId);
+    if (tagId) query.set("tagIds", tagId);
     if (scope) query.set("scope", scope);
     if (sort) query.set("sort", sort);
     if (order) query.set("order", order);
@@ -148,7 +165,7 @@ function TicketsQueueContent() {
     } finally {
       setLoading(false);
     }
-  }, [search, status, priority, category, assigneeId, scope, sort, order, page]);
+  }, [search, status, priority, category, assigneeId, tagId, scope, sort, order, page]);
 
   useEffect(() => {
     loadQueue();
@@ -221,7 +238,9 @@ function TicketsQueueContent() {
     window.open(`/api/tickets/export?${query.toString()}`, "_blank");
   };
 
-  const hasActiveFilters = Boolean(search || status || priority || category || assigneeId || (scope && scope !== "all"));
+  const hasActiveFilters = Boolean(
+    search || status || priority || category || assigneeId || tagId || (scope && scope !== "all")
+  );
 
   const resetFilters = () => {
     setSearch("");
@@ -229,6 +248,7 @@ function TicketsQueueContent() {
     setPriority("");
     setCategory("");
     setAssigneeId("");
+    setTagId("");
     setScope("all");
     setPage(1);
   };
@@ -379,7 +399,32 @@ function TicketsQueueContent() {
           <option value="BILLING">Billing</option>
           <option value="FEATURE">Feature</option>
           <option value="QUESTION">Question</option>
+          <option value="ACCOUNT">Account</option>
+          <option value="INTEGRATION">Integration</option>
+          <option value="PERFORMANCE">Performance</option>
+          <option value="SECURITY">Security</option>
+          <option value="ONBOARDING">Onboarding</option>
+          <option value="OTHER">Other</option>
         </Select>
+
+        {/* Tag Filter */}
+        {user?.role !== "CUSTOMER" && (
+          <Select
+            value={tagId}
+            onChange={(e) => {
+              setTagId(e.target.value);
+              setPage(1);
+            }}
+            className="w-auto max-w-[160px]"
+          >
+            <option value="">Tag: All</option>
+            {availableTags.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name} {t.group ? `(${t.group.name})` : ""}
+              </option>
+            ))}
+          </Select>
+        )}
 
         {/* Assignee Filter */}
         <Select
@@ -730,6 +775,29 @@ function TicketsQueueContent() {
                             </span>
                           )}
                         </div>
+
+                        {/* Applied Tags */}
+                        {t.tags && t.tags.length > 0 && user?.role !== "CUSTOMER" && (
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            {t.tags.slice(0, 3).map((tt) => (
+                              <TagBadge
+                                key={tt.id}
+                                tag={tt.tag}
+                                size="xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTagId(tt.tag.id);
+                                  setPage(1);
+                                }}
+                              />
+                            ))}
+                            {t.tags.length > 3 && (
+                              <span className="text-[10px] text-slate-400 font-medium px-1">
+                                +{t.tags.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Requester */}

@@ -7,6 +7,9 @@ async function main() {
   console.log("Seeding database...");
 
   // Clean existing data
+  await prisma.ticketTag.deleteMany();
+  await prisma.tag.deleteMany();
+  await prisma.tagGroup.deleteMany();
   await prisma.recommendationFeedback.deleteMany();
   await prisma.knowledgeArticle.deleteMany();
   await prisma.customerSatisfaction.deleteMany();
@@ -91,7 +94,7 @@ async function main() {
   for (let w = 1; w <= 8; w++) {
     const daysAgo = w * 7 - 2;
     const resolvedDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-    const countThisWeek = 3 + (w % 4); // 3-6 tickets per week
+    const countThisWeek = 2; // 2 tickets per week = 16 historical tickets (sufficient for 8-week trend)
 
     for (let i = 1; i <= countThisWeek; i++) {
       const assignee = i % 2 === 0 ? agentSarah : agentAlex;
@@ -477,7 +480,169 @@ When receiving HTTP 429 Too Many Requests, inspect the 'Retry-After' response he
     ],
   });
 
-  console.log("Seed finished successfully! 6 users, 35+ tickets, and 5 Knowledge Base articles created.");
+  // 6. Seed Tag Groups & Tags
+  console.log("Seeding tag groups and tags...");
+  const platformGroup = await prisma.tagGroup.create({
+    data: {
+      name: "Platform",
+      description: "Client platform or device running the application",
+      color: "#8B5CF6",
+      isExclusive: false,
+      displayOrder: 1,
+    },
+  });
+
+  const envGroup = await prisma.tagGroup.create({
+    data: {
+      name: "Environment",
+      description: "Deployment environment where issue was encountered",
+      color: "#F59E0B",
+      isExclusive: true,
+      displayOrder: 2,
+    },
+  });
+
+  const componentGroup = await prisma.tagGroup.create({
+    data: {
+      name: "Component",
+      description: "System architecture subsystem or feature area",
+      color: "#3B82F6",
+      isExclusive: false,
+      displayOrder: 3,
+    },
+  });
+
+  const impactGroup = await prisma.tagGroup.create({
+    data: {
+      name: "Impact",
+      description: "Blast radius and severity of incident",
+      color: "#EF4444",
+      isExclusive: true,
+      displayOrder: 4,
+    },
+  });
+
+  const workflowGroup = await prisma.tagGroup.create({
+    data: {
+      name: "Workflow",
+      description: "Operational lifecycle state and triage handling",
+      color: "#10B981",
+      isExclusive: false,
+      displayOrder: 5,
+    },
+  });
+
+  // Create tags
+  const seededTags = [
+    // Platform
+    { name: "iOS", slug: "ios", color: "#A78BFA", groupId: platformGroup.id },
+    { name: "Android", slug: "android", color: "#34D399", groupId: platformGroup.id },
+    { name: "Web", slug: "web", color: "#60A5FA", groupId: platformGroup.id },
+    { name: "API", slug: "api", color: "#FBBF24", groupId: platformGroup.id },
+    // Environment
+    { name: "Production", slug: "production", color: "#EF4444", groupId: envGroup.id },
+    { name: "Staging", slug: "staging", color: "#F59E0B", groupId: envGroup.id },
+    { name: "Development", slug: "development", color: "#10B981", groupId: envGroup.id },
+    // Component
+    { name: "Authentication", slug: "authentication", color: "#818CF8", groupId: componentGroup.id },
+    { name: "Billing", slug: "billing-tag", color: "#34D399", groupId: componentGroup.id },
+    { name: "Dashboard", slug: "dashboard", color: "#60A5FA", groupId: componentGroup.id },
+    { name: "Notifications", slug: "notifications", color: "#FB923C", groupId: componentGroup.id },
+    { name: "Integrations", slug: "integrations", color: "#C084FC", groupId: componentGroup.id },
+    // Impact
+    { name: "Service Down", slug: "service-down", color: "#DC2626", groupId: impactGroup.id },
+    { name: "Degraded", slug: "degraded", color: "#F59E0B", groupId: impactGroup.id },
+    { name: "Cosmetic", slug: "cosmetic", color: "#9CA3AF", groupId: impactGroup.id },
+    // Workflow
+    { name: "Escalated", slug: "escalated", color: "#EF4444", groupId: workflowGroup.id },
+    { name: "Needs Deploy", slug: "needs-deploy", color: "#F59E0B", groupId: workflowGroup.id },
+    { name: "Customer VIP", slug: "customer-vip", color: "#8B5CF6", groupId: workflowGroup.id },
+    { name: "Waiting 3rd Party", slug: "waiting-3rd-party", color: "#6B7280", groupId: workflowGroup.id },
+    // Ungrouped
+    { name: "security-audit", slug: "security-audit", color: "#EF4444", groupId: null },
+    { name: "regression", slug: "regression", color: "#DC2626", groupId: null },
+    { name: "documentation", slug: "documentation", color: "#6B7280", groupId: null },
+  ];
+
+  const tagMap = new Map<string, any>();
+  for (const t of seededTags) {
+    const createdTag = await prisma.tag.create({
+      data: t,
+    });
+    tagMap.set(t.name, createdTag);
+  }
+
+  // Associate tags to existing tickets
+  const allTickets = await prisma.ticket.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 25,
+  });
+
+  const tagUsageCounts = new Map<string, number>();
+
+  for (let idx = 0; idx < allTickets.length; idx++) {
+    const t = allTickets[idx];
+    const tagsToAssign: any[] = [];
+
+    // Assign based on ticket attributes
+    if (idx % 2 === 0) tagsToAssign.push(tagMap.get("Web"));
+    if (idx % 3 === 0) tagsToAssign.push(tagMap.get("iOS"));
+    if (idx % 5 === 0) tagsToAssign.push(tagMap.get("API"));
+
+    if (t.priority === Priority.URGENT) {
+      tagsToAssign.push(tagMap.get("Production"));
+      tagsToAssign.push(tagMap.get("Service Down"));
+      tagsToAssign.push(tagMap.get("Escalated"));
+    } else if (t.priority === Priority.HIGH) {
+      tagsToAssign.push(tagMap.get("Degraded"));
+      if (idx % 2 === 0) tagsToAssign.push(tagMap.get("Customer VIP"));
+    } else {
+      tagsToAssign.push(tagMap.get("Cosmetic"));
+    }
+
+    if (t.category === Category.BUG) {
+      tagsToAssign.push(tagMap.get("regression"));
+    } else if (t.category === Category.BILLING) {
+      tagsToAssign.push(tagMap.get("Billing"));
+    }
+
+    for (const tag of tagsToAssign) {
+      if (!tag) continue;
+      try {
+        await prisma.ticketTag.create({
+          data: {
+            ticketId: t.id,
+            tagId: tag.id,
+            addedById: supervisor.id,
+          },
+        });
+        tagUsageCounts.set(tag.id, (tagUsageCounts.get(tag.id) || 0) + 1);
+
+        await prisma.auditLog.create({
+          data: {
+            ticketId: t.id,
+            actorId: supervisor.id,
+            actorName: supervisor.name,
+            eventType: AuditEventType.TAG_ADDED,
+            newValue: { tagId: tag.id, tagName: tag.name },
+            metadata: { group: tag.groupId ? "Grouped" : "Ungrouped" },
+          },
+        });
+      } catch (err) {
+        // Ignore duplicate composite key if any
+      }
+    }
+  }
+
+  // Update tag usageCounts
+  for (const [tagId, count] of tagUsageCounts.entries()) {
+    await prisma.tag.update({
+      where: { id: tagId },
+      data: { usageCount: count },
+    });
+  }
+
+  console.log("Seed finished successfully! 6 users, 35+ tickets, 5 tag groups, 22 tags, and 5 Knowledge Base articles created.");
 }
 
 main()

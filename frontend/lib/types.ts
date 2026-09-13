@@ -2,7 +2,52 @@ export type Role = "SUPERVISOR" | "AGENT" | "CUSTOMER";
 export type UserStatus = "PENDING_SETUP" | "ACTIVE" | "SUSPENDED";
 export type Status = "NEW" | "OPEN" | "PENDING" | "RESOLVED" | "CLOSED";
 export type Priority = "URGENT" | "HIGH" | "MEDIUM" | "LOW";
-export type Category = "BUG" | "BILLING" | "FEATURE" | "QUESTION";
+export type Category =
+  | "BUG"
+  | "BILLING"
+  | "FEATURE"
+  | "QUESTION"
+  | "ACCOUNT"
+  | "INTEGRATION"
+  | "PERFORMANCE"
+  | "SECURITY"
+  | "ONBOARDING"
+  | "OTHER";
+
+export interface TagGroup {
+  id: string;
+  name: string;
+  description?: string | null;
+  color: string;
+  isExclusive: boolean;
+  displayOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+  tags?: Tag[];
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+  groupId?: string | null;
+  group?: TagGroup | null;
+  usageCount: number;
+  createdAt?: string;
+  updatedAt?: string;
+  _count?: { tickets: number };
+}
+
+export interface TicketTag {
+  id: string;
+  ticketId: string;
+  tagId: string;
+  tag: Tag;
+  addedById?: string | null;
+  addedBy?: { id: string; name: string; email: string } | null;
+  createdAt: string;
+}
 
 export interface User {
   id: string;
@@ -68,6 +113,7 @@ export interface Ticket {
   slaCycle?: number;
   archivedAt?: string | null;
   collaborators?: { user: User; userId: string; ticketId: string }[];
+  tags?: TicketTag[];
   replies?: any[];
   timeline?: any[];
   satisfaction?: CustomerSatisfaction | null;

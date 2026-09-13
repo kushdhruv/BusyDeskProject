@@ -31,6 +31,8 @@ export interface GetQueueParams {
   priority?: Priority;
   category?: Category;
   assigneeId?: string;
+  tagIds?: string[];
+  tagGroupId?: string;
   scope?: "all" | "assigned_to_me" | "collaborating" | "awaiting_customer" | "due_soon" | "breached" | "archived";
   sort?: "createdAt" | "updatedAt" | "priority" | "slaDueAt";
   order?: "asc" | "desc";
@@ -458,6 +460,19 @@ export class TicketController {
             user: { select: { id: true, name: true, email: true } },
           },
         },
+        tags: isCustomer
+          ? false
+          : {
+              include: {
+                tag: {
+                  include: { group: true },
+                },
+                addedBy: {
+                  select: { id: true, name: true, email: true },
+                },
+              },
+              orderBy: { createdAt: "asc" },
+            },
       },
     });
 
@@ -569,6 +584,22 @@ export class TicketController {
     if (params.category) where.category = params.category;
     if (params.assigneeId && user.role !== Role.CUSTOMER) where.primaryAssigneeId = params.assigneeId;
 
+    // Tag filtering
+    if (params.tagIds && params.tagIds.length > 0 && user.role !== Role.CUSTOMER) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+        ...params.tagIds.map((tId) => ({
+          tags: { some: { tagId: tId } },
+        })),
+      ];
+    }
+    if (params.tagGroupId && user.role !== Role.CUSTOMER) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+        { tags: { some: { tag: { groupId: params.tagGroupId } } } },
+      ];
+    }
+
     // Search: Subject and Description
     if (params.search?.trim()) {
       const q = params.search.trim();
@@ -611,6 +642,13 @@ export class TicketController {
               rating: true,
               comment: true,
               createdAt: true,
+            },
+          },
+          tags: user.role === Role.CUSTOMER ? false : {
+            include: {
+              tag: {
+                include: { group: true },
+              },
             },
           },
           _count: { select: { replies: true } },

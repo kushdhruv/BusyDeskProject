@@ -17,6 +17,8 @@ export * from "./agent.routes";
 export * from "./reviews.routes";
 export * from "./health.routes";
 export * from "./recommendation.routes";
+export * from "./tag.routes";
+export * from "./digest.routes";
 
 /**
  * Overview of all system routes, methods, access requirements, and descriptions.
@@ -77,4 +79,27 @@ export const API_ROUTE_REGISTRY = [
   // Reviews & Performance
   { method: "GET", path: "/api/reviews", handler: "getAllReviewsRoute", authRequired: true, desc: "Fetch all customer satisfaction reviews and filters" },
   { method: "GET", path: "/api/reviews/agents", handler: "getAgentPerformanceRoute", authRequired: true, desc: "Retrieve agent CSAT scorecards with sorting" },
+
+  // Tags & Tag Groups
+  { method: "GET", path: "/api/tag-groups", handler: "listTagGroupsRoute", authRequired: true, desc: "List all tag groups with tags" },
+  { method: "POST", path: "/api/tag-groups", handler: "createTagGroupRoute", authRequired: true, desc: "Create new tag group (Supervisor only)" },
+  { method: "GET", path: "/api/tag-groups/[id]", handler: "getTagGroupByIdRoute", authRequired: true, desc: "Get tag group by ID" },
+  { method: "PATCH", path: "/api/tag-groups/[id]", handler: "updateTagGroupRoute", authRequired: true, desc: "Update tag group (Supervisor only)" },
+  { method: "DELETE", path: "/api/tag-groups/[id]", handler: "deleteTagGroupRoute", authRequired: true, desc: "Delete tag group (Supervisor only)" },
+  { method: "GET", path: "/api/tags", handler: "listTagsRoute", authRequired: true, desc: "List tags filtered by group or search" },
+  { method: "POST", path: "/api/tags", handler: "createTagRoute", authRequired: true, desc: "Create a tag" },
+  { method: "GET", path: "/api/tags/search", handler: "searchTagsRoute", authRequired: true, desc: "Typeahead autocomplete tag search" },
+  { method: "GET", path: "/api/tags/[id]", handler: "getTagByIdRoute", authRequired: true, desc: "Get tag by ID" },
+  { method: "PATCH", path: "/api/tags/[id]", handler: "updateTagRoute", authRequired: true, desc: "Update tag (Supervisor only)" },
+  { method: "DELETE", path: "/api/tags/[id]", handler: "deleteTagRoute", authRequired: true, desc: "Delete tag (Supervisor only)" },
+  { method: "POST", path: "/api/tags/[id]/merge", handler: "mergeTagsRoute", authRequired: true, desc: "Merge source tag into target (Supervisor only)" },
+  { method: "GET", path: "/api/tickets/[id]/tags", handler: "getTicketTagsRoute", authRequired: true, desc: "Get tags applied to a ticket" },
+  { method: "POST", path: "/api/tickets/[id]/tags", handler: "addTicketTagsRoute", authRequired: true, desc: "Add tags to a ticket" },
+  { method: "DELETE", path: "/api/tickets/[id]/tags/[tagId]", handler: "removeTicketTagRoute", authRequired: true, desc: "Remove a tag from a ticket" },
+
+  // Email Queue Digests & Cron
+  { method: "GET", path: "/api/digest/preferences", handler: "getDigestPreferencesRoute", authRequired: true, desc: "Get current user email digest preferences" },
+  { method: "PATCH", path: "/api/digest/preferences", handler: "updateDigestPreferencesRoute", authRequired: true, desc: "Update user email digest preferences (enabled, frequency)" },
+  { method: "GET", path: "/api/digest/preview", handler: "previewDigestRoute", authRequired: true, desc: "Generate live HTML preview of Agent or Supervisor digest" },
+  { method: "POST", path: "/api/cron/digest", handler: "triggerCronDigestRoute", authRequired: false, desc: "Scheduled Vercel Cron trigger for daily/weekly digest dispatch" },
 ] as const;

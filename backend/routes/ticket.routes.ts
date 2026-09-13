@@ -11,12 +11,18 @@ export async function getTicketsRoute(req: Request): Promise<NextResponse> {
     }
 
     const { searchParams } = new URL(req.url);
+    const tagIdsParam = searchParams.get("tagIds");
+    const tagIds = tagIdsParam ? tagIdsParam.split(",").map((t) => t.trim()).filter(Boolean) : undefined;
+    const tagGroupId = searchParams.get("tagGroupId") || undefined;
+
     const params: GetQueueParams = {
       search: searchParams.get("search") || undefined,
       status: (searchParams.get("status") as Status) || undefined,
       priority: (searchParams.get("priority") as Priority) || undefined,
       category: (searchParams.get("category") as Category) || undefined,
       assigneeId: searchParams.get("assigneeId") || undefined,
+      tagIds,
+      tagGroupId,
       scope: (searchParams.get("scope") as GetQueueParams["scope"]) || "all",
       sort: (searchParams.get("sort") as GetQueueParams["sort"]) || "createdAt",
       order: (searchParams.get("order") as GetQueueParams["order"]) || "desc",

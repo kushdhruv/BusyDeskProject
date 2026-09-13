@@ -83,9 +83,22 @@ takehome-04-support-ticketing/
 - **Supervisor Dashboard**: Headline metrics (Active, Breached, Pending Customer, Resolved This Week, CSAT Average), SVG Status Donut, Agent Workload bars, and an **8-Week Historical Resolution Trend** chart.
 - **SLA Alerts Center**: Imminent ($<30\text{m}$) and breached tickets appear in the alert navigation center with live badge counts and 1-click acknowledgement.
 
+### 7. 🏷️ Free-Form Tagging & Linear-Style Group Taxonomy
+- **Multi-Tagging with Auto-Complete**: Agents can apply free-form tags with inline tag creation, keyboard navigation, and instant color-coded pill badges.
+- **Tag Groups & Exclusivity**: Tags are structured under logical groups (`Platform`, `Environment`, `Component`, `Impact`, `Workflow`). Exclusive groups automatically enforce mutual exclusivity (e.g., applying `Environment: Production` automatically replaces `Environment: Staging`).
+- **Tag Merging & Governance**: Supervisors can merge duplicate or synonymous tags (`/settings/tags`) with automated batch retagging and transaction isolation.
+- **Compound Queue Filtering**: Multi-tag filter in the ticket workspace supporting simultaneous status, priority, category, and tag filtering.
+- **Append-Only Tag Auditing**: Every tag application and removal produces `TAG_ADDED` and `TAG_REMOVED` immutable audit logs.
+
+### 8. 📬 Email Queue Digest & Smart Suppression
+- **Role-Aware Digest Briefings**: Daily queue briefings for agents (breaching SLAs, urgent tickets, awaiting responses) and weekly department summaries for supervisors (team throughput, resolution metrics, CSAT health).
+- **Smart Inbox Suppression**: Prevents alert fatigue. If an agent has zero active tickets, zero breaches, and zero pending customer replies, the digest is automatically suppressed.
+- **Automated Vercel Cron Scheduling**: Configured with `vercel.json` crons (`30 3 * * 1-5` for daily 9:00 AM dispatch and `0 3 * * 1` for Monday weekly summaries) with cryptographic header security (`CRON_SECRET`).
+- **Interactive In-App Preview & Settings**: Agents and supervisors can adjust delivery preferences (`DAILY`, `WEEKLY`, `NEVER`) and inspect live HTML email previews directly in the app.
+
 ---
 
-## 🧪 Comprehensive Test Suite (176 Tests, 100% Passing)
+## 🧪 Comprehensive Test Suite (195 Tests, 100% Passing)
 
 Run the full automated test suite inside `backend/`:
 
@@ -94,15 +107,17 @@ cd backend
 npm test
 ```
 
-### Test Suite Breakdown (23 Test Suites)
+### Test Suite Breakdown (25 Test Suites)
 | Test Category | Test File | Count | Focus Areas |
 |---|---|---|---|
 | **Unit Testing** | `backend/tests/unit/policies.test.ts` | 39 | Complete 3-role $\times$ permission matrix |
 | **Unit Testing** | `backend/tests/unit/lifecycle-service.test.ts` | 26 | Valid/invalid state machine transitions & 7-day reopen guard |
 | **Unit Testing** | `backend/tests/unit/api-routes-comprehensive.test.ts` | 21 | Route layer request/response validation & 401/400 auth guards |
+| **Unit Testing** | `backend/tests/unit/tag.test.ts` | 15 | Tag permissions matrix, slug generation, group exclusivity & ticket association |
 | **Unit Testing** | `backend/tests/unit/sla-service.test.ts` | 10 | Target minutes calculation, pause & resume math |
 | **Unit Testing** | `backend/tests/unit/cors-and-security.test.ts` | 6 | Dynamic origin reflection, cross-origin cookies, production partitioning |
 | **Unit Testing** | `backend/tests/unit/export-service.test.ts` | 5 | RFC-4180 CSV escaping, formula injection protection |
+| **Unit Testing** | `backend/tests/unit/digest.test.ts` | 4 | Role-based email rendering, HTML formatting & smart suppression logic |
 | **Unit Testing** | `backend/tests/unit/auth.test.ts` | 3 | JWT signing, verification, expiration |
 | **Unit Testing** | `backend/tests/unit/routes.test.ts` | 2 | API Route Registry structure & auth requirement verification |
 | **Unit Testing** | `backend/tests/unit/health.test.ts` | 2 | Live DB health ping (`SELECT 1`), latency monitoring, error fallback |

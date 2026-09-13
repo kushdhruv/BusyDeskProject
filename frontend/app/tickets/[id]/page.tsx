@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { SmartAssistPanel } from "@/components/tickets/SmartAssistPanel";
+import { TagInput } from "@/components/ui/TagInput";
+import { Tag as TagType } from "@/lib/types";
 import {
   ArrowLeft,
   Clock,
@@ -342,6 +344,47 @@ export default function TicketWorkspacePage() {
       navigator.clipboard.writeText(ticketData.requesterEmail);
       setCopiedEmail(true);
       setTimeout(() => setCopiedEmail(false), 2000);
+    }
+  };
+
+  const handleAddTag = async (tag: TagType) => {
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}/tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tagIds: [tag.id] }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || "Failed to add tag.");
+      }
+      const data = await res.json();
+      setTicketData((prev: any) => (prev ? { ...prev, tags: data.tags } : prev));
+    } catch (err: any) {
+      alert(err.message || "Failed to add tag.");
+    }
+  };
+
+  const handleRemoveTag = async (tagId: string) => {
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}/tags/${tagId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || "Failed to remove tag.");
+      }
+      setTicketData((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          tags: (prev.tags || []).filter(
+            (tt: any) => tt.tagId !== tagId && tt.tag?.id !== tagId
+          ),
+        };
+      });
+    } catch (err: any) {
+      alert(err.message || "Failed to remove tag.");
     }
   };
 
@@ -1069,6 +1112,24 @@ export default function TicketWorkspacePage() {
                   </span>
                 </div>
               )}
+            </div>
+
+            {/* Tags Taxonomy Section */}
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-400 block font-medium">Tags</span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {(ticketData.tags || []).length} applied
+                </span>
+              </div>
+
+              <TagInput
+                selectedTags={(ticketData.tags || []).map((tt: any) => tt.tag).filter(Boolean)}
+                onAddTag={handleAddTag}
+                onRemoveTag={handleRemoveTag}
+                disabled={!permissions?.canEdit}
+                placeholder="Add tags..."
+              />
             </div>
 
             {/* SLA Clock Widget */}

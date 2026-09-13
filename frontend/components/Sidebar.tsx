@@ -19,6 +19,8 @@ import {
   X,
   UserPlus,
   Star,
+  Tag as TagIcon,
+  Mail,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -29,6 +31,7 @@ interface SidebarProps {
   onWidthChange: (w: number) => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  onOpenDigest?: () => void;
 }
 
 export function Sidebar({
@@ -39,6 +42,7 @@ export function Sidebar({
   onWidthChange,
   mobileOpen,
   onCloseMobile,
+  onOpenDigest,
 }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -303,6 +307,38 @@ export function Sidebar({
                 {!collapsed && <span>Customer Reviews</span>}
               </div>
             </Link>
+
+            {isSupervisor && (
+              <Link
+                href="/settings/tags"
+                prefetch={true}
+                onClick={handleNavClick}
+                title={collapsed ? "Tag Management" : undefined}
+                className={navItemClass(pathname === "/settings/tags")}
+              >
+                <div className="flex items-center gap-2">
+                  <TagIcon className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                  {!collapsed && <span>Tag Taxonomy</span>}
+                </div>
+              </Link>
+            )}
+
+            {onOpenDigest && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  handleNavClick(e);
+                  onOpenDigest();
+                }}
+                title={collapsed ? "Email Queue Digest" : undefined}
+                className={`${navItemClass(false)} w-full text-left`}
+              >
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                  {!collapsed && <span>Email Digest</span>}
+                </div>
+              </button>
+            )}
           </nav>
         </div>
 

@@ -38,6 +38,12 @@ export function CategoryBadge({ category }: { category: Category }) {
     BILLING: "Billing",
     FEATURE: "Feature",
     QUESTION: "Question",
+    ACCOUNT: "Account",
+    INTEGRATION: "Integration",
+    PERFORMANCE: "Performance",
+    SECURITY: "Security",
+    ONBOARDING: "Onboarding",
+    OTHER: "Other",
   };
 
   return (

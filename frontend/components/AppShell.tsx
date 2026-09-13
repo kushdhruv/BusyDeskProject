@@ -6,6 +6,8 @@ import { SessionProvider, useSession } from "@/lib/session-context";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { CustomerPortalLayout } from "./customer/CustomerPortalLayout";
+import { DigestSettingsModal } from "./DigestSettingsModal";
+import { DigestPreviewModal } from "./DigestPreviewModal";
 import { Loader2 } from "lucide-react";
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
@@ -15,6 +17,8 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [sidebarWidth, setSidebarWidth] = useState<number>(240);
   const [mobileOpen, setMobileOpen] = useState<boolean>(false);
+  const [isDigestSettingsOpen, setIsDigestSettingsOpen] = useState<boolean>(false);
+  const [isDigestPreviewOpen, setIsDigestPreviewOpen] = useState<boolean>(false);
 
   const isAuthPage = pathname === "/login" || pathname === "/register";
 
@@ -104,6 +108,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         onWidthChange={handleWidthChange}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
+        onOpenDigest={() => setIsDigestSettingsOpen(true)}
       />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopBar
@@ -111,11 +116,25 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           onToggleMobile={() => setMobileOpen((prev) => !prev)}
           sidebarCollapsed={sidebarCollapsed}
           onToggleCollapse={handleToggleCollapse}
+          onOpenDigest={() => setIsDigestSettingsOpen(true)}
         />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50">
           <div className="max-w-[1600px] mx-auto w-full">{children}</div>
         </main>
       </div>
+
+      <DigestSettingsModal
+        isOpen={isDigestSettingsOpen}
+        onClose={() => setIsDigestSettingsOpen(false)}
+        onOpenPreview={() => {
+          setIsDigestSettingsOpen(false);
+          setIsDigestPreviewOpen(true);
+        }}
+      />
+      <DigestPreviewModal
+        isOpen={isDigestPreviewOpen}
+        onClose={() => setIsDigestPreviewOpen(false)}
+      />
     </div>
   );
 }
