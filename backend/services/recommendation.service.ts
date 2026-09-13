@@ -137,17 +137,8 @@ export class RecommendationService {
     // Sort descending by similarity
     candidateMatches.sort((a, b) => b.similarity - a.similarity);
 
-    let highConfidence = candidateMatches.filter((m) => m.similarity >= this.HIGH_CONFIDENCE_THRESHOLD);
-    let related = candidateMatches.filter((m) => m.similarity < this.HIGH_CONFIDENCE_THRESHOLD);
-
-    // If top candidate has solid relevance (>= 0.32) but just below 0.52, promote it to high confidence
-    // so the agent always gets an actionable suggested answer
-    if (highConfidence.length === 0 && candidateMatches.length > 0 && candidateMatches[0].similarity >= 0.30) {
-      highConfidence = [candidateMatches[0]];
-      related = candidateMatches.slice(1, 4);
-    } else {
-      related = related.slice(0, 3);
-    }
+    const highConfidence = candidateMatches.filter((m) => m.similarity >= this.HIGH_CONFIDENCE_THRESHOLD);
+    const related = candidateMatches.filter((m) => m.similarity < this.HIGH_CONFIDENCE_THRESHOLD).slice(0, 3);
 
     return {
       highConfidence,
