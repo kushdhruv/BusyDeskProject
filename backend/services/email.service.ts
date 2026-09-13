@@ -12,6 +12,14 @@ export interface SendInvitationParams {
   setupUrl: string;
 }
 
+export interface SendDigestEmailParams {
+  to: string;
+  recipientName: string;
+  role: string;
+  subject: string;
+  htmlContent: string;
+}
+
 export interface EmailDispatchResult {
   success: boolean;
   mode: "resend" | "dev_console";
@@ -255,6 +263,68 @@ This invitation expires in 24 hours.
     };
   }
 
+  /**
+   * Dispatches periodic queue digests to staff (agent or supervisor).
+   */
+  static async sendDigestEmail(params: SendDigestEmailParams): Promise<EmailDispatchResult> {
+    const { to, recipientName, subject, htmlContent } = params;
+    const apiKey = process.env.RESEND_API_KEY?.trim();
+    const fromAddress = process.env.RESEND_FROM || "Busy Infotech Support <onboarding@resend.dev>";
+    const plainText = `Hi ${recipientName},\n\nHere is your SupportDesk ticket queue digest.\n\nPlease open this email in an HTML-compatible client or web browser to view your complete interactive metrics.`;
+
+    if (apiKey) {
+      try {
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: fromAddress,
+            to: [to],
+            subject,
+            html: htmlContent,
+            text: plainText,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.warn("[EmailService:Resend Digest Error]", data);
+          this.logDevConsoleDigest({ to, subject, recipientName });
+          return {
+            success: false,
+            mode: "dev_console",
+            error: data?.message || "Resend API returned non-200",
+          };
+        }
+
+        console.log(`[EmailService] Digest email delivered via Resend to ${to} (id: ${data.id})`);
+        return {
+          success: true,
+          mode: "resend",
+          id: data.id,
+        };
+      } catch (err: any) {
+        console.error("[EmailService:Resend Digest Exception]", err);
+        this.logDevConsoleDigest({ to, subject, recipientName });
+        return {
+          success: false,
+          mode: "dev_console",
+          error: err.message,
+        };
+      }
+    }
+
+    this.logDevConsoleDigest({ to, subject, recipientName });
+    return {
+      success: true,
+      mode: "dev_console",
+    };
+  }
+
   private static logDevConsoleEmail(params: {
     to: string;
     subject: string;
@@ -274,6 +344,23 @@ This invitation expires in 24 hours.
     console.log(`╟${separator}╢`);
     console.log(`║ Setup URL:`);
     console.log(`║ ${params.setupUrl}`);
+    console.log(`╚${separator}╝\n`);
+  }
+
+  private static logDevConsoleDigest(params: {
+    to: string;
+    subject: string;
+    recipientName: string;
+  }) {
+    const separator = "═".repeat(78);
+    console.log(`\n╔${separator}╗`);
+    console.log(`║ 📬 [DEV EMAIL SERVICE - QUEUE DIGEST DISPATCH]`);
+    console.log(`╟${separator}╢`);
+    console.log(`║ To:         ${params.to}`);
+    console.log(`║ Recipient:  ${params.recipientName}`);
+    console.log(`║ Subject:    ${params.subject}`);
+    console.log(`╟${separator}╢`);
+    console.log(`║ Note: Set RESEND_API_KEY in backend/.env for live inbox delivery.`);
     console.log(`╚${separator}╝\n`);
   }
 }

@@ -6,6 +6,7 @@
 
 import { Role, Status, Priority, DigestFrequency } from "@prisma/client";
 import { prisma } from "../db/prisma.db";
+import { EmailService } from "./email.service";
 
 export interface AgentDigestData {
   agent: {
@@ -665,8 +666,14 @@ export class DigestService {
           }
 
           const html = this.renderAgentDigestHtml(data, baseUrl);
-          // In production: send via Nodemailer / Resend / SendGrid
-          // In dev/test: log summary and record dispatch
+          await EmailService.sendDigestEmail({
+            to: user.email,
+            recipientName: user.name,
+            role: user.role,
+            subject: `Support Queue Digest: ${data.metrics.assignedOpenCount} Active Tickets`,
+            htmlContent: html,
+          });
+
           await prisma.user.update({
             where: { id: user.id },
             data: { digestLastSentAt: new Date() },
@@ -686,6 +693,14 @@ export class DigestService {
           );
 
           const html = this.renderSupervisorDigestHtml(data, baseUrl);
+          await EmailService.sendDigestEmail({
+            to: user.email,
+            recipientName: user.name,
+            role: user.role,
+            subject: `Operations Queue Digest: ${data.metrics.totalOpenTickets} Total Open Tickets`,
+            htmlContent: html,
+          });
+
           await prisma.user.update({
             where: { id: user.id },
             data: { digestLastSentAt: new Date() },

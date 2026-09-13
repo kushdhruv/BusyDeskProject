@@ -20,7 +20,8 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const [isDigestSettingsOpen, setIsDigestSettingsOpen] = useState<boolean>(false);
   const [isDigestPreviewOpen, setIsDigestPreviewOpen] = useState<boolean>(false);
 
-  const isAuthPage = pathname === "/login" || pathname === "/register";
+  const isAuthPage =
+    pathname === "/login" || pathname === "/register" || pathname === "/setup-account";
 
   // Restore user preferences for sidebar width and collapse state
   useEffect(() => {

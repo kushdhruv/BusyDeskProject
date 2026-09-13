@@ -643,7 +643,65 @@ When receiving HTTP 429 Too Many Requests, inspect the 'Retry-After' response he
     });
   }
 
-  console.log("Seed finished successfully! 6 users, 35+ tickets, 5 tag groups, 22 tags, and 5 Knowledge Base articles created.");
+  // ────────────────────────────────────────────────────────
+  // Knowledge Base Articles (for Smart Assist recommendations)
+  // ────────────────────────────────────────────────────────
+  const kbArticles = [
+    {
+      title: "How to Reset Your Password",
+      slug: "reset-password",
+      content: "If you've forgotten your password or need to reset it, follow these steps:\n\n1. Navigate to the login page and click 'Forgot Password'\n2. Enter your registered email address\n3. Check your inbox for the password reset link (also check spam/junk folders)\n4. Click the link within 24 hours and set a new password\n5. Use a strong password with at least 8 characters, including uppercase, lowercase, numbers, and symbols\n\nIf you don't receive the reset email within 5 minutes, contact our support team. For security reasons, we cannot manually change passwords — the reset link is the only method.",
+      category: "ACCOUNT" as Category,
+    },
+    {
+      title: "Understanding Your Invoice and Billing Cycle",
+      slug: "billing-cycle-invoices",
+      content: "Your billing cycle runs on a monthly basis from the date of your first subscription. Here's what you need to know:\n\n• Invoices are generated on the anniversary of your sign-up date\n• Payment is attempted automatically via your saved payment method\n• If payment fails, we retry 3 times over 7 days before suspending the account\n• You can download invoices from Settings → Billing → Invoice History\n• Tax is calculated based on your billing address jurisdiction\n• To update your payment method, go to Settings → Billing → Payment Methods\n\nFor refund requests, contact billing support within 14 days of the charge. Prorated refunds are available for annual plans cancelled mid-term.",
+      category: "BILLING" as Category,
+    },
+    {
+      title: "Troubleshooting Slow Dashboard Loading",
+      slug: "slow-dashboard-performance",
+      content: "If your dashboard is loading slowly, try these troubleshooting steps:\n\n1. Clear your browser cache and cookies (Ctrl+Shift+Delete)\n2. Disable browser extensions temporarily — ad blockers can interfere with API calls\n3. Check your internet connection speed at speedtest.net (minimum 5 Mbps recommended)\n4. Try a different browser (Chrome, Firefox, or Edge recommended)\n5. If using VPN, try disconnecting it temporarily\n6. Check our status page at status.busyinfotech.com for any ongoing incidents\n\nIf the issue persists, open DevTools (F12) → Network tab, reproduce the issue, and share the HAR file with our support team. This helps us identify if specific API calls are timing out.\n\nKnown issue: Dashboards with 10,000+ tickets may take 3-5 seconds on initial load. We recommend using date filters to reduce the dataset.",
+      category: "PERFORMANCE" as Category,
+    },
+    {
+      title: "Setting Up Slack and Webhook Integrations",
+      slug: "slack-webhook-integration",
+      content: "Connect BusyDesk to Slack or custom webhooks to receive real-time ticket notifications:\n\n**Slack Integration:**\n1. Go to Settings → Integrations → Slack\n2. Click 'Connect to Slack' and authorize the BusyDesk app\n3. Select the Slack channel for notifications\n4. Configure which events trigger notifications (new ticket, status change, SLA breach)\n\n**Custom Webhooks:**\n1. Go to Settings → Integrations → Webhooks\n2. Click 'Add Webhook URL'\n3. Enter your endpoint URL (must accept POST requests)\n4. Select events to subscribe to\n5. Use the 'Test' button to verify connectivity\n\nWebhook payloads are sent as JSON with HMAC-SHA256 signature in the X-BusyDesk-Signature header. Retry policy: 3 attempts with exponential backoff (1s, 5s, 30s).\n\nCommon issue: If Slack notifications stop working, re-authorize the app — Slack tokens expire after 90 days of inactivity.",
+      category: "INTEGRATION" as Category,
+    },
+    {
+      title: "Two-Factor Authentication (2FA) Setup Guide",
+      slug: "2fa-setup-guide",
+      content: "Enable Two-Factor Authentication to add an extra layer of security to your account:\n\n**Setup Steps:**\n1. Go to Settings → Security → Two-Factor Authentication\n2. Click 'Enable 2FA'\n3. Scan the QR code with an authenticator app (Google Authenticator, Authy, or 1Password)\n4. Enter the 6-digit code from your authenticator app to verify\n5. Save your backup recovery codes in a secure location\n\n**Important Notes:**\n• Recovery codes are one-time use — each code works only once\n• If you lose access to your authenticator app, use a recovery code to log in\n• Supervisors can enforce 2FA for all team members via Settings → Security → Team Policies\n• If locked out with no recovery codes, contact support with government-issued photo ID for identity verification (takes 24-48 hours)\n\n**Supported authenticator apps:** Google Authenticator, Authy, Microsoft Authenticator, 1Password, Duo Mobile",
+      category: "SECURITY" as Category,
+    },
+    {
+      title: "Getting Started: New User Onboarding Guide",
+      slug: "new-user-onboarding",
+      content: "Welcome to BusyDesk! Here's how to get started:\n\n**Step 1: Complete Your Profile**\nGo to Settings → Profile and add your name, avatar, and contact preferences.\n\n**Step 2: Understand the Dashboard**\n• The left sidebar shows your ticket queue, SLA alerts, and navigation\n• The main area shows your active tickets and key metrics\n• Use filters to sort tickets by status, priority, category, or assignee\n\n**Step 3: Handle Your First Ticket**\n1. Click on any ticket in your queue to open the workspace view\n2. Read the customer's issue and any internal notes from colleagues\n3. Type your response in the Reply composer at the bottom\n4. Use 'Public Reply' for customer-facing responses and 'Internal Note' for team-only comments\n5. Update the ticket status: Open → Pending → Resolved\n\n**Step 4: Collaborate with Your Team**\nAdd collaborators to a ticket for cross-team visibility. Use @mentions in internal notes to notify specific teammates.\n\n**Pro Tips:**\n• Keyboard shortcut: Ctrl+Enter to send a reply\n• Use the Smart Assist panel above the reply composer for AI-suggested solutions from past tickets",
+      category: "ONBOARDING" as Category,
+    },
+    {
+      title: "How to Report a Bug or Application Error",
+      slug: "report-bug-application-error",
+      content: "If you encounter a bug or application error, follow these steps to submit an effective bug report:\n\n**Required Information:**\n1. Steps to reproduce — exact sequence of actions that trigger the bug\n2. Expected behavior — what should have happened\n3. Actual behavior — what actually happened (include error messages)\n4. Browser and OS version (e.g., Chrome 120 on Windows 11)\n5. Screenshots or screen recordings (use Ctrl+Shift+S for browser screenshots)\n\n**How to Submit:**\n• Create a new ticket with Category: Bug and Priority based on impact:\n  - URGENT: System is down, data loss, or security vulnerability\n  - HIGH: Major feature broken, no workaround available\n  - MEDIUM: Feature broken but workaround exists\n  - LOW: Minor visual issue or cosmetic bug\n\n**Common Quick Fixes:**\n• 'Page not loading' — Clear cache, try incognito mode\n• 'Button not responding' — Disable ad-blocker extensions\n• 'Data not saving' — Check for browser autofill conflicts\n• '500 Internal Server Error' — Wait 2 minutes and retry; if persistent, report it",
+      category: "BUG" as Category,
+    },
+    {
+      title: "Requesting a New Feature or Product Enhancement",
+      slug: "feature-request-guide",
+      content: "We love hearing from our users! Here's how to submit a feature request:\n\n**How to Submit:**\n1. Create a new ticket with Category: Feature Request\n2. Set Priority to LOW or MEDIUM (feature requests are triaged by our product team)\n3. Include the following in your description:\n   • What problem does this feature solve?\n   • Who would benefit from this feature? (your role, team size)\n   • Are there any workarounds you currently use?\n   • Any examples from other tools that implement this well?\n\n**What Happens Next:**\n• Our product team reviews feature requests weekly\n• Requests are scored by impact (users affected × frequency) and effort\n• High-impact requests are added to our public roadmap\n• You'll receive a status update within 2 weeks: Planned, Under Review, or Declined (with reasoning)\n\n**Tip:** Vote on existing feature requests in our community forum — higher-voted features get prioritized faster.\n\n**SLA for Feature Requests:** Unlike bugs, feature requests don't have a resolution SLA. However, we guarantee a triage response within 10 business days.",
+      category: "FEATURE" as Category,
+    },
+  ];
+
+  for (const article of kbArticles) {
+    await prisma.knowledgeArticle.create({ data: article });
+  }
+
+  console.log("Seed finished successfully! 6 users, 35+ tickets, 5 tag groups, 22 tags, and 8 Knowledge Base articles created.");
 }
 
 main()
