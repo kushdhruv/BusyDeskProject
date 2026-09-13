@@ -165,22 +165,18 @@ export function Sidebar({
           !isMobile && collapsed ? "justify-center px-2" : "justify-between px-3.5"
         }`}
       >
-        <div
-          className="flex items-center gap-2.5 min-w-0 cursor-pointer"
-          onClick={(e) => {
-            if (collapsed && !isMobile) {
-              e.stopPropagation();
-              onToggleCollapse();
-            }
-          }}
-          title={collapsed && !isMobile ? "Click to expand sidebar" : "SupportDesk"}
+        <Link
+          href="/dashboard"
+          onClick={handleNavClick}
+          className="flex items-center gap-2.5 min-w-0 cursor-pointer group"
+          title={collapsed && !isMobile ? "Return to Dashboard" : "BUSYDesk Dashboard"}
         >
-          <div className="w-7 h-7 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 flex-shrink-0 shadow-2xs hover:bg-slate-800 transition-colors">
+          <div className="w-7 h-7 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 flex-shrink-0 shadow-2xs group-hover:bg-slate-800 transition-colors">
             <Headphones className="w-3.5 h-3.5" />
           </div>
           {(isMobile || !collapsed) && (
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-xs text-slate-900 tracking-tight leading-tight">
+              <span className="font-bold text-xs text-slate-900 tracking-tight leading-tight group-hover:text-sky-600 transition-colors">
                 BUSY<span className="text-sky-600">Desk</span>
               </span>
               <span className="text-[10px] text-slate-400 font-medium truncate leading-tight">
@@ -188,7 +184,7 @@ export function Sidebar({
               </span>
             </div>
           )}
-        </div>
+        </Link>
 
         {/* Mobile: Close Drawer Button */}
         {isMobile && (
