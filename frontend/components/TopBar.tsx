@@ -84,7 +84,7 @@ export function TopBar({
           <button
             onClick={onToggleCollapse}
             title="Expand navigation sidebar"
-            className="hidden lg:flex items-center gap-1.5 px-2 py-1 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md transition-colors cursor-pointer shadow-2xs text-xs font-medium"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md transition-colors cursor-pointer shadow-2xs text-xs font-semibold"
             aria-label="Expand sidebar"
           >
             <PanelLeftOpen className="w-3.5 h-3.5 text-slate-600" />

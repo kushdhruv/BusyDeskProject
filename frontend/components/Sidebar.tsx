@@ -147,7 +147,7 @@ export function Sidebar({
     pathname.startsWith("/tickets") && pathname !== "/tickets/new" && currentScope === "all";
 
   const navItemClass = (isActive: boolean) =>
-    `flex items-center ${
+    `relative flex items-center ${
       collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-1.5"
     } rounded-md text-xs font-medium transition-colors cursor-pointer ${
       isActive
@@ -218,17 +218,17 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
         {/* Dynamic Expand Button when Collapsed on Desktop */}
         {!isMobile && collapsed && (
-          <div className="pb-2 mb-1 border-b border-slate-200/70 flex justify-center">
+          <div className="px-1 pb-2 pt-0.5 border-b border-slate-200/70">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleCollapse();
               }}
               title="Expand sidebar (Toggle out)"
-              className="w-8 h-8 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/80 transition-colors cursor-pointer"
+              className="w-full h-8 rounded-md flex items-center justify-center bg-slate-200/60 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors cursor-pointer group shadow-2xs"
               aria-label="Expand sidebar"
             >
-              <PanelLeftOpen className="w-4 h-4" />
+              <PanelLeftOpen className="w-4 h-4 text-slate-600 group-hover:text-slate-900 group-hover:scale-105 transition-transform" />
             </button>
           </div>
         )}
@@ -282,7 +282,7 @@ export function Sidebar({
                 <span
                   className={`${
                     collapsed
-                      ? "absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500"
+                      ? "absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"
                       : "px-1.5 py-0.2 text-[10px] font-semibold text-rose-700 bg-rose-100 rounded border border-rose-200 tabular-nums"
                   }`}
                 >
