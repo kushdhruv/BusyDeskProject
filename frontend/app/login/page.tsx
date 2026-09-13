@@ -139,7 +139,7 @@ function LoginForm() {
 
         <div className="mt-5 pt-3 border-t border-slate-100 flex flex-col items-center gap-1.5 text-center">
           <p className="text-xs text-slate-500">
-            Customer without staff credentials?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/register" className="font-medium text-slate-900 hover:underline">
               Create an account
             </Link>

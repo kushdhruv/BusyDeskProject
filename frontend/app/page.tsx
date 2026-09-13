@@ -452,7 +452,7 @@ export default function HomePage() {
 
           <div className="flex items-center gap-4 text-slate-500">
             <Link href="/login" className="hover:text-slate-900 transition-colors">
-              Staff Sign In
+              Sign In
             </Link>
             <span>·</span>
             <Link href="/register" className="hover:text-slate-900 transition-colors">
