@@ -432,9 +432,6 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
           <div>
             <p>© 2026 BUSY Infotech Pvt. Ltd. · Business Accounting Software Support</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Strictly authenticated · Immutable audit trail · Verified CSAT
-            </p>
           </div>
 
           <div className="flex items-center gap-4 text-slate-500">

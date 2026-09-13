@@ -167,10 +167,10 @@ export function Sidebar({
         }`}
       >
         <Link
-          href="/dashboard"
+          href="/"
           onClick={handleNavClick}
           className="flex items-center gap-2.5 min-w-0 cursor-pointer group"
-          title={collapsed && !isMobile ? "Return to Dashboard" : "BUSYDesk Dashboard"}
+          title={collapsed && !isMobile ? "Return to Homepage" : "BUSYDesk Homepage"}
         >
           <div className="w-7 h-7 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 flex-shrink-0 shadow-2xs group-hover:bg-slate-800 transition-colors">
             <Headphones className="w-3.5 h-3.5" />

@@ -30,7 +30,7 @@ export function CustomerPortalLayout({
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           {/* Logo & Portal Branding */}
           <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="flex items-center gap-2.5">
+            <Link href="/" className="flex items-center gap-2.5" title="Return to Homepage">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-sky-400 border border-slate-800 flex items-center justify-center shadow-xs">
                 <Headphones className="w-4 h-4" />
               </div>
