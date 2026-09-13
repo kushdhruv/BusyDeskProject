@@ -32,6 +32,12 @@ enum Category {
   BILLING
   FEATURE
   QUESTION
+  ACCOUNT
+  INTEGRATION
+  PERFORMANCE
+  SECURITY
+  ONBOARDING
+  OTHER
 }
 
 enum Status {
@@ -60,6 +66,14 @@ enum AuditEventType {
   TICKET_RESTORED
   SLA_ALERT_ACKNOWLEDGED
   CSAT_SUBMITTED
+  TAG_ADDED
+  TAG_REMOVED
+}
+
+enum DigestFrequency {
+  DAILY
+  WEEKLY
+  NEVER
 }
 
 enum SlaAlertType {
@@ -94,6 +108,12 @@ model User {
   satisfactions          CustomerSatisfaction[]   @relation("UserSatisfaction")
   recommendationFeedback RecommendationFeedback[] @relation("UserRecommendationFeedback")
   invitations            AgentInvitation[]        @relation("UserInvitations")
+  tagActions             TicketTag[]              @relation("UserTagActions")
+
+  // Email digest preferences
+  digestEnabled       Boolean          @default(true)
+  digestFrequency     DigestFrequency  @default(DAILY)
+  digestLastSentAt    DateTime?
 
   @@map("users")
 }
@@ -148,6 +168,7 @@ model Ticket {
   slaAlerts              SlaAlert[]
   satisfaction           CustomerSatisfaction?
   recommendationFeedback RecommendationFeedback[]
+  tags                   TicketTag[]
 
   @@index([requesterId, archivedAt, updatedAt(sort: Desc)])
   @@index([primaryAssigneeId, status, archivedAt])
@@ -277,4 +298,56 @@ model RecommendationFeedback {
   @@index([targetTicketId])
   @@index([agentId])
   @@map("recommendation_feedback")
+}
+
+model TagGroup {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String?
+  color        String   @default("#6B7280")
+  isExclusive  Boolean  @default(false)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tags Tag[]
+
+  @@index([displayOrder])
+  @@map("tag_groups")
+}
+
+model Tag {
+  id         String    @id @default(cuid())
+  name       String
+  slug       String    @unique
+  color      String    @default("#6B7280")
+  groupId    String?
+  usageCount Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  group   TagGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  tickets TicketTag[]
+
+  @@unique([groupId, name])
+  @@index([slug])
+  @@index([groupId, usageCount(sort: Desc)])
+  @@map("tags")
+}
+
+model TicketTag {
+  id        String   @id @default(cuid())
+  ticketId  String
+  tagId     String
+  addedById String?
+  createdAt DateTime @default(now())
+
+  ticket  Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  addedBy User?  @relation("UserTagActions", fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@unique([ticketId, tagId])
+  @@index([ticketId])
+  @@index([tagId])
+  @@map("ticket_tags")
 }
