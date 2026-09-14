@@ -50,10 +50,20 @@ This document records the actual technical prompts, architecture challenges, and
 
 ## 3. Scalability, Set-Based Operations & PostgreSQL Advisory Locking
 
-### Architecture Prompt
-> *"Analyze the codebase and produce a comprehensive Scalability & Performance Report covering expected latency/p95, database query planner bottlenecks, and failure modes at 10x/100x scale.*
+### Architecture & System Design Prompt
+> *"Act as a **senior DBMS + system design engineer**. Thoroughly inspect the entire codebase and understand the actual architecture, database schema, queries, indexes, API flows, concurrency, and data access patterns.
 > 
-> *Review the SLA alert reconciliation engine and supervisor analytics dashboard. Do not propose superficial shortcuts like in-memory JavaScript loops or in-process mutexes. Design a genuine database-level concurrency solution using PostgreSQL locking primitives, composite indexes, and set-based SQL operations to prevent duplicate alerts under concurrent client polling."*
+> Then:
+> - Identify the **real performance/scalability bottlenecks**; do not assume one exists.
+> - Analyze whether the current system is naturally **read-heavy** and replicate realistic read-heavy traffic/workloads for benchmarking.
+> - Design and run appropriate **load/stress tests** and measure p50/p95/p99 latency, RPS, errors, DB CPU/connections, and resource usage at increasing data/concurrency levels.
+> - Use `EXPLAIN ANALYZE` and query analysis to identify DB bottlenecks.
+> - Determine what should be optimized **now vs later**, with evidence.
+> - Evaluate indexes, query optimization, pagination, caching/Redis, connection pooling, read replicas, background workers, queues/Kafka, etc. **Only recommend technology when the measured workload justifies it.**
+> - Preserve all existing business logic, authorization, API contracts, and correctness.
+> - Produce a concise **Before → Bottleneck → Evidence → Optimization → After** report, including what should deliberately **not** be changed and why.
+> 
+> **Prioritize measured evidence and sound engineering trade-offs over premature optimization or unnecessary architecture complexity.***"
 
 ### What Was Proposed
 - The AI initially suggested in-memory JavaScript loops with `createMany`/`updateMany` in Node.js, and an in-process Node mutex (`async-mutex`) to handle concurrent polling of `/api/sla/alerts`.
@@ -95,10 +105,12 @@ This document records the actual technical prompts, architecture challenges, and
 
 ## 5. Semantic Knowledge Copilot: Hybrid Vector Retrieval & Calibrated Scoring
 
-### Architecture Prompt
-> *"Design a Semantic Knowledge Copilot that analyzes open ticket subjects and descriptions, queries historical resolutions and Knowledge Base articles, and recommends high-signal solutions directly above the reply composer.*
+### AI/RAG Architecture Prompt
+> *"Act as a **senior support-platform architect specializing in AI/RAG and workflow automation**. Analyze our existing ticketing system and identify the single highest-value next feature to build around knowledge reuse: detecting similar resolved tickets/knowledge-base articles and recommending existing solutions when semantic similarity exceeds a safe threshold.
 > 
-> *Ensure the architecture is production-resilient: it must leverage Google Gemini embeddings when available, but automatically fall back to deterministic vector generation if the API key is missing or rate-limited (HTTP 429), without requiring external vector database subscriptions or custom compiled C-extensions (`pgvector`)."*
+> Study how production systems (Zendesk, Freshdesk, Jira Service Management, Intercom, etc.) approach this. Evaluate architecture, embeddings/vector search, thresholds, false positives, indexing, data flow, permissions, latency, and human approval. Compare implementation options (Supabase pgvector, dedicated vector DB, etc.) and recommend the simplest production-ready approach that fits our current modular + Supabase/PostgreSQL + Prisma architecture.
+> 
+> Do not overengineer. Give a concrete implementation plan and explain why it is the best next area to work on.*"
 
 ### What Was Proposed
 - The AI required compiling the PostgreSQL `pgvector` C-extension and creating raw SQL HNSW migrations. On Supabase's transaction pooler (port 6543) and local environments, `vector` types cannot be managed natively by Prisma CLI schema pushes.
