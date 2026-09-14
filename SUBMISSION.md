@@ -75,15 +75,15 @@ Mark each honestly. Partial is fine — say what is partial.
 
 ## How much time did you actually spend?
 
-**Total time spent: approximately 26.0 hours** across 8 focused sessions (against an initial estimate of 30.0 hours):
-- **Deep Research, B2B SaaS Analysis & Architecture (Session 1)**: 4.0 hours — In-depth research into B2B support ticketing platforms (Zendesk, Linear, Front), exploring zero-write SLA models vs polling write amplification, state machine FSM rules, pure authorization predicate design, and Supabase connection pooling (port 6543 vs 5432).
-- **Relational Schema, Indexing & Realistic Dynamic Seed (Session 2)**: 2.5 hours — 13 normalized Prisma models, composite B-tree indexes, GIN trigram text search indexes, foreign key cascades, and 8 weeks of realistic historical resolution data and CSAT distributions.
-- **Pure Policy Engine & Domain Controllers (Session 3)**: 3.5 hours — Pure predicate authorization policies, lifecycle FSM, mathematical zero-write SLA engine, 7-day reopen window guard, and timeline merger.
-- **Route Registry Layer, Session Auth & Bulk Actions (Session 4)**: 3.0 hours — Explicit `API_ROUTE_REGISTRY` catalog, signed HTTP-only JWT cookies (`jose`), bcrypt password hashing, per-ticket isolated bulk actions, and RFC-4180 streaming CSV exporter.
-- **Frontend B2B SaaS Workspace & Customer Portal (Session 5)**: 4.0 hours — Next.js 14 App Router, live 1-second countdown timers, tabbed composer, filterable queues, Recharts 8-week dashboard, customer self-service portal, and comprehensive UI polish.
-- **Automated Test Suite & Security Hardening (Session 6)**: 2.5 hours — 25 Vitest test suites, 195 unit, integration, and fuzz tests, customer row-level security isolation.
-- **Decoupled Architecture Partitioning & Cloud Deployment (Session 7)**: 2.5 hours — Independent `frontend/` and `backend/` packages, CORS headers, proxy rewrites, Vercel frontend, and Render backend deployment.
-- **Stretch Goals, AI Copilot & Email Infrastructure (Session 8)**: 4.0 hours — Knowledge Copilot Gemini RAG with deterministic fallback, free-form grouped tagging taxonomy, dual-mode transactional email (Gmail SMTP IPv4 enforcement + Resend), and PostgreSQL transaction advisory locking (`pg_try_advisory_xact_lock`).
+**Total time spent: approximately 18.0 hours** across 8 focused sessions (against an initial estimate of 21.0 hours):
+- **Deep Research, B2B SaaS Analysis & Architecture (Session 1)**: 3.0 hours — In-depth research into B2B support ticketing platforms (Zendesk, Linear, Front), exploring zero-write SLA models vs polling write amplification, state machine FSM rules, pure authorization predicate design, and Supabase connection pooling (port 6543 vs 5432).
+- **Relational Schema, Indexing & Realistic Dynamic Seed (Session 2)**: 1.5 hours — 13 normalized Prisma models, composite B-tree indexes, GIN trigram text search indexes, foreign key cascades, and 8 weeks of realistic historical resolution data and CSAT distributions.
+- **Pure Policy Engine & Domain Controllers (Session 3)**: 2.5 hours — Pure predicate authorization policies, lifecycle FSM, mathematical zero-write SLA engine, 7-day reopen window guard, and timeline merger.
+- **Route Registry Layer, Session Auth & Bulk Actions (Session 4)**: 2.0 hours — Explicit `API_ROUTE_REGISTRY` catalog, signed HTTP-only JWT cookies (`jose`), bcrypt password hashing, per-ticket isolated bulk actions, and RFC-4180 streaming CSV exporter.
+- **Frontend B2B SaaS Workspace & Customer Portal (Session 5)**: 3.0 hours — Next.js 14 App Router, live 1-second countdown timers, tabbed composer, filterable queues, Recharts 8-week dashboard, customer self-service portal, and comprehensive UI polish.
+- **Automated Test Suite & Security Hardening (Session 6)**: 1.5 hours — 25 Vitest test suites, 195 unit, integration, and fuzz tests, customer row-level security isolation.
+- **Decoupled Architecture Partitioning & Cloud Deployment (Session 7)**: 1.5 hours — Independent `frontend/` and `backend/` packages, CORS headers, proxy rewrites, Vercel frontend, and Render backend deployment.
+- **Stretch Goals, AI Copilot & Email Infrastructure (Session 8)**: 3.0 hours — Knowledge Copilot Gemini RAG with deterministic fallback, free-form grouped tagging taxonomy, dual-mode transactional email (Gmail SMTP IPv4 enforcement + Resend), and PostgreSQL transaction advisory locking (`pg_try_advisory_xact_lock`).
 
 ## What would you do next, with another 12 hours?
 
