@@ -65,7 +65,15 @@ export default function TeamManagementPage() {
       const res = await fetch(`/api/agents/${agentId}/resend-invite`, {
         method: "POST",
       });
-      const data = await res.json();
+      let data: any = {};
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text.slice(0, 100) || `Request failed with status ${res.status}`);
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "Failed to resend invite.");
       }

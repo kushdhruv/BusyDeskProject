@@ -6,33 +6,79 @@
 
 import nodemailer, { type Transporter } from "nodemailer";
 
-let cachedTransporter: Transporter | null = null;
+function createSmtpTransporter(port: number, secure: boolean): Transporter {
+  const host = process.env.SMTP_HOST?.trim() || "smtp.gmail.com";
+  const user = process.env.SMTP_USER?.trim()!;
+  const pass = process.env.SMTP_PASS?.replace(/\s+/g, "").trim()!;
 
-function getSmtpTransporter(): Transporter | null {
-  const host = process.env.SMTP_HOST?.trim();
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    requireTLS: !secure,
+    auth: {
+      user,
+      pass,
+    },
+    family: 4, // CRITICAL: Force IPv4 to prevent Linux containers (Render) hanging on unrouted IPv6
+    connectionTimeout: 5000, // 5s connection limit
+    greetingTimeout: 5000,   // 5s greeting limit
+    socketTimeout: 8000,     // 8s socket limit
+    dnsTimeout: 3000,        // 3s DNS limit
+    tls: {
+      rejectUnauthorized: false,
+    },
+  } as any);
+}
+
+async function sendViaSmtp(options: {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<{ messageId: string; portUsed: number }> {
   const user = process.env.SMTP_USER?.trim();
   const pass = process.env.SMTP_PASS?.replace(/\s+/g, "").trim();
 
-  if (!host || !user || !pass) {
-    return null;
+  if (!user || !pass) {
+    throw new Error("SMTP credentials (SMTP_USER / SMTP_PASS) not configured.");
   }
 
-  if (!cachedTransporter) {
-    const port = Number(process.env.SMTP_PORT) || 465;
-    const secure = process.env.SMTP_SECURE === "true" || port === 465;
+  // Priority port: if SMTP_PORT is set, use it first; otherwise 587 (universal cloud standard)
+  const envPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
+  const primaryPort = isNaN(envPort) ? 587 : envPort;
+  const secondaryPort = primaryPort === 465 ? 587 : 465;
 
-    cachedTransporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: {
-        user,
-        pass,
-      },
-    });
+  let lastError: any = null;
+
+  for (const port of [primaryPort, secondaryPort]) {
+    try {
+      const isSecure = port === 465;
+      const transporter = createSmtpTransporter(port, isSecure);
+
+      const sendPromise = transporter.sendMail({
+        from: options.from,
+        to: options.to,
+        subject: options.subject,
+        text: options.text,
+        html: options.html,
+      });
+
+      // Strict 6.5-second timeout per attempt so HTTP never hangs
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`SMTP send timeout on port ${port} (6.5s exceeded)`)), 6500)
+      );
+
+      const info = (await Promise.race([sendPromise, timeoutPromise])) as any;
+      return { messageId: info.messageId, portUsed: port };
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[EmailService:SMTP] Port ${port} attempt failed: ${err.message}`);
+    }
   }
 
-  return cachedTransporter;
+  throw lastError || new Error("All SMTP ports failed.");
 }
 
 export interface SendInvitationParams {
@@ -235,13 +281,14 @@ This invitation expires in 24 hours.
 `;
 
     // 1. Primary Mode: SMTP (Gmail SMTP for sending to ANY email address worldwide)
-    const smtpTransporter = getSmtpTransporter();
-    if (smtpTransporter) {
+    const user = process.env.SMTP_USER?.trim();
+    const pass = process.env.SMTP_PASS?.replace(/\s+/g, "").trim();
+    if (user && pass) {
       try {
         const smtpFrom =
-          process.env.SMTP_FROM || `Busy Infotech Support <${process.env.SMTP_USER}>`;
+          process.env.SMTP_FROM || `Busy Infotech Support <${user}>`;
 
-        const info = await smtpTransporter.sendMail({
+        const result = await sendViaSmtp({
           from: smtpFrom,
           to,
           subject,
@@ -249,15 +296,15 @@ This invitation expires in 24 hours.
           html: htmlContent,
         });
 
-        console.log(`[EmailService] Invitation email delivered via SMTP to ${to} (id: ${info.messageId})`);
+        console.log(`[EmailService] Invitation email delivered via SMTP (port ${result.portUsed}) to ${to} (id: ${result.messageId})`);
         return {
           success: true,
           mode: "smtp",
-          id: info.messageId,
+          id: result.messageId,
           previewUrl: setupUrl,
         };
       } catch (smtpErr: any) {
-        console.error("[EmailService:SMTP Exception]", smtpErr);
+        console.error("[EmailService:SMTP Exception]", smtpErr?.message || smtpErr);
         // Fall through to Resend or Dev Console if SMTP fails
       }
     }
@@ -332,13 +379,14 @@ This invitation expires in 24 hours.
     const plainText = `Hi ${recipientName},\n\nHere is your SupportDesk ticket queue digest.\n\nPlease open this email in an HTML-compatible client or web browser to view your complete interactive metrics.`;
 
     // 1. Primary Mode: SMTP (Gmail SMTP for sending to ANY email address worldwide)
-    const smtpTransporter = getSmtpTransporter();
-    if (smtpTransporter) {
+    const user = process.env.SMTP_USER?.trim();
+    const pass = process.env.SMTP_PASS?.replace(/\s+/g, "").trim();
+    if (user && pass) {
       try {
         const smtpFrom =
-          process.env.SMTP_FROM || `Busy Infotech Support <${process.env.SMTP_USER}>`;
+          process.env.SMTP_FROM || `Busy Infotech Support <${user}>`;
 
-        const info = await smtpTransporter.sendMail({
+        const result = await sendViaSmtp({
           from: smtpFrom,
           to,
           subject,
@@ -346,14 +394,14 @@ This invitation expires in 24 hours.
           html: htmlContent,
         });
 
-        console.log(`[EmailService] Digest email delivered via SMTP to ${to} (id: ${info.messageId})`);
+        console.log(`[EmailService] Digest email delivered via SMTP (port ${result.portUsed}) to ${to} (id: ${result.messageId})`);
         return {
           success: true,
           mode: "smtp",
-          id: info.messageId,
+          id: result.messageId,
         };
       } catch (smtpErr: any) {
-        console.error("[EmailService:SMTP Digest Exception]", smtpErr);
+        console.error("[EmailService:SMTP Digest Exception]", smtpErr?.message || smtpErr);
         // Fall through to Resend or Dev Console if SMTP fails
       }
     }

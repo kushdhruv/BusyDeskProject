@@ -45,7 +45,19 @@ export function InviteAgentModal({ isOpen, onClose, onSuccess }: InviteAgentModa
         }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(
+          res.status === 504 || res.status === 502
+            ? "Server timeout. The invitation may still have been created—please refresh your team list."
+            : text.slice(0, 100) || `Request failed with status ${res.status}`
+        );
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "Failed to invite agent.");
       }
