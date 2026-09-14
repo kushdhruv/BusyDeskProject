@@ -228,7 +228,7 @@ This invitation expires in 24 hours.
           // Fall back to console log so development/testing is not blocked
           this.logDevConsoleEmail({ to, subject, name, role, setupUrl });
           return {
-            success: true,
+            success: false,
             mode: "dev_console",
             error: data?.message || "Resend API returned non-200",
             previewUrl: setupUrl,
@@ -246,7 +246,7 @@ This invitation expires in 24 hours.
         console.error("[EmailService:Resend Exception]", err);
         this.logDevConsoleEmail({ to, subject, name, role, setupUrl });
         return {
-          success: true,
+          success: false,
           mode: "dev_console",
           error: err.message,
           previewUrl: setupUrl,

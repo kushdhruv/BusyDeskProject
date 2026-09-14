@@ -666,7 +666,7 @@ export class DigestService {
           }
 
           const html = this.renderAgentDigestHtml(data, baseUrl);
-          await EmailService.sendDigestEmail({
+          const dispatchResult = await EmailService.sendDigestEmail({
             to: user.email,
             recipientName: user.name,
             role: user.role,
@@ -679,13 +679,24 @@ export class DigestService {
             data: { digestLastSentAt: new Date() },
           });
 
-          results.sentCount++;
-          results.deliveries.push({
-            userId: user.id,
-            userName: user.name,
-            role: user.role,
-            status: "SENT",
-          });
+          if (dispatchResult.success) {
+            results.sentCount++;
+            results.deliveries.push({
+              userId: user.id,
+              userName: user.name,
+              role: user.role,
+              status: "SENT",
+            });
+          } else {
+            results.failedCount++;
+            results.deliveries.push({
+              userId: user.id,
+              userName: user.name,
+              role: user.role,
+              status: "FAILED",
+              reason: dispatchResult.error || "Email provider rejected message",
+            });
+          }
         } else if (user.role === Role.SUPERVISOR) {
           const data = await this.getSupervisorDigestData(
             user.id,
@@ -693,7 +704,7 @@ export class DigestService {
           );
 
           const html = this.renderSupervisorDigestHtml(data, baseUrl);
-          await EmailService.sendDigestEmail({
+          const dispatchResult = await EmailService.sendDigestEmail({
             to: user.email,
             recipientName: user.name,
             role: user.role,
@@ -706,13 +717,24 @@ export class DigestService {
             data: { digestLastSentAt: new Date() },
           });
 
-          results.sentCount++;
-          results.deliveries.push({
-            userId: user.id,
-            userName: user.name,
-            role: user.role,
-            status: "SENT",
-          });
+          if (dispatchResult.success) {
+            results.sentCount++;
+            results.deliveries.push({
+              userId: user.id,
+              userName: user.name,
+              role: user.role,
+              status: "SENT",
+            });
+          } else {
+            results.failedCount++;
+            results.deliveries.push({
+              userId: user.id,
+              userName: user.name,
+              role: user.role,
+              status: "FAILED",
+              reason: dispatchResult.error || "Email provider rejected message",
+            });
+          }
         }
       } catch (err: any) {
         results.failedCount++;

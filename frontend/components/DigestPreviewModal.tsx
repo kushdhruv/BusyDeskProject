@@ -69,10 +69,20 @@ export const DigestPreviewModal: React.FC<DigestPreviewModalProps> = ({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to trigger dispatch.");
 
-      setSendSuccess(
-        `Dispatched successfully: ${data.results?.sentCount || 0} sent, ${data.results?.suppressedCount || 0} suppressed.`
+      const isSandboxRestricted = data.results?.deliveries?.some(
+        (d: any) => d.status === "FAILED" && d.reason?.includes("only send testing emails")
       );
-      setTimeout(() => setSendSuccess(null), 5000);
+
+      if (isSandboxRestricted) {
+        setSendSuccess(
+          `Processed ${data.results?.totalEligible || 0} digests. (Resend sandbox notice: free tier only delivers to account owner dhruvstudy77@gmail.com; use Preview tab to view HTML rendering.)`
+        );
+      } else {
+        setSendSuccess(
+          `Dispatched: ${data.results?.sentCount || 0} sent, ${data.results?.suppressedCount || 0} suppressed, ${data.results?.failedCount || 0} failed.`
+        );
+      }
+      setTimeout(() => setSendSuccess(null), 6000);
     } catch (err: any) {
       setError(err.message || "Failed to dispatch test digest.");
     } finally {

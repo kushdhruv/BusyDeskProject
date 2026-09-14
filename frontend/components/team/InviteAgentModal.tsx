@@ -18,6 +18,8 @@ export function InviteAgentModal({ isOpen, onClose, onSuccess }: InviteAgentModa
     email: string;
     setupUrl?: string;
     deliveryMode?: string;
+    emailSent?: boolean;
+    emailError?: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -52,6 +54,8 @@ export function InviteAgentModal({ isOpen, onClose, onSuccess }: InviteAgentModa
         email: email.trim(),
         setupUrl: data.setupUrl,
         deliveryMode: data.deliveryMode,
+        emailSent: data.emailSent,
+        emailError: data.emailError,
       });
       onSuccess();
     } catch (err: any) {
@@ -101,24 +105,47 @@ export function InviteAgentModal({ isOpen, onClose, onSuccess }: InviteAgentModa
         <div className="p-6">
           {successData ? (
             <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <p className="font-semibold text-emerald-900">
-                    Invitation dispatched!
-                  </p>
-                  <p className="text-emerald-700 mt-1">
-                    An activation email has been sent to{" "}
-                    <strong className="font-medium">{successData.email}</strong>. The one-time token link is valid for 24 hours.
-                  </p>
+              {successData.emailSent && successData.deliveryMode === "resend" ? (
+                <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <p className="font-semibold text-emerald-900">
+                      Invitation dispatched!
+                    </p>
+                    <p className="text-emerald-700 mt-1">
+                      An activation email has been delivered to{" "}
+                      <strong className="font-medium">{successData.email}</strong> via Resend. The link is valid for 24 hours.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-4 rounded-lg bg-sky-50 border border-sky-200 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-sky-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <p className="font-semibold text-sky-900">
+                      Account Provisioned & Setup Link Ready
+                    </p>
+                    <p className="text-sky-700 mt-1">
+                      Agent account created for <strong className="font-medium">{successData.email}</strong>.
+                      {successData.emailError?.includes("only send testing emails") ? (
+                        <span className="block mt-1 text-[11px] text-sky-800">
+                          (Resend sandbox notice: free testing domain only delivers to verified account owner. Copy the 1-click link below to share with the agent.)
+                        </span>
+                      ) : (
+                        <span className="block mt-1 text-[11px] text-sky-800">
+                          Copy the secure 1-time activation link below to share with the agent.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {successData.setupUrl && (
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[11px] font-medium text-slate-600">
-                      Direct Account Setup Link {successData.deliveryMode === "dev_console" ? "(Dev Mode)" : ""}:
+                      Direct Account Setup Link:
                     </span>
                     <button
                       type="button"

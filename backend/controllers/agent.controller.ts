@@ -120,6 +120,7 @@ export class AgentController {
       setupUrl,
       deliveryMode: emailResult.mode,
       emailSent: emailResult.success,
+      emailError: emailResult.error,
     };
   }
 
@@ -187,6 +188,7 @@ export class AgentController {
       setupUrl,
       deliveryMode: emailResult.mode,
       emailSent: emailResult.success,
+      emailError: emailResult.error,
     };
   }
 
