@@ -17,7 +17,8 @@ Fill this in and commit it. This is the first file we open.
   - **Customers (`alice@customer.com`, `bob@customer.com`, `carol@startup.io`, `david@fintech.co`)**: Dedicated self-service Customer Portal. Strict row-level isolation ensures customers only see their own tickets (`requesterId == user.id`), can only submit public replies, and can rate resolved tickets (1–5 star CSAT). Internal notes, staff audit logs, and SLA internals are completely stripped at the database query level.
 - **SLA Engine**: Mathematical deadline tracking (`slaDueAt = createdAt + targetMinutes`). When a ticket enters `PENDING`, remaining seconds are frozen once. When a customer replies, the clock automatically unpauses and resumes with mathematical precision.
 - **Semantic Knowledge Copilot / Smart Assist**: Integrated Google Gemini embedding service with high-signal deterministic vector fallback. Recommends semantically similar resolved tickets and KB articles directly above the agent reply composer.
-- **Transactional Email & Agent Invitation**: One-time 24-hour setup tokens stored as SHA-256 hashes with Resend transactional email integration and dev console fallback.
+- **Transactional Email & Agent Invitation**: One-time 24-hour setup tokens stored as SHA-256 hashes with resilient dual-provider delivery (Gmail SMTP via Nodemailer with IPv4 enforcement + Resend API) and automated local dev console fallback.
+- **Hosting & Cold Starts**: Deployed on Vercel and managed Supabase PostgreSQL. There are no idle sleep timeouts, though the very first database query after an idle period may take 1–2 seconds to establish the Supavisor connection pool.
 
 ## Demo credentials
 

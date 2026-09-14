@@ -6,7 +6,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/Supabase-Managed%20Postgres-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Prisma ORM](https://img.shields.io/badge/Prisma-5.22.0-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
-[![Vitest](https://img.shields.io/badge/Tests-176%20Passing-brightgreen?style=flat-square&logo=vitest)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Tests-195%20Passing-brightgreen?style=flat-square&logo=vitest)](https://vitest.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 
 ---
@@ -37,7 +37,7 @@ takehome-04-support-ticketing/
 │   ├── utils/                         # Global constants & utility helpers
 │   ├── app/api/                       # Next.js route entry points (1-line delegates to @/routes)
 │   ├── prisma/                        # Database Schema (schema.prisma) & Rich Seeder (seed.ts)
-│   ├── tests/                         # 176 Unit, Integration, Security & Fuzzing Tests (23 suites)
+│   ├── tests/                         # 195 Unit, Integration, Security & Fuzzing Tests (25 suites)
 │   ├── package.json                   # Backend dependencies, scripts & Vitest runner
 │   └── tsconfig.json
 │
@@ -198,7 +198,16 @@ FRONTEND_URL="http://localhost:3000"
 # AI & Semantic Search (Optional - Google Gemini text-embedding-004)
 GEMINI_API_KEY="your-gemini-api-key"
 
-# Transactional Email & Queue Digests (Optional - Resend API)
+# Transactional Email & Queue Digests:
+# Option 1: Gmail SMTP via Nodemailer (Recommended - sends to ANY recipient email worldwide)
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=465
+SMTP_SECURE="true"
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-16-char-app-password"
+SMTP_FROM="Busy Infotech Support <your-email@gmail.com>"
+
+# Option 2: Resend API (Alternative)
 RESEND_API_KEY="re_..."
 RESEND_FROM="Busy Infotech Support <onboarding@resend.dev>"
 ```
