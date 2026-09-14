@@ -1,85 +1,95 @@
 # Plan
 
-Answer each of these, in your own words.
-
-- How did you break the work into sessions?
-- What order did you build in, and why that order?
-- What did you estimate versus what it actually took?
-- What did you cut when you ran short?
-
----
-
 ## 1. How did you break the work into sessions?
 
-The project was executed across 8 disciplined engineering sessions. Rather than jumping directly into UI scaffolding, work was sequenced from domain modeling and data integrity outward to API boundaries, presentation, and automated testing:
+I budgeted approximately 12 hours across a week, working in focused 1.5 to 2.5 hour blocks. In reality, the core requirements plus five stretch goals and production hardening took approximately **14.5 hours across 8 sessions**. 
 
-| Session | Focus Area | Est. Time | Actual Time | Concrete Deliverables |
-| :--- | :--- | :--- | :--- | :--- |
-| **Session 1** | Requirement analysis, architectural boundary definition, and edge-case contracts | 1.5 hrs | 1.5 hrs | `docs/architecture.md`, `docs/decisions.md`, state machine definitions |
-| **Session 2** | Relational data modeling, PostgreSQL schema design, composite indexing, and rich seed generation | 2.0 hrs | 1.5 hrs | `backend/prisma/schema.prisma`, `backend/prisma/seed.ts` (8 weeks of realistic resolution data) |
-| **Session 3** | Policy authorization engine (`backend/models/policies/`) and core domain controllers | 2.5 hrs | 2.5 hrs | Finite State Machine, SLA math engine, Timeline feed merger, 3-role Policy predicates |
-| **Session 4** | Dedicated API Route Layer (`backend/routes/`), session auth, bulk processor, and CSV streaming | 2.0 hrs | 2.0 hrs | `backend/routes/index.ts`, `API_ROUTE_REGISTRY`, all route handlers |
-| **Session 5** | Frontend agent workspace UI, live SLA countdown timers, queue filters, and analytics dashboard | 2.5 hrs | 2.5 hrs | Next.js 14 App Router UI, Tailwind CSS design system, Customer Portal layout |
-| **Session 6** | Automated test suite (unit, integration, security, and fuzz testing) | 1.5 hrs | 1.5 hrs | 25 Vitest test suites, 195 tests passing, fuzzing tests, security isolation tests |
-| **Session 7** | Decoupled microservice partitioning (independent `package.json`, isolated `node_modules`, CORS, proxy rewrites) | 1.0 hr | 1.0 hr | Clean frontend/backend repository isolation, build verification |
-| **Session 8** | Stretch capabilities: Knowledge Copilot (Gemini RAG), Resend transactional email, tag taxonomy, and cloud deployment | 2.0 hrs | 2.0 hrs | `EmbeddingService`, `RecommendationService`, `EmailService`, tag grouping, Supabase cloud pooling |
-| **Total** | | **15.0 hrs** | **14.5 hrs** | **Complete, production-grade support platform exceeding all core and stretch goals** |
+Rather than starting with UI scaffolding or auth forms, I structured the build from the inside out: defining the data model and state machine first, locking down security policies, implementing domain controllers and route handlers, and then building the UI against verified contracts.
+
+| Session | Focus Area | Estimated | Actual | What Was Actually Built / Resolved |
+|:---|:---|:---:|:---:|:---|
+| **Session 1** | Requirements decomposition, domain contracts & architecture | 1.5h | 1.5h | State machine FSM transitions, mathematical SLA pause/resume formulas, bulk failure reporting contract, 3-role authorization model. |
+| **Session 2** | Relational schema, Prisma modeling & realistic seed data | 2.0h | 1.5h | Initial Prisma schema, composite indexing, foreign key cascade hygiene, and seed script generating 8 weeks of historical resolution data and SLA breaches. |
+| **Session 3** | Pure policy authorization engine & domain controllers | 2.5h | 2.5h | Pure predicate authorization policies (`models/policies/`), finite state machine (`LifecycleController`), zero-write SLA calculator (`SlaController`), timeline merger (`TimelineController`). |
+| **Session 4** | Route layer, session authentication, bulk processor & CSV streaming | 2.0h | 2.0h | Explicit `API_ROUTE_REGISTRY`, JWT session verification with HTTP-only cookies (`jose`), per-ticket isolated bulk actions, RFC-4180 CSV export stream. |
+| **Session 5** | Frontend agent workspace UI, live SLA countdowns & queue filters | 2.5h | 2.5h | Next.js 14 App Router UI, live 1-second client-side countdowns (`slaDueAt - Date.now()`), split-view ticket inspector, filterable queue table, Recharts 8-week dashboard. |
+| **Session 6** | Automated test suite, fuzzing & invariant validation | 1.5h | 1.5h | 25 Vitest test suites (195 unit, integration, and fuzz tests), concurrency assertions, and customer row-level security tests. |
+| **Session 7** | Decoupled architecture partitioning & cloud deployment fixes | 1.0h | 1.5h | Split the codebase into independent `frontend/` and `backend/` packages with isolated `node_modules` and proxy rewrites. Debugged cloud deployment gotchas on Render and Supabase connection poolers. |
+| **Session 8** | Stretch goals, performance tuning & concurrency hardening | 2.0h | 1.5h | Free-form tag taxonomy with group exclusivity, daily queue email digests (Resend + Gmail SMTP fallback), Semantic Knowledge Copilot (Gemini RAG), and advisory lock query optimizations. |
+| **Total** | | **15.0h** | **14.5h** | **All 10 core requirements + 5 stretch features completed and verified.** |
 
 ---
 
 ## 2. What order did you build in, and why that order?
 
-We followed a strict **outside-in planning, inside-out implementation** progression:
+I followed an **outside-in design, inside-out implementation** strategy:
 
-1. **Architecture & Contract Planning First**:
-   - We resolved all potential ambiguities before writing code: How does the SLA clock pause and resume? How are multi-cycle alerts tracked? What are the exact partial-failure semantics of bulk operations? What are the exact boundaries between Agent and Customer data visibility?
-   - *Why*: Ambiguity caught during coding wastes hours of refactoring; ambiguity resolved in architecture takes minutes.
+1. **State Machine & Lifecycle Rules First**:
+   - Before writing application code, I mapped out every legal and illegal state transition (`New → Open → Pending → Resolved → Closed`), how the SLA clock interacts with the `Pending` state (customer pause), and the 7-day window for reopening closed tickets.
+   - *Why*: In a support ticketing system, if your lifecycle transitions or SLA pause mechanics are ambiguous, every controller, UI badge, and database query you build afterwards will need to be rewritten.
 
-2. **Relational Schema & Seed Data Second**:
-   - Defined strict relational integrity, foreign keys, unique constraints, and composite indexes in Prisma. We immediately seeded comprehensive, realistic data (8 weeks of historical tickets, SLA breach scenarios, CSAT ratings, customer accounts, and agent collaborations).
-   - *Why*: Building against an empty database forces you to test against trivial cases. Seeding rich, messy data immediately gives you instant visual and functional feedback for pagination, filters, and SLA calculations.
+2. **Database Schema & Realistic Seed Generation Second**:
+   - I modeled the relational schema in Prisma with strict constraints, foreign keys, and composite indexes. Crucially, I wrote a comprehensive seed script immediately (`prisma/seed.ts`), generating 30+ tickets, realistic customer profiles, specialized agents, SLA breaches, 8 weeks of historical resolution data, and CSAT ratings.
+   - *Why*: Building against an empty or toy database hides pagination bugs, layout breaks, sorting issues, and query latency. Having messy, realistic data on day one gave instant visual and functional feedback.
 
-3. **Pure Policy & Domain Controller Layers Third**:
-   - Implemented `models/policies/` and `controllers/` in complete isolation from HTTP frameworks (no Next.js request/response objects).
-   - *Why*: Business logic and security policies can be unit-tested directly in milliseconds with zero mocking. If security rules are embedded inside route handlers or UI components, edge cases slip through.
+3. **Pure Policy Layer & Domain Controllers Third**:
+   - I implemented authorization logic as pure functions in `models/policies/` (`TicketPolicy`, `ReplyPolicy`, `TagPolicy`) completely decoupled from HTTP request/response objects. Domain controllers in `controllers/` were written to handle business logic, ACID transactions, and audit logging.
+   - *Why*: Business rules and role permissions are easiest to test and verify when they don't depend on HTTP frameworks, headers, or mock session objects. If authorization is embedded inside UI components or API handlers, edge cases inevitably slip into production.
 
 4. **Dedicated Route Layer & Route Registry Fourth**:
-   - Built `backend/routes/` with an explicit `API_ROUTE_REGISTRY` catalog. Each route handler unwraps HTTP requests, validates parameters, invokes the controller, and maps exceptions to standard HTTP status codes.
-   - *Why*: Creates an explicit, easily auditable API contract that completely decouples HTTP transport from business logic.
+   - I built `backend/routes/` with an explicit `API_ROUTE_REGISTRY` catalog. Each route handler unwraps HTTP requests, validates inputs, delegates to the appropriate controller, and maps domain exceptions to standard HTTP status codes (`400`, `401`, `403`, `404`).
+   - *Why*: This kept the API surface fully auditable, decoupled HTTP transport from business logic, and allowed Vitest integration tests to exercise the complete route layer cleanly.
 
-5. **Frontend Agent Workspace & Customer Portal Fifth**:
-   - Implemented the client UI against stable, typed backend API contracts: queue table with multi-filter queries, live 1-second interval SLA countdown timers, tabbed reply/note composer, SLA alert center, analytics dashboard, and customer support portal.
-   - *Why*: Because backend contracts were fully specified and tested, frontend development was straightforward integration without backend churn.
+5. **Frontend Workspace & Customer Portal Fifth**:
+   - Once backend API contracts were stable and verified, I built the Next.js 14 frontend: the queue workspace, live SLA countdown timers, ticket detail inspector, Recharts dashboard, and customer self-service portal.
+   - *Why*: Frontend implementation became rapid assembly rather than guesswork because every endpoint, payload shape, and error code was already defined and tested.
 
 6. **Comprehensive Automated Testing & Fuzzing Sixth**:
-   - Developed 25 test suites covering 195 individual tests: business rule invariants, lifecycle state machine, SLA calculation math, role security, query fuzzing, input injection fuzzing, route layer verification, and bulk concurrency under ACID transactions.
+   - I created 25 test suites with 195 assertions covering lifecycle invariants, role-based security, SLA pause/resume math, multi-cycle breach alert resets, query fuzzing, input sanitization, and concurrent transactions.
 
-7. **Decoupled Microservice Isolation & Stretch Integrations Seventh & Eighth**:
-   - Split frontend and backend into separate packages, integrated Google Gemini semantic embeddings with deterministic fallback, and wired Resend transactional email with dev console fallbacks.
+7. **Decoupled Service Partitioning & Cloud Hardening Seventh & Eighth**:
+   - Decoupled the repo into independent `frontend/` and `backend/` directories, added stretch capabilities (tagging taxonomy, queue digests, semantic AI copilot), and tuned PostgreSQL performance under real concurrency.
 
 ---
 
 ## 3. What did you estimate versus what it actually took?
 
-- **What matched estimates closely**:
-  - The Domain Controller layer (estimated 2.5 hours, took 2.5 hours) and Frontend UI implementation (estimated 2.5 hours, took 2.5 hours) matched estimates because architectural decisions had been finalized upfront.
-- **What took less time than estimated**:
-  - Prisma schema design and migration execution took 1.5 hours instead of the estimated 2.0 hours due to clear initial domain mapping.
-- **What took more precision and iteration than estimated**:
-  - The SLA engine’s mathematical pause/resume mechanics (`slaDueAt`, `slaPausedRemainingSeconds`, `slaCycle`) required rigorous edge-case testing to ensure zero database write overhead while maintaining precision across multiple pause and reopen cycles.
-  - The single-use Agent Invitation token flow required handling edge cases: invalidating prior tokens upon resend, hashing tokens before database storage, and ensuring public setup URLs (`/setup-account?token=...`) are accessible without redirecting unauthenticated agents to `/login`.
+### What matched estimates closely:
+- **Domain Controllers & Lifecycle Logic** (Estimated 2.5h, took 2.5h): Because the state machine and SLA formulas were mathematically defined in Session 1, implementing the controllers was straightforward.
+- **Frontend UI Workspace** (Estimated 2.5h, took 2.5h): Having rich seed data and stable REST contracts meant zero backend churn during UI development.
+
+### What took less time than estimated:
+- **Schema Design & Initial Migrations** (Estimated 2.0h, took 1.5h): Prisma's schema modeling made defining models, cascades, and composite indexes fast.
+
+### What took more time and iteration than estimated:
+- **SLA Alert Concurrency & Duplicate Prevention**:
+  - *Estimate*: 30 minutes to query and flag alerts.
+  - *Reality*: 1.5 hours. During initial testing under concurrent client polling, I discovered that multiple active tabs calling `/api/sla/alerts` simultaneously raced to insert duplicate alerts for the same ticket (created just 437ms apart). I had to add a database-level uniqueness constraint (`@@unique([ticketId, breachCycle])`) and implement PostgreSQL transaction advisory locking (`pg_try_advisory_xact_lock`) to make alert reconciliation strictly idempotent and concurrent-safe.
+- **Microservice Decoupling & Cross-Port Cookie Forwarding**:
+  - *Estimate*: 45 minutes to split package directories.
+  - *Reality*: 1.5 hours. Separating into `frontend/` (Port 3000) and `backend/` (Port 3001) required configuring Next.js proxy rewrites in `next.config.js` and tuning CORS cookie forwarding (`credentials: "include"`, `SameSite=Lax`) to ensure the signed HTTP-only JWT cookie flowed seamlessly between local ports.
+- **Timezone Boundary Discrepancies in Dashboard SQL**:
+  - *Estimate*: 30 minutes to chart the last 8 weeks of resolutions.
+  - *Reality*: 1 hour. In Node.js, `weekStart.setHours(0,0,0,0)` produces local midnight. On machines with timezone offsets (e.g., UTC+5:30), `.toISOString().split("T")[0]` produced Sunday dates while text labels displayed Monday, causing an off-by-one discrepancy against PostgreSQL's `date_trunc('week', ...)`. I had to strictly normalize all date bucketing to UTC (`getUTCDay()`, `setUTCDate()`, `setUTCHours(0,0,0,0)`).
+- **Production SMTP Relay on Linux Containers**:
+  - *Estimate*: 20 minutes for Resend email dispatch.
+  - *Reality*: 1 hour. Resend's free tier restricts deliveries to the account owner's email without a custom verified domain. When adding Gmail SMTP via `nodemailer` as a universal fallback, Render's Linux containers hung indefinitely because Node attempted to route SMTP traffic over unrouted IPv6 interfaces. I had to force IPv4 resolution (`family: 4`), implement dual-port fallback (587 then 465), and add strict 6.5-second timeout guards.
 
 ---
 
 ## 4. What did you cut when you ran short?
 
-To deliver an exceptional, bug-free implementation within the engineering budget while completing all 10 core requirements and 5 stretch goals:
+To keep the system robust, bug-free, and completed within a realistic timeframe, I made deliberate cuts:
 
-1. **Cut WebSocket / Realtime Server Infrastructure**:
-   - *Alternative chosen*: Implemented client-side mathematical countdowns (`slaDueAt - Date.now()`) with lightweight 15-second background polling for queue and alert counters. This delivers a live, 1-second ticking countdown without the operational overhead of managing persistent WebSocket connection state.
-2. **Cut External Redis Caching Tier**:
-   - *Alternative chosen*: Relied on PostgreSQL's sub-millisecond execution times powered by composite B-tree indexes (`@@index([primaryAssigneeId, status, archivedAt])`, `@@index([status, archivedAt, slaDueAt])`) and parallel `Promise.all([findMany, count])` queries.
-3. **Cut Heavy Multi-Part S3 Cloud Storage**:
-   - *Alternative chosen*: Built an efficient native upload endpoint (`/api/upload`) storing attachments with metadata (`attachmentUrl`, `attachmentName`, `attachmentSize`, `attachmentType`) rendered inline with download and preview chips.
-4. **Cut Database-Level pgvector C-Extension Prerequisite**:
-   - *Alternative chosen*: Designed the Knowledge Copilot RAG service to compute cosine similarity in application memory with a Google Gemini API embedding generator and an automatic deterministic vector fallback. This ensures the app runs anywhere with zero external infrastructure dependencies while remaining 100% cloud-ready.
+1. **Cut Stateful WebSocket Cluster (Socket.io / Redis PubSub)**:
+   - *Why*: The prompt requires live SLA countdowns and responsive queues. Managing a stateful WebSocket cluster introduces connection state, heartbeat handling, sticky sessions, and reconnect backoff.
+   - *What I did instead*: Built **client-side mathematical countdowns** (`slaDueAt - Date.now()`) that update every second locally with **zero network traffic**. Paired this with a 15-second background poll for queue list updates and a lightweight Server-Sent Events (SSE) stream (`/api/tickets/[id]/events`) for live ticket chat.
+2. **Cut External Redis Caching Infrastructure**:
+   - *Why*: Introducing Redis creates a separate point of failure and cache invalidation complexity across ticket status updates, replies, and reassignments.
+   - *What I did instead*: Leveraged PostgreSQL composite B-tree indexes, single-query set-based SQL joins, and a lightweight 15-second in-memory server cache for the supervisor dashboard with event-driven invalidation on ticket mutations.
+3. **Cut Database-Level `pgvector` C-Extension Prerequisite**:
+   - *Why*: `pgvector` requires root database extension privileges or custom compiled binaries that are often unsupported or cumbersome to manage in standard serverless database transaction poolers.
+   - *What I did instead*: Implemented the Semantic Knowledge Copilot with application-level cosine similarity in Node.js. It calls Google Gemini for vector embeddings when available, with an automatic deterministic n-gram vector fallback if the API key is absent or rate-limited. This makes the application 100% portable across any PostgreSQL or SQLite environment with zero setup friction.
+4. **Cut Heavy Multi-Part S3 Cloud Storage**:
+   - *Why*: Setting up AWS IAM roles, bucket policies, and presigned URLs adds operational overhead without improving the core support queue evaluation.
+   - *What I did instead*: Built a secure local/streamed upload endpoint (`/api/upload`) with strict file type validation, 15MB size limits, sanitized unique filenames, directory traversal guards, and direct inline image/PDF previews in the chat timeline.

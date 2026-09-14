@@ -1,6 +1,6 @@
 # Decisions
 
-Log the decisions that actually shaped this codebase — the ones where a real alternative existed and you picked one. At least five entries. For each: what you chose, what you rejected, and why. At least one entry must be a decision you later reversed — say what changed your mind. It can be any entry below, not necessarily the last one; add a **Later reversed:** line to whichever one it is.
+Log of the architectural and technical decisions that actually shaped this codebase — the ones where a real alternative existed and a deliberate choice was made.
 
 ---
 
@@ -9,9 +9,9 @@ Log the decisions that actually shaped this codebase — the ones where a real a
 - **Chose:** Two completely decoupled services (`frontend/` on Port 3000 and `backend/` on Port 3001), each with its own independent `package.json`, isolated `node_modules/`, `tsconfig.json`, and `.env` configuration.
 - **Rejected:** A unified Next.js monolithic repository where server actions, database ORM logic, and React frontend components live in the same root package.
 - **Why:** 
-  - **Zero Dependency Leaking**: Prevents backend ORM binaries, database secrets, and server utilities from accidentally bundling into client-side code.
+  - **Zero Dependency & Secret Leaking**: Prevents backend Prisma models, database connection strings, bcrypt native binaries, and server-side secrets from accidentally bundling into client-side code.
   - **Independent Scaling & Deployment**: The frontend (static / edge Next.js) and backend (REST API service) can be deployed and scaled on separate infrastructure (e.g. Vercel for UI, Render/AWS for API).
-  - **Fast, Focused Testing**: Backend unit and integration tests run in seconds (`npm test` in `backend/`) without compiling the Next.js frontend UI.
+  - **Fast, Focused Testing**: Backend unit and integration tests run in seconds (`npm test` in `backend/`) without compiling the Next.js frontend UI or waiting on React bundlers.
 - **Later reversed:** We initially started building within a single monolithic Next.js repository using inline route handlers inside `app/api/`. However, as the domain logic, policy guards, and test suites expanded, we observed dependency coupling and potential bundle pollution where client components could inadvertently import server types. We explicitly halted feature work in Session 7, deleted root-level package dependencies, and partitioned the codebase into clean `frontend/` and `backend/` services with reverse-proxy rewrites (`/api/*` in `next.config.js`). This produced a vastly cleaner, production-grade microservice architecture.
 
 ---
@@ -77,3 +77,23 @@ Log the decisions that actually shaped this codebase — the ones where a real a
 - **Why:** 
   - **Separation of Concerns**: Replies represent human communication (with markdown, recipient targeting, and `isInternal` flags); audit logs represent an immutable system ledger of state transitions and field diffs.
   - **Clean Presentation**: Keeping them normalized in separate relational tables preserves query performance and data integrity, while the `TimelineController` seamlessly combines them into a single, intuitive conversation timeline.
+
+---
+
+## Decision 8: SLA Alert Concurrency Control — Database Uniqueness & Advisory Locking vs. In-Process Mutex
+
+- **Chose:** Composite database constraint `@@unique([ticketId, breachCycle])` paired with PostgreSQL transaction advisory lock `SELECT pg_try_advisory_xact_lock(hashtext('sla_alert_sync'))`.
+- **Rejected:** An in-process JavaScript mutex (e.g. `async-mutex`) or relying solely on read-before-write checks.
+- **Why:**
+  - **Multi-Worker Serverless Concurrency**: In-process mutexes only protect a single Node.js event loop. When deployed across multiple web containers (or serverless workers), concurrent client polling requests (from multiple tabs polling `/api/sla/alerts` every 15s) ran simultaneous read-before-write checks and raced to insert duplicate alerts for the same ticket just 437ms apart.
+  - **Zero Lock Contention**: The PostgreSQL transaction advisory lock ensures that exactly 1 worker executes the write reconciliation, while the other 9 concurrent requests immediately skip the write phase and execute the fast, indexed read query with zero blocking.
+
+---
+
+## Decision 9: Transactional Email Reliability — Dual-Provider Dispatch (Gmail SMTP + Resend) vs. Single API
+
+- **Chose:** Dual-mode email dispatcher in `backend/services/email.service.ts`: Gmail SMTP via `nodemailer` (forcing IPv4 and multi-port fallback) as primary arbitrary-recipient sender, Resend API as secondary, and local console logging as dev fallback.
+- **Rejected:** Relying exclusively on Resend's free tier.
+- **Why:**
+  - **Sandbox Delivery Restrictions**: Resend's free tier strictly blocks sending emails to arbitrary recipient addresses unless a custom corporate domain is verified. This meant supervisors could not test agent invitation emails or daily digests to arbitrary test emails.
+  - **IPv6 Linux Container Hangs**: Adding `nodemailer` exposed a subtle production bug on Linux containers (Render), where Node attempted to route SMTP connections over unrouted IPv6 interfaces, hanging the HTTP response for 60 seconds. Enforcing `family: 4` (IPv4) and strict 6.5s connection timeouts eliminated the hang and guaranteed sub-2s email delivery.

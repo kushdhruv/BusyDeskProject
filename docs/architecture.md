@@ -1,160 +1,194 @@
 # Architecture
 
-Answer each of these, in your own words, once the system has taken real shape.
-
-- What are the moving pieces, and how do they talk to each other?
-- Where does each piece run?
-- What is the request path for one representative user action, end to end?
-- What did you decide *not* to build, and why?
-
----
-
 ## 1. What are the moving pieces, and how do they talk to each other?
 
-The platform is designed as a **Decoupled Architecture** composed of two completely isolated, independently deployable services that communicate over typed HTTP REST contracts:
+The platform is engineered as a **Decoupled System** composed of an independent frontend client and a modular REST API backend. Each service maintains its own `package.json`, isolated `node_modules`, `tsconfig.json`, and environment configuration. They communicate strictly over typed HTTP REST contracts using JSON payloads and signed HTTP-only cookies.
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                               Client Web Browser                                │
-│   - Support Agent Workspace: Live SLA Countdowns, Queue, Smart Assist, Bulk    │
-│   - Customer Portal: Ticket Submission, Timeline Feed, CSAT Star Ratings        │
-└────────────────────────────────────────┬────────────────────────────────────────┘
-                                         │ HTTP REST (Port 3000 / Proxy)
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                                Client Browser                                    │
+│   • Staff Workspace: Queue Table, Live SLA Countdowns, Split Inspector, Copilot  │
+│   • Customer Portal: Ticket Submission, Public Conversation Feed, CSAT Ratings   │
+│   • Supervisor Hub: Team Administration, Tag Governance, Analytics Dashboard     │
+└────────────────────────────────────────┬─────────────────────────────────────────┘
+                                         │ HTTP REST (Port 3000 / Next.js Proxy)
                                          ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                    Frontend Service (`frontend/` — Port 3000)                   │
-│   - Next.js 14 App Router (React 18 + Tailwind CSS + Lucide Icons)              │
-│   - Typed API Client (`frontend/lib/api-client.ts`)                             │
-│   - Reverse Proxy Rewrites: `/api/*` -> `http://localhost:3001/api/*`           │
-└────────────────────────────────────────┬────────────────────────────────────────┘
-                                         │ JSON / Signed HTTP-only Cookie
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                   Frontend Service (`frontend/` — Port 3000)                     │
+│   • Next.js 14 App Router (React 18 Server & Client Components, Tailwind CSS)   │
+│   • Typed REST Client (`frontend/lib/api-client.ts`)                            │
+│   • Global Session Context (`frontend/lib/session-context.tsx`)                 │
+│   • Reverse Proxy Rewrites: `/api/:path*` ➔ `http://localhost:3001/api/:path*`   │
+└────────────────────────────────────────┬─────────────────────────────────────────┘
+                                         │ JSON / Signed HTTP-only Cookie (`session_token`)
                                          ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                    Backend Service (`backend/` — Port 3001)                     │
-│                                                                                 │
-│   ┌─────────────────────────────────────────────────────────────────────────┐   │
-│   │ 1. Routing & Route Registry Layer (`backend/routes/`)                   │   │
-│   │    - Auth, Ticket, Reply, Collaboration, SLA, CSAT, Bulk, Export, Copilot│   │
-│   │    - Parameter parsing, HTTP error mapping, centralized registry        │   │
-│   └────────────────────────────────────┬────────────────────────────────────┘   │
-│                                        ▼                                        │
-│   ┌─────────────────────────────────────────────────────────────────────────┐   │
-│   │ 2. Security, Middleware & Policy Layer (`backend/models/policies/`)     │   │
-│   │    - JWT Session Verification (`jose` + HTTP-only Cookie)               │   │
-│   │    - Query-Level Security & 3-Role Authorization (Supervisor/Agent/Cust)│   │
-│   │    - TicketPolicy, ReplyPolicy, CollaboratorPolicy, AlertPolicy         │   │
-│   └────────────────────────────────────┬────────────────────────────────────┘   │
-│                                        ▼                                        │
-│   ┌─────────────────────────────────────────────────────────────────────────┐   │
-│   │ 3. Domain Controller & Service Layer (`backend/controllers/ & services/`)│   │
-│   │    - TicketController (CRUD, Filtering, Archival, Reassignment)         │   │
-│   │    - LifecycleController (FSM: NEW -> OPEN -> PENDING -> RESOLVED...)   │   │
-│   │    - SlaController (Deadline math, Pause/Resume, Alert Sync)            │   │
-│   │    - ReplyController (Agent/Customer replies, Internal notes)           │   │
-│   │    - CollaborationController (Secondary agents, RBAC rules)             │   │
-│   │    - TimelineController (Merged chronological activity feed)            │   │
-│   │    - BulkController (Per-ticket isolated batch transactions)            │   │
-│   │    - RecommendationService (Semantic Copilot RAG, Gemini embeddings)    │   │
-│   │    - EmailService & DigestService (Resend transactional dispatch)       │   │
-│   │    - DashboardController (Analytical SQL KPI aggregations)              │   │
-│   │    - ExportController (RFC-4180 streaming CSV generator)                │   │
-│   │    - CsatController (Customer satisfaction ratings & feedback)          │   │
-│   └────────────────────────────────────┬────────────────────────────────────┘   │
-│                                        │ ACID Transactions & Multi-Index        │
-│                                        ▼                                        │
-│   ┌─────────────────────────────────────────────────────────────────────────┐   │
-│   │ 4. Data Access Layer (`backend/db/` & `backend/prisma/`)                │   │
-│   │    - Prisma ORM Client (`backend/db/prisma.db.ts`)                      │   │
-│   │    - Normalized PostgreSQL Database (Tables, FK Cascades, Enums)        │   │
-│   └─────────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                    Backend Service (`backend/` — Port 3001)                      │
+│                                                                                  │
+│   ┌──────────────────────────────────────────────────────────────────────────┐   │
+│   │ 1. API Route Layer (`backend/routes/`)                                   │   │
+│   │    • Central `API_ROUTE_REGISTRY` mapping all endpoints                  │   │
+│   │    • Unwraps HTTP requests, extracts parameters, validates inputs        │   │
+│   │    • Maps domain exceptions to standard HTTP status codes (400, 401, 403)│   │
+│   └────────────────────────────────────┬─────────────────────────────────────┘   │
+│                                        ▼                                         │
+│   ┌──────────────────────────────────────────────────────────────────────────┐   │
+│   │ 2. Security & Policy Layer (`backend/models/policies/`)                  │   │
+│   │    • JWT Session Verification (`jose` HS256 in secure HTTP-only cookies) │   │
+│   │    • Pure predicate authorization: `TicketPolicy`, `ReplyPolicy`,        │   │
+│   │      `TagPolicy`, `AlertPolicy`                                          │   │
+│   │    • Query-level data isolation (Customer row-level scoping)             │   │
+│   └────────────────────────────────────┬─────────────────────────────────────┘   │
+│                                        ▼                                         │
+│   ┌──────────────────────────────────────────────────────────────────────────┐   │
+│   │ 3. Domain Controllers & Business Engines (`backend/controllers/`)        │   │
+│   │    • `TicketController`: CRUD, multi-criteria filtering, soft-archive    │   │
+│   │    • `LifecycleController`: FSM state transitions, 7-day reopen guard    │   │
+│   │    • `SlaController`: Zero-write deadline math, pause/resume, alerts     │   │
+│   │    • `ReplyController`: Agent/customer messages, staff-only notes        │   │
+│   │    • `CollaborationController`: Multi-agent assignments, RBAC rules      │   │
+│   │    • `BulkController`: Per-ticket isolated transactions & error reporting│   │
+│   │    • `TimelineController`: Interleaved chronological feed merge          │   │
+│   │    • `DashboardController`: SQL aggregation, 8-week trend, CSAT KPIs     │   │
+│   │    • `ExportController`: Streaming RFC-4180 CSV generation               │   │
+│   └────────────────────────────────────┬─────────────────────────────────────┘   │
+│                                        ▼                                         │
+│   ┌──────────────────────────────────────────────────────────────────────────┐   │
+│   │ 4. Specialized Auxiliary Services (`backend/services/`)                  │   │
+│   │    • `EmbeddingService`: 1536-d vectors via Gemini API + deterministic   │   │
+│   │      keyword hash fallback (cached in-memory)                            │   │
+│   │    • `RecommendationService`: Cosine similarity ranking (>0.52 / >0.22)  │   │
+│   │    • `EmailService`: Dual-provider dispatch (Gmail SMTP via nodemailer  │   │
+│   │      with IPv4 enforcement + Resend API + dev console fallback)          │   │
+│   │    • `DigestService`: HTML queue briefings with smart empty suppression  │   │
+│   │    • `ticketBroadcaster`: Lightweight in-memory SSE event bus            │   │
+│   └────────────────────────────────────┬─────────────────────────────────────┘   │
+│                                        ▼                                         │
+│   ┌──────────────────────────────────────────────────────────────────────────┐   │
+│   │ 5. Data Access Layer (`backend/db/` & `backend/prisma/`)                 │   │
+│   │    • Prisma ORM Client with dual-URL pooling configuration               │   │
+│   │    • ACID Transactions (`prisma.$transaction`)                          │   │
+│   └──────────────────────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────┬─────────────────────────────────────────┘
+                                         │ PostgreSQL Connection Pools
+                                         ▼
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                  Database Tier (Managed Supabase PostgreSQL 15)                  │
+│   • Transaction Pooler (Supavisor Port 6543): Multiplexes web queries           │
+│   • Direct Session (Port 5432): Used by Prisma CLI for schema migrations         │
+│   • 13 Relational Models, Composite B-Tree Indexes & GIN Trigram Search Indexes  │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Component Breakdown:
-1. **Frontend Client (`frontend/`)**:
-   - Renders the UI using Next.js 14 App Router, React 18, and Tailwind CSS.
-   - Communicates exclusively via HTTP requests through `frontend/lib/api-client.ts`.
-   - In development, Next.js rewrites (`next.config.js`) proxy `/api/*` to the backend on port 3001, allowing seamless CORS-free cookie transmission.
+### Component Roles & Boundaries
+
+1. **Frontend (`frontend/`)**:
+   - Built on Next.js 14 App Router, React 18, and Tailwind CSS.
+   - Operates purely as a presentation and interaction layer. It contains zero database drivers, ORM code, or server-side secrets.
+   - Communicates with the backend through a typed API client (`frontend/lib/api-client.ts`). In development, Next.js rewrites (`next.config.js`) proxy `/api/*` requests to `localhost:3001`, enabling seamless cross-port cookie transmission without CORS preflight friction.
+   - Calculates live 1-second SLA countdowns locally in the browser from `slaDueAt - Date.now()`, eliminating constant network polling for timer updates.
+
 2. **Backend Route Layer (`backend/routes/`)**:
-   - Central entry point containing all route handlers (`auth.routes.ts`, `ticket.routes.ts`, `sla.routes.ts`, `recommendation.routes.ts`, etc.).
-   - Unwraps HTTP request bodies, handles query parameters, invokes controllers, and maps exceptions to standard HTTP response codes (`200 OK`, `201 Created`, `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`).
+   - Houses an explicit `API_ROUTE_REGISTRY` catalog listing all endpoints, allowed HTTP methods, authentication requirements, and authorized roles.
+   - Each route module (e.g. `ticket.routes.ts`, `auth.routes.ts`) handles parameter extraction, invokes the domain controller, and maps errors to clear HTTP response codes (`400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`).
+   - The Next.js API route files (`backend/app/api/.../route.ts`) are clean one-line delegates pointing directly into `backend/routes/`. This keeps the API fully decoupled from Next.js server internals and directly testable in Vitest without mocking HTTP contexts.
+
 3. **Policy Engine (`backend/models/policies/`)**:
-   - Pure, stateless authorization predicates that evaluate whether an authenticated session (`SessionUser`) can perform an action on a ticket or reply.
-   - Evaluated both during mutations and when computing client UI permission flags (`permissions.canReply`, `permissions.canReassign`, `permissions.canClose`).
+   - Implements declarative, pure authorization predicates: `TicketPolicy`, `ReplyPolicy`, `CollaboratorPolicy`, `TagPolicy`, and `AlertPolicy`.
+   - Each policy function accepts the target entity and the authenticated `SessionUser`, returning a boolean or structured refusal reason.
+   - Evaluated identically during mutation requests and when computing client UI permission flags (`permissions.canReply`, `permissions.canReassign`, `permissions.canClose`).
+
 4. **Domain Controllers (`backend/controllers/`)**:
-   - Encapsulate business logic, state machine rules, SLA mathematics, and database queries. Completely decoupled from HTTP frameworks.
+   - Encapsulate all core business logic: finite state machine rules, zero-write SLA mathematics, multi-agent collaboration integrity, bulk execution, and audit logging.
+   - Run multi-step database mutations inside PostgreSQL ACID transactions (`prisma.$transaction`).
+
 5. **Specialized Domain Services (`backend/services/`)**:
-   - `EmbeddingService`: Generates 1536-dimensional semantic vectors using Google Gemini API (`text-embedding-004`) with an in-memory deterministic fallback.
-   - `RecommendationService`: Finds semantically similar resolved tickets and KB articles above the 0.72 cosine similarity threshold.
-   - `EmailService`: Sends transactional emails (agent invites, queue digests) using Resend API with automated console fallback in development.
-   - `DigestService`: Generates HTML email digests with smart suppression for empty queues.
+   - `EmbeddingService`: Generates 1536-dimensional semantic vector embeddings via the Google Gemini API (`text-embedding-004`). Includes an in-memory LRU cache and an automated deterministic n-gram vector fallback if the API key is absent or hits rate limits.
+   - `RecommendationService`: Evaluates cosine similarity between open tickets and historical resolutions/KB articles, applying a category-affinity boost (+0.12) to surface high-signal suggested solutions above the reply composer.
+   - `EmailService`: Dispatches transactional emails (agent invitations and daily queue digests) using a resilient dual-provider architecture: Gmail SMTP via `nodemailer` (with forced IPv4 and strict timeouts) as the primary arbitrary-recipient sender, Resend API as secondary, and local console logging as dev fallback.
+   - `DigestService`: Compiles role-aware HTML queue briefings for agents and weekly summaries for supervisors, with smart suppression when queues are empty.
+   - `ticketBroadcaster`: An in-memory event bus providing Server-Sent Events (SSE) at `GET /api/tickets/[id]/events` for real-time conversation updates without page reloads.
+
 6. **Data Tier (`backend/prisma/`)**:
-   - PostgreSQL database managed by Prisma ORM with 13 normalized relational models.
+   - 13 normalized relational tables hosted on PostgreSQL, enforcing foreign key cascades, uniqueness invariants, and composite B-tree and GIN trigram indexes.
 
 ---
 
 ## 2. Where does each piece run?
 
-| Moving Piece | Execution Environment | Port / Network Location | Key Runtime Responsibilities |
-| :--- | :--- | :--- | :--- |
-| **Frontend UI** | Node.js / Vercel Edge Runtime | `localhost:3000` (Production: Vercel) | Renders server components, hydrates client React trees, manages client session state, and renders live 1-second interval SLA countdown timers. |
-| **Backend REST API** | Node.js / Vercel Serverless / Render | `localhost:3001` (Production: Vercel/Render) | Executes business logic, enforces cryptographic JWT authentication, validates state transitions, evaluates policies, and coordinates database transactions. |
-| **Database Tier** | Supabase Managed PostgreSQL | `aws-0-ap-northeast-2.pooler.supabase.com` | Stores relational data, enforces foreign key constraints (`ON DELETE CASCADE`, `ON DELETE SET NULL`), and manages composite B-tree indexes. |
-| **Connection Pooler** | Supavisor (Supabase) | Port `6543` (Pooled Transaction Mode) | Multiplexes hundreds of concurrent application queries over 15 pooled connections with `pgbouncer=true`. |
-| **Direct Migration DB** | PostgreSQL Session | Port `5432` (Direct Session Mode) | Dedicated direct connection used exclusively by Prisma CLI for running schema pushes and migrations. |
-| **AI Embedding Service**| Google Gemini AI API | `generativelanguage.googleapis.com` | Generates 1536-dimensional vector embeddings for ticket resolutions and KB articles (with built-in deterministic fallback). |
-| **Transactional Email** | Resend API | `api.resend.com` | Dispatches invitation emails and daily queue digests over HTTP REST with TLS. |
+| Component | Runtime Environment | Network Location | Key Operational Responsibilities |
+|:---|:---|:---|:---|
+| **Frontend UI** | Node.js (Local) / Vercel Edge | `localhost:3000` (Production: Vercel) | Hydrates React component tree, runs client-side SLA countdowns, manages UI state, proxies `/api/*` to backend. |
+| **Backend REST API** | Node.js (Local) / Render / Vercel Serverless | `localhost:3001` (Production: Render/Vercel) | Executes business logic, verifies JWTs, enforces authorization policies, coordinates ACID transactions. |
+| **Database Tier** | Managed Supabase PostgreSQL 15 | AWS `ap-northeast-2` (Seoul) | Enforces relational constraints, cascades, foreign keys, unique constraints, and composite indexes. |
+| **Connection Pooler** | Supavisor (Supabase Pooler) | Port `6543` (`pgbouncer=true`) | Multiplexes concurrent application queries over a constrained connection pool in transaction mode. |
+| **Direct Migration Port** | PostgreSQL Session | Port `5432` | Direct connection mode used exclusively by Prisma CLI for running schema migrations and seed scripts. |
+| **AI Embedding API** | Google Gemini Generative Language API | `generativelanguage.googleapis.com` | Computes 1536-dimensional semantic vectors for KB articles and ticket resolutions (with automatic offline fallback). |
+| **Transactional Email** | Gmail SMTP / Resend API | `smtp.gmail.com` / `api.resend.com` | Delivers agent invitation links and queue digest briefings over TLS. |
 
 ---
 
 ## 3. What is the request path for one representative user action, end to end?
 
-### Representative Action: Customer Replies to a Ticket in `PENDING` Status
-This action demonstrates cross-tier authentication, state machine transitions, SLA countdown resumption, audit log immutability, and database transactions:
+### Representative Flow: A Customer Replies to a Ticket in `PENDING` Status
+
+This action exercises cross-tier proxying, authentication, ownership validation, finite state machine transitions, mathematical SLA resumption, immutable audit logging, and real-time SSE broadcasting:
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Customer as Customer (Alice)
-    participant UI as Frontend UI (Port 3000)
+    participant Browser as Browser Client (Port 3000)
     participant Proxy as Next.js Proxy Rewrite
     participant Route as Backend Route (reply.routes.ts)
-    participant Auth as Auth & Policy Middleware
+    participant Auth as Auth Middleware & Policy
     participant Ctrl as ReplyController & SlaController
-    participant DB as PostgreSQL (Prisma $transaction)
+    participant DB as PostgreSQL (Supabase Prisma $transaction)
+    participant SSE as ticketBroadcaster (SSE)
+    actor Agent as Assigned Agent (Sarah)
 
-    Customer->>UI: Enters reply message in Customer Portal and clicks "Send Reply"
-    UI->>Proxy: POST /api/tickets/{ticketId}/customer-reply { body: "Here are the requested logs" }
+    Customer->>Browser: Enters reply message & clicks "Send Reply"
+    Browser->>Proxy: POST /api/tickets/{ticketId}/customer-reply { body: "Here are the requested logs." }
     Proxy->>Route: Forward to http://localhost:3001/api/tickets/{ticketId}/customer-reply
-    Route->>Auth: Extract signed HTTP-only cookie & verify JWT via `jose`
-    Auth-->>Route: Verified Session (userId: "cust_1", role: "CUSTOMER")
+    Route->>Auth: Verify signed HTTP-only cookie (`session_token`) via `jose`
+    Auth-->>Route: Authenticated Session (userId: "cust_1", role: "CUSTOMER", status: "ACTIVE")
     Route->>Ctrl: ReplyController.addCustomerReply(ticketId, data, sessionUser)
-    Ctrl->>DB: Fetch current ticket state & verify ownership (requesterId === sessionUser.id)
-    Note over Ctrl,DB: Ticket is currently in PENDING status.
+    Ctrl->>DB: Fetch ticket by ID & verify requester ownership (requesterId === "cust_1")
+    Note over Ctrl,DB: Ticket is currently in PENDING status (waiting on customer).
+    
     Ctrl->>DB: BEGIN Transaction
-    Ctrl->>DB: INSERT INTO "replies" (ticketId, body, authorType="CUSTOMER", isInternal=false)
+    Ctrl->>DB: INSERT INTO "replies" (ticketId, authorId, authorType="CUSTOMER", body, isInternal=false)
     Ctrl->>DB: INSERT INTO "audit_logs" (eventType="REPLY_ADDED", actorName="Alice Henderson")
+    
     Ctrl->>Ctrl: SlaController.computeStateOnStatusChange(ticket, Status.OPEN, now)
     Note over Ctrl: Read frozen slaPausedRemainingSeconds.<br/>Compute resumed slaDueAt = now + slaPausedRemainingSeconds.<br/>Clear slaPausedAt = null, slaPausedRemainingSeconds = null.
-    Ctrl->>DB: UPDATE "tickets" SET status="OPEN", slaDueAt=resumedDueAt, slaPausedAt=null
-    Ctrl->>DB: INSERT INTO "audit_logs" (eventType="STATUS_CHANGED", reason="Customer replied; SLA resumed")
-    Ctrl->>DB: UPSERT "sla_alerts" (update active alert deadline if applicable)
+    
+    Ctrl->>DB: UPDATE "tickets" SET status="OPEN", slaDueAt=resumedDueAt, slaPausedAt=null, slaPausedRemainingSeconds=null
+    Ctrl->>DB: INSERT INTO "audit_logs" (eventType="STATUS_CHANGED", oldValue="PENDING", newValue="OPEN", reason="Customer replied; SLA clock resumed")
+    Ctrl->>DB: UPSERT "sla_alerts" (sync alert record to resumed deadline)
     Ctrl->>DB: COMMIT Transaction
     DB-->>Ctrl: Transaction Committed Successfully
+    
+    Ctrl->>SSE: ticketBroadcaster.broadcast(ticketId, { type: "REPLY_ADDED", reply })
+    SSE-->>Agent: Live message pushed to active agent workspace without page reload
+    Ctrl->>Ctrl: invalidateMetricsCache() (clears 15s supervisor dashboard cache)
     Ctrl-->>Route: Return { success: true, reply, ticket }
-    Route-->>UI: HTTP 201 Created { reply, ticket }
-    UI->>Customer: Activity timeline appends reply; badge switches to OPEN; SLA countdown resumes live ticking!
+    Route-->>Browser: HTTP 201 Created { reply, ticket }
+    Browser->>Customer: Reply appears in conversation feed; status badge switches to OPEN; SLA countdown resumes ticking!
 ```
 
 ---
 
 ## 4. What did you decide *not* to build, and why?
 
-| Feature / Architecture | What We Rejected | What We Chose Instead | Engineering Rationale |
-| :--- | :--- | :--- | :--- |
-| **SLA Tracking Daemon** | Background cron running every 60 seconds updating integer counters in the DB | Mathematical deadline timestamps (`slaDueAt`, `slaPausedRemainingSeconds`) | Background polling introduces severe database write amplification (thousands of DB writes per minute for idle open tickets) and clock drift. Mathematical deadlines require **zero database writes** while a ticket is open, and the client browser computes live 1-second countdowns on the fly. |
-| **Realtime WebSockets** | Stateful WebSocket server (Socket.io / ws) with persistent connection state | Client-side mathematical countdowns + 15-second background polling | WebSocket connections require sticky sessions, complex reconnection logic, and persistent server state. Ticking countdowns calculated locally from `slaDueAt - Date.now()` deliver the same live user experience with zero stateful connection overhead. |
-| **Monolithic Single Next.js App** | Merging frontend and backend in one repository sharing dependencies | Decoupled `frontend/` (Port 3000) and `backend/` (Port 3001) services | Prevents backend Prisma models, database connection strings, and server secrets from leaking into client bundles. Enables independent scaling, modular testing, and clear mental models. |
-| **Single Monolithic Bulk Transaction** | Wrapping all selected bulk tickets in one giant `prisma.$transaction([ ... ])` | Per-ticket isolated transactions returning granular success/refusal details | In a support team, rolling back 19 valid operations because 1 ticket was already closed causes severe frustration. Per-ticket isolation commits valid operations while returning itemized refusal reasons in a summary modal. |
-| **Client-Side Role Switcher** | Unauthenticated navbar dropdown that toggles `role = "SUPERVISOR"` in state | Cryptographic server-side JWT session cookies (`jose`) with bcrypt password hashing | Client-side persona toggles are security theater. Real server-side auth ensures that row-level queries, permission gates, and internal note exclusions are genuinely enforced by the backend. |
-| **External Vector Database Tier (Pinecone / Qdrant)** | Provisioning an external vector SaaS database | In-memory cosine similarity engine with Google Gemini embeddings & deterministic fallback | Keeps the application completely self-contained and zero-dependency. Works on any standard PostgreSQL instance without requiring external SaaS vector subscriptions or database C-extensions. |
+Every architectural boundary involves balancing correctness, operational overhead, and maintainability. Here is what I deliberately chose *not* to build:
+
+| Proposed Feature / Pattern | What Was Rejected | What Was Chosen Instead | Engineering Rationale |
+|:---|:---|:---|:---|
+| **SLA Tracking Daemon** | A background cron or `setInterval` worker running every 60s executing `UPDATE tickets SET remainingSeconds = remainingSeconds - 60 WHERE status = 'OPEN'`. | **Mathematical Deadline Timestamps** (`slaDueAt`, `slaPausedAt`, `slaPausedRemainingSeconds`). | A polling worker creates catastrophic database write amplification: 5,000 open tickets generate 300,000 DB writes per hour for tickets sitting idle, causing lock contention and clock drift. Mathematical deadlines require **zero database writes** while a ticket is open, and the client browser computes live 1-second countdowns locally. |
+| **Stateful WebSocket Server** | A persistent WebSocket cluster (Socket.io / ws) with Redis pub/sub for queue updates. | **Client-side countdown math + 15s queue polling + lightweight SSE for chat.** | WebSockets require persistent stateful server instances, sticky load balancer sessions, complex reconnection backoff, and cluster pub/sub. Ticking countdowns calculated locally from `slaDueAt - Date.now()` deliver the same live user experience with zero stateful connection overhead. Ticket chat uses lightweight, one-way Server-Sent Events (SSE). |
+| **Monolithic Unified Repo** | Merging frontend and backend into a single Next.js app sharing the same `package.json` and build step. | **Decoupled `frontend/` and `backend/` services** with reverse-proxy routing. | Prevents backend Prisma models, database connection strings, bcrypt binaries, and server-side secrets from accidentally leaking into client bundles. Enables independent test execution (`npm test` in backend runs in seconds without compiling React pages) and modular cloud deployment. |
+| **Single Monolithic Bulk Transaction** | Wrapping all selected bulk tickets into a single `prisma.$transaction([ ... ])`. | **Per-ticket isolated transactions** returning granular itemized success and refusal details. | If a supervisor selects 20 tickets to bulk-close and one is already closed or ineligible, rolling back all 19 valid operations creates immense operator frustration. Per-ticket isolation commits valid operations while returning itemized refusal reasons in a summary modal, fulfilling the assignment's explicit partial failure requirement. |
+| **Client-Side Role Switcher** | An unauthenticated navbar dropdown that toggles `user.role` in React state or `localStorage`. | **Server-side signed JWT cookies (`jose`)** paired with bcrypt password hashing and database status checks. | Client-side persona toggles are security theater. Real server-side auth ensures that row-level queries, permission gates, and internal note exclusions are genuinely enforced by the backend, as required by the specification. |
+| **External Vector Database Tier** | Provisioning an external vector SaaS database (Pinecone / Qdrant) or compiling `pgvector` C-extensions. | **In-memory cosine similarity engine** with Google Gemini API embeddings and an automated deterministic n-gram vector fallback. | Keeps the application completely self-contained and zero-dependency. Works reliably on any standard PostgreSQL instance or Supabase transaction pooler without requiring external SaaS vector subscriptions or custom binary database extensions. |
+| **Heavy Multi-Part S3 Cloud Storage** | Setting up AWS S3 buckets, IAM credentials, and presigned upload URLs. | **Native file upload endpoint (`/api/upload`)** with file type sanitization, 15MB limits, and direct preview chips. | Eliminates unnecessary external cloud infrastructure while providing a fully working, secure file attachment experience for images, logs, and PDFs directly in ticket conversations. |
