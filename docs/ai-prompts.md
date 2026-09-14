@@ -189,13 +189,35 @@ This document records the actual technical prompts, architecture challenges, and
 
 ## 9. B2B SaaS Frontend Polish & Anti-AI-Slop Curation
 
-### Architecture Prompt
-> *"Audit the frontend presentation against enterprise B2B SaaS design standards (Linear, Stripe, Front). Eliminate all generic AI boilerplate, decorative badges, and non-functional slogans.*
+### Frontend Architecture & Polish Prompt
+> *"Research how **real, currently-used production B2B SaaS websites/apps** are designed today. Study their typography, spacing, colours, navigation, tables, forms, cards, borders, density, and overall visual restraint.
 > 
-> *Refine typography, soften harsh borders with clean rounded radii (`rounded-xl`), and fix the collapsed sidebar navigation so that a persistent toggle button allows expanding the menu with proper notification indicator alignment."*
+> Then **go through the entire current frontend codebase again**, page by page and component by component.
+> 
+> Identify and remove anything that makes the product feel **AI-generated, templated, childish, or unnecessarily designed** — excessive rounded cards, gradients, random colours, decorative elements, excessive shadows, oversized text, unnecessary icons, pills, animations, whitespace, etc.
+> 
+> Do not redesign for the sake of redesigning. **Preserve anything that already feels professional and useful.**
+> 
+> The goal is for the final frontend to feel like a **real production product built by an experienced frontend/product team**, not an AI-generated demo.
+> 
+> Prioritize:
+> - clean typography
+> - consistent spacing
+> - strong hierarchy
+> - restrained colours
+> - practical information density
+> - subtle borders/surfaces
+> - consistent components
+> - accessibility
+> - responsive behaviour
+> - Remove unnecessary/redundant buttons.
+> 
+> ***Inspect → research → identify AI-slop → simplify → implement → run the app → review every screen → refine.**
+> 
+> Do not change backend logic or existing functionality. Focus entirely on making the frontend feel **natural, mature, and genuinely production-ready**.*"
 
 ### What Was Proposed
-- The AI generated boilerplate marketing widgets with decorative, non-functional badges ("All Systems Operational", "1-Click Autofill", "v1.0"), sharp square borders, and a sidebar navigation that lacked a restore toggle when collapsed.
+- The AI initially generated boilerplate marketing widgets with decorative, non-functional badges ("All Systems Operational", "1-Click Autofill", "v1.0", "Strictly authenticated"), sharp square borders, and a sidebar navigation that lacked a restore toggle when collapsed.
 
 ### Engineering Correction & Decision
 - **Anti-AI-Slop Curation**: Stripped all decorative marketing text, fake status badges, and generic boilerplate from `frontend/app/page.tsx`.
