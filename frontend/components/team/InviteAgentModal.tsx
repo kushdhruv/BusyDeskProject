@@ -105,16 +105,16 @@ export function InviteAgentModal({ isOpen, onClose, onSuccess }: InviteAgentModa
         <div className="p-6">
           {successData ? (
             <div className="space-y-4">
-              {successData.emailSent && successData.deliveryMode === "resend" ? (
+              {successData.emailSent && (successData.deliveryMode === "smtp" || successData.deliveryMode === "resend") ? (
                 <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                   <div className="text-xs">
                     <p className="font-semibold text-emerald-900">
-                      Invitation dispatched!
+                      Invitation email dispatched!
                     </p>
                     <p className="text-emerald-700 mt-1">
                       An activation email has been delivered to{" "}
-                      <strong className="font-medium">{successData.email}</strong> via Resend. The link is valid for 24 hours.
+                      <strong className="font-medium">{successData.email}</strong>. The link is valid for 24 hours.
                     </p>
                   </div>
                 </div>
@@ -127,15 +127,9 @@ export function InviteAgentModal({ isOpen, onClose, onSuccess }: InviteAgentModa
                     </p>
                     <p className="text-sky-700 mt-1">
                       Agent account created for <strong className="font-medium">{successData.email}</strong>.
-                      {successData.emailError?.includes("only send testing emails") ? (
-                        <span className="block mt-1 text-[11px] text-sky-800">
-                          (Resend sandbox notice: free testing domain only delivers to verified account owner. Copy the 1-click link below to share with the agent.)
-                        </span>
-                      ) : (
-                        <span className="block mt-1 text-[11px] text-sky-800">
-                          Copy the secure 1-time activation link below to share with the agent.
-                        </span>
-                      )}
+                      <span className="block mt-1 text-[11px] text-sky-800">
+                        Copy the secure 1-time activation link below to share with the agent.
+                      </span>
                     </p>
                   </div>
                 </div>

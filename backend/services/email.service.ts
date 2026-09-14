@@ -4,6 +4,37 @@
  * local development console fallback.
  */
 
+import nodemailer from "nodemailer";
+
+let cachedTransporter: nodemailer.Transporter | null = null;
+
+function getSmtpTransporter(): nodemailer.Transporter | null {
+  const host = process.env.SMTP_HOST?.trim();
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.replace(/\s+/g, "").trim();
+
+  if (!host || !user || !pass) {
+    return null;
+  }
+
+  if (!cachedTransporter) {
+    const port = Number(process.env.SMTP_PORT) || 465;
+    const secure = process.env.SMTP_SECURE === "true" || port === 465;
+
+    cachedTransporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: {
+        user,
+        pass,
+      },
+    });
+  }
+
+  return cachedTransporter;
+}
+
 export interface SendInvitationParams {
   to: string;
   name: string;
@@ -22,7 +53,7 @@ export interface SendDigestEmailParams {
 
 export interface EmailDispatchResult {
   success: boolean;
-  mode: "resend" | "dev_console";
+  mode: "smtp" | "resend" | "dev_console";
   id?: string;
   previewUrl?: string;
   error?: string;
@@ -203,7 +234,35 @@ This invitation expires in 24 hours.
 </html>
 `;
 
-    // 1. Production Mode: Resend API is configured
+    // 1. Primary Mode: SMTP (Gmail SMTP for sending to ANY email address worldwide)
+    const smtpTransporter = getSmtpTransporter();
+    if (smtpTransporter) {
+      try {
+        const smtpFrom =
+          process.env.SMTP_FROM || `Busy Infotech Support <${process.env.SMTP_USER}>`;
+
+        const info = await smtpTransporter.sendMail({
+          from: smtpFrom,
+          to,
+          subject,
+          text: plainText,
+          html: htmlContent,
+        });
+
+        console.log(`[EmailService] Invitation email delivered via SMTP to ${to} (id: ${info.messageId})`);
+        return {
+          success: true,
+          mode: "smtp",
+          id: info.messageId,
+          previewUrl: setupUrl,
+        };
+      } catch (smtpErr: any) {
+        console.error("[EmailService:SMTP Exception]", smtpErr);
+        // Fall through to Resend or Dev Console if SMTP fails
+      }
+    }
+
+    // 2. Secondary Mode: Resend API is configured
     if (apiKey) {
       try {
         const response = await fetch("https://api.resend.com/emails", {
@@ -254,7 +313,7 @@ This invitation expires in 24 hours.
       }
     }
 
-    // 2. Development Mode: Console Logger Fallback
+    // 3. Development Mode: Console Logger Fallback
     this.logDevConsoleEmail({ to, subject, name, role, setupUrl });
     return {
       success: true,
@@ -272,6 +331,34 @@ This invitation expires in 24 hours.
     const fromAddress = process.env.RESEND_FROM || "Busy Infotech Support <onboarding@resend.dev>";
     const plainText = `Hi ${recipientName},\n\nHere is your SupportDesk ticket queue digest.\n\nPlease open this email in an HTML-compatible client or web browser to view your complete interactive metrics.`;
 
+    // 1. Primary Mode: SMTP (Gmail SMTP for sending to ANY email address worldwide)
+    const smtpTransporter = getSmtpTransporter();
+    if (smtpTransporter) {
+      try {
+        const smtpFrom =
+          process.env.SMTP_FROM || `Busy Infotech Support <${process.env.SMTP_USER}>`;
+
+        const info = await smtpTransporter.sendMail({
+          from: smtpFrom,
+          to,
+          subject,
+          text: plainText,
+          html: htmlContent,
+        });
+
+        console.log(`[EmailService] Digest email delivered via SMTP to ${to} (id: ${info.messageId})`);
+        return {
+          success: true,
+          mode: "smtp",
+          id: info.messageId,
+        };
+      } catch (smtpErr: any) {
+        console.error("[EmailService:SMTP Digest Exception]", smtpErr);
+        // Fall through to Resend or Dev Console if SMTP fails
+      }
+    }
+
+    // 2. Secondary Mode: Resend API
     if (apiKey) {
       try {
         const response = await fetch("https://api.resend.com/emails", {
@@ -318,6 +405,7 @@ This invitation expires in 24 hours.
       }
     }
 
+    // 3. Fallback Mode: Dev Console
     this.logDevConsoleDigest({ to, subject, recipientName });
     return {
       success: true,
