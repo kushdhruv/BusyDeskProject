@@ -48,7 +48,7 @@ export async function getHealthRoute(req: Request): Promise<NextResponse> {
           name: "Diagnostic Test User",
           role: "Support Agent",
           rawToken: "diagnostic-test-token",
-          setupUrl: `${process.env.FRONTEND_URL || "https://busydesk.vercel.app"}/setup-account?token=diagnostic-test-token`,
+          setupUrl: `${process.env.FRONTEND_URL || "https://busy-desk-project.vercel.app"}/setup-account?token=diagnostic-test-token`,
         });
       }
     }
@@ -77,7 +77,7 @@ export async function getHealthRoute(req: Request): Promise<NextResponse> {
           smtpHost: process.env.SMTP_HOST || "smtp.gmail.com (default)",
           smtpPortConfigured: process.env.SMTP_PORT || "auto (587 -> 465)",
           hasResendKey: !!process.env.RESEND_API_KEY,
-          frontendUrl: process.env.FRONTEND_URL || "https://busydesk.vercel.app (default)",
+          frontendUrl: process.env.FRONTEND_URL || "https://busy-desk-project.vercel.app (default)",
           tcpPort587: port587,
           tcpPort465: port465,
           testSendResult,

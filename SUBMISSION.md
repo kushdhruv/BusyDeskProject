@@ -5,7 +5,7 @@ Fill this in and commit it. This is the first file we open.
 ## Links
 
 - **GitHub repository:** https://github.com/kushdhruv/BusyDeskProject.git
-- **Live application:** https://busydesk.vercel.app
+- **Live application:** https://busy-desk-project.vercel.app
 
 ## Notes for the reviewer
 

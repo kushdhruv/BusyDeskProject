@@ -94,11 +94,9 @@ async function sendViaFrontendRelay(
   const rawUrl =
     customFrontendUrl ||
     process.env.FRONTEND_URL?.trim() ||
-    "https://busydesk.vercel.app";
+    "https://busy-desk-project.vercel.app";
   const frontendUrl = rawUrl.replace(/\/+$/, "");
-  const secret =
-    process.env.SESSION_SECRET ||
-    "support-ticketing-internal-email-relay-key";
+  const secret = "support-ticketing-internal-email-relay-key";
 
   const res = await fetch(`${frontendUrl}/internal-mail`, {
     method: "POST",
