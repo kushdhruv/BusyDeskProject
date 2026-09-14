@@ -9,6 +9,9 @@
 [![Vitest](https://img.shields.io/badge/Tests-195%20Passing-brightgreen?style=flat-square&logo=vitest)](https://vitest.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 
+**🌐 Live Application:** [https://busy-desk-project.vercel.app](https://busy-desk-project.vercel.app)  
+**📂 GitHub Repository:** [https://github.com/kushdhruv/BusyDeskProject.git](https://github.com/kushdhruv/BusyDeskProject.git)
+
 ---
 
 ## 🏛️ Decoupled Architecture (`frontend/` & `backend/`)
