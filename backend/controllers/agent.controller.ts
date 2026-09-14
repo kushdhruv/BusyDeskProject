@@ -17,7 +17,8 @@ export class AgentController {
    */
   static async inviteAgent(
     supervisor: SessionUser,
-    data: { name: string; email: string }
+    data: { name: string; email: string },
+    origin?: string
   ) {
     if (supervisor.role !== Role.SUPERVISOR) {
       throw new Error("Forbidden: Only supervisors can invite new agents.");
@@ -92,17 +93,21 @@ export class AgentController {
       },
     });
 
-    // Build the frontend account setup URL
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    // Build the frontend account setup URL (dynamically resolves the real frontend URL from the browser's request)
+    const frontendUrl =
+      origin && !origin.includes("localhost")
+        ? origin
+        : (process.env.FRONTEND_URL || origin || "http://localhost:3000");
     const setupUrl = `${frontendUrl}/setup-account?token=${rawToken}`;
 
-    // Dispatch transactional email via Resend or Dev Fallback
+    // Dispatch transactional email via SMTP, Vercel HTTPS Relay, or Resend
     const emailResult = await EmailService.sendAgentInvitation({
       to: cleanEmail,
       name: cleanName,
       role: "Agent",
       rawToken,
       setupUrl,
+      frontendUrl,
     });
 
     return {
@@ -128,7 +133,11 @@ export class AgentController {
    * Resends an invitation link with a freshly rotated 24-hour token.
    * Security Invariant: Only SUPERVISOR can invoke this.
    */
-  static async resendInvitation(supervisor: SessionUser, agentId: string) {
+  static async resendInvitation(
+    supervisor: SessionUser,
+    agentId: string,
+    origin?: string
+  ) {
     if (supervisor.role !== Role.SUPERVISOR) {
       throw new Error("Forbidden: Only supervisors can resend invitations.");
     }
@@ -164,7 +173,10 @@ export class AgentController {
       },
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl =
+      origin && !origin.includes("localhost")
+        ? origin
+        : (process.env.FRONTEND_URL || origin || "http://localhost:3000");
     const setupUrl = `${frontendUrl}/setup-account?token=${rawToken}`;
 
     const emailResult = await EmailService.sendAgentInvitation({
@@ -173,6 +185,7 @@ export class AgentController {
       role: user.role === Role.SUPERVISOR ? "Supervisor" : "Agent",
       rawToken,
       setupUrl,
+      frontendUrl,
     });
 
     return {

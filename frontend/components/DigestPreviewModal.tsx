@@ -75,7 +75,7 @@ export const DigestPreviewModal: React.FC<DigestPreviewModalProps> = ({
 
       if (isSandboxRestricted) {
         setSendSuccess(
-          `Processed ${data.results?.totalEligible || 0} digests. (Resend sandbox notice: free tier only delivers to account owner dhruvstudy77@gmail.com; use Preview tab to view HTML rendering.)`
+          `Processed ${data.results?.totalEligible || 0} digests. (Sandbox notice: free tier only delivers to registered account owner; use Preview tab to view HTML rendering.)`
         );
       } else {
         setSendSuccess(

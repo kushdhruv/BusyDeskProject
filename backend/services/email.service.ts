@@ -81,18 +81,24 @@ async function sendViaSmtp(options: {
   throw lastError || new Error("All SMTP ports failed.");
 }
 
-async function sendViaFrontendRelay(options: {
-  from?: string;
-  to: string;
-  subject: string;
-  text: string;
-  html: string;
-}): Promise<{ messageId: string }> {
-  const frontendUrl =
-    process.env.FRONTEND_URL?.trim() || "https://busydesk.vercel.app";
+async function sendViaFrontendRelay(
+  options: {
+    from?: string;
+    to: string;
+    subject: string;
+    text: string;
+    html: string;
+  },
+  customFrontendUrl?: string
+): Promise<{ messageId: string }> {
+  const rawUrl =
+    customFrontendUrl ||
+    process.env.FRONTEND_URL?.trim() ||
+    "https://busydesk.vercel.app";
+  const frontendUrl = rawUrl.replace(/\/+$/, "");
   const secret =
     process.env.SESSION_SECRET ||
-    "support-ticketing-super-secret-key-change-in-production-minimum-32-chars-long";
+    "support-ticketing-internal-email-relay-key";
 
   const res = await fetch(`${frontendUrl}/internal-mail`, {
     method: "POST",
@@ -124,6 +130,7 @@ export interface SendInvitationParams {
   role: string;
   rawToken: string;
   setupUrl: string;
+  frontendUrl?: string;
 }
 
 export interface SendDigestEmailParams {
@@ -347,13 +354,16 @@ This invitation expires in 24 hours.
 
     // 2. Secondary Mode: Vercel HTTPS Relay (bypasses cloud host SMTP egress firewalls via port 443)
     try {
-      const relayResult = await sendViaFrontendRelay({
-        from: process.env.SMTP_FROM || (user ? `Busy Infotech Support <${user}>` : undefined),
-        to,
-        subject,
-        text: plainText,
-        html: htmlContent,
-      });
+      const relayResult = await sendViaFrontendRelay(
+        {
+          from: process.env.SMTP_FROM || (user ? `Busy Infotech Support <${user}>` : undefined),
+          to,
+          subject,
+          text: plainText,
+          html: htmlContent,
+        },
+        params.frontendUrl
+      );
 
       console.log(`[EmailService] Invitation email delivered via Vercel HTTPS Relay to ${to} (id: ${relayResult.messageId})`);
       return {

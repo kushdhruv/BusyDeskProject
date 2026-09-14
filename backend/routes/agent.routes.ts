@@ -27,10 +27,22 @@ export async function inviteAgentRoute(req: Request): Promise<NextResponse> {
     }
 
     const body = await req.json();
-    const result = await AgentController.inviteAgent(sessionUser, {
-      name: body.name,
-      email: body.email,
-    });
+    const rawOrigin = req.headers.get("origin") || req.headers.get("referer");
+    let detectedOrigin: string | undefined;
+    if (rawOrigin) {
+      try {
+        detectedOrigin = new URL(rawOrigin).origin;
+      } catch {}
+    }
+
+    const result = await AgentController.inviteAgent(
+      sessionUser,
+      {
+        name: body.name,
+        email: body.email,
+      },
+      detectedOrigin
+    );
 
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
@@ -46,7 +58,7 @@ export async function inviteAgentRoute(req: Request): Promise<NextResponse> {
  * Supervisor resends an invitation with a fresh 24-hour token.
  */
 export async function resendInviteRoute(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
@@ -62,7 +74,19 @@ export async function resendInviteRoute(
       );
     }
 
-    const result = await AgentController.resendInvitation(sessionUser, params.id);
+    const rawOrigin = req.headers.get("origin") || req.headers.get("referer");
+    let detectedOrigin: string | undefined;
+    if (rawOrigin) {
+      try {
+        detectedOrigin = new URL(rawOrigin).origin;
+      } catch {}
+    }
+
+    const result = await AgentController.resendInvitation(
+      sessionUser,
+      params.id,
+      detectedOrigin
+    );
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json(

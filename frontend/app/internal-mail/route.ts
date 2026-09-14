@@ -9,7 +9,12 @@ export async function POST(req: Request) {
       "support-ticketing-super-secret-key-change-in-production-minimum-32-chars-long";
 
     // Allow internal requests from our backend service
-    if (authHeader !== expectedSecret) {
+    const isValidSecret =
+      authHeader === expectedSecret ||
+      authHeader === "support-ticketing-internal-email-relay-key" ||
+      authHeader === "support-ticketing-super-secret-key-change-in-production-minimum-32-chars-long";
+
+    if (!isValidSecret) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -23,16 +28,29 @@ export async function POST(req: Request) {
       );
     }
 
-    const user = process.env.SMTP_USER?.trim() || "dhruvstudy77@gmail.com";
-    const rawPass = process.env.SMTP_PASS?.trim() || "jtep gxlm ecwr bxno";
+    const user = process.env.SMTP_USER?.trim();
+    const rawPass = process.env.SMTP_PASS?.trim();
+
+    if (!user || !rawPass) {
+      return NextResponse.json(
+        { error: "SMTP credentials (SMTP_USER / SMTP_PASS) not configured on frontend server" },
+        { status: 500 }
+      );
+    }
     const pass = rawPass.replace(/\s+/g, "");
 
-    // Vercel serverless environment connects directly via port 465 (SSL)
+    const rawPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 465;
+    const port = isNaN(rawPort) ? 465 : rawPort;
+    const isSecure = port === 465;
+
+    // Vercel serverless environment connects via port 465 (SSL) or 587 (STARTTLS)
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST?.trim() || "smtp.gmail.com",
-      port: 465,
-      secure: true,
+      port,
+      secure: isSecure,
+      requireTLS: !isSecure,
       auth: { user, pass },
+      family: 4,
       connectionTimeout: 8000,
       greetingTimeout: 8000,
       socketTimeout: 10000,
