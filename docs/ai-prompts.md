@@ -234,35 +234,45 @@ This document records the actual technical prompts, architecture challenges, and
 
 ---
 
-## 10. Comprehensive Security Audit, Invariant Verification & Adversarial Fuzzing
+## 10. Comprehensive Security Audit, Continuous Test Generation & Adversarial Fuzzing
+
+### Continuous Test Generation & Invariant Suite Prompt
+> *"Act as a **senior test engineer and QA automation architect**. As we implement each domain feature and stretch capability (lifecycle state machine, zero-write SLA calculator, collaborator access, bulk actions, customer portal, tag taxonomy, and email digests), write automated tests immediately to establish a continuous verification harness.
+> 
+> Structure the test harness across three complementary tiers in `backend/tests/`:
+> 1. **Unit Tests (`tests/unit/`)**: Verify pure domain policies (`TicketPolicy`, `ReplyPolicy`, `TagPolicy`), state machine transitions, SLA pause/resume mathematical invariants, JWT cryptography, and CSV escaping in total isolation with zero external mocks.
+> 2. **Integration Tests (`tests/integration/`)**: Execute end-to-end HTTP route handlers directly against live PostgreSQL database transactions, validating atomic multi-table mutations (`$transaction`), customer row-level isolation, dynamic timeline merging, and set-based SLA alert upserts.
+> 3. **Fuzz & Concurrency Tests (`tests/fuzz/`)**: Subject endpoints to chaotic inputs — SQL injection payloads, XSS vectors, null bytes, out-of-bounds pagination integers, and 10 concurrent parallel reply transactions to ensure zero race conditions or database deadlocks.
+> 
+> Ensure 100% assertion pass rate with clean test teardown and isolated transaction rollbacks."*
 
 ### Adversarial Audit Prompt
-> *"Act as a **senior QA + security engineer** and aggressively test the application against the 10 requirements in the assignment.*
+> *"Act as a **senior QA + security engineer** and aggressively test the application against the 10 requirements in the assignment.
 > 
-> *Your goal is to deliberately find:*
-> *- Broken or incorrectly implemented functionality*
-> *- Business-logic/edge-case bugs*
-> *- Server-side authorization bypasses*
-> *- IDOR/BOLA and privilege escalation*
-> *- API manipulation/mass assignment issues*
-> *- Incorrect lifecycle, SLA, alerts, dashboard or history behavior*
-> *- Data integrity/security problems*
+> Your goal is to deliberately find:
+> - Broken or incorrectly implemented functionality
+> - Business-logic/edge-case bugs
+> - Server-side authorization bypasses
+> - IDOR/BOLA and privilege escalation
+> - API manipulation/mass assignment issues
+> - Incorrect lifecycle, SLA, alerts, dashboard or history behavior
+> - Data integrity/security problems
 > 
-> ***Do not trust the UI.** Test the backend/API directly wherever relevant, especially agent vs supervisor permissions.*
+> **Do not trust the UI.** Test the backend/API directly wherever relevant, especially agent vs supervisor permissions.
 > 
-> *Try malicious inputs, invalid IDs, unauthorized resources, illegal status transitions, boundary timestamps, repeated/concurrent actions, and manipulated request fields.*
+> Try malicious inputs, invalid IDs, unauthorized resources, illegal status transitions, boundary timestamps, repeated/concurrent actions, and manipulated request fields.
 > 
-> *### Important filtering*
-> *Do **not** report trivial issues just to increase the count. Ignore: intentional dummy demo accounts, seed data, cosmetic UI-only issues, optional stretch features, and purely theoretical vulnerabilities.*
-> *Only report issues that are **genuinely significant, reproducible, and worth fixing or mentioning to the evaluator**.*
+> ### Important filtering
+> Do **not** report trivial issues just to increase the count. Ignore: intentional dummy demo accounts, seed data, cosmetic UI-only issues, optional stretch features, and purely theoretical vulnerabilities.
+> Only report issues that are **genuinely significant, reproducible, and worth fixing or mentioning to the evaluator**.
 > 
-> *### Report Structure*
-> *For each genuine finding give: `[Severity] Title`, `Location`, `Problem`, `Reproduction`, `Expected vs Actual`, `Impact`, and `Requirement Violated`.*
-> *Then provide: Critical/High issues first, a short Goal 1–10 PASS/PARTIAL/FAIL table, and a Final verdict.*
-> *Be conservative: **5 real findings are better than 20 questionable ones.***"
+> ### Report Structure
+> For each genuine finding give: `[Severity] Title`, `Location`, `Problem`, `Reproduction`, `Expected vs Actual`, `Impact`, and `Requirement Violated`.
+> Then provide: Critical/High issues first, a short Goal 1–10 PASS/PARTIAL/FAIL table, and a Final verdict.
+> Be conservative: **5 real findings are better than 20 questionable ones.***"
 
-### Defects Uncovered by the Audit
-The adversarial audit identified 7 subtle edge-case defects across the system:
+### Defects Uncovered by the Audit & Verified with Tests
+The continuous test suite and adversarial audit identified 7 subtle edge-case defects across the system:
 1. **Passive SLA Breach Syncing**: When querying the queue, tickets that passed their SLA deadline while in `OPEN` status were not dynamically updating the `sla_alerts` table on read-only queries.
 2. **Priority Edit SLA Invariance**: Changing a ticket's priority (e.g. `MEDIUM` -> `URGENT`) did not adjust active deadlines or frozen paused durations by the difference in target minutes (`targetDeltaMinutes`).
 3. **Agent Assignment on Creation**: Agents creating new tickets were able to supply an arbitrary `primaryAssigneeId` in the request body rather than being restricted to self-assignment or unassigned queue status.
@@ -271,7 +281,7 @@ The adversarial audit identified 7 subtle edge-case defects across the system:
 6. **Reopen Boundary Timestamp Validation**: Reopening tickets lacked strict boundary checks against `ticket.closedAt`, allowing tickets closed more than 7 days ago to transition back to `OPEN`.
 7. **Concurrent SLA Alert Duplication**: Multiple active browser tabs polling `/api/sla/alerts` simultaneously raced to insert duplicate alerts for the same ticket just 437ms apart.
 
-### Engineering Resolution & Verification Suite
+### Engineering Resolution & Final 195-Test Verification Suite
 - **Delta-Based SLA Adjustments**: Implemented `targetDeltaMinutes = newTargetMinutes - oldTargetMinutes`, adjusting `slaDueAt` on active tickets and `slaPausedRemainingSeconds` on paused tickets.
 - **Server-Enforced Actor Assignment**: Hardcoded server-side checks in `TicketController.createTicket` ensuring agents cannot assign tickets to other agents upon creation.
 - **Timeline Deduplication**: Filtered out redundant `REPLY_ADDED` audit logs in `TimelineController.getUnifiedTimeline`, preserving raw audit logs in PostgreSQL while providing a clean conversation feed.
