@@ -198,6 +198,68 @@ describe("Email Digest Unit Tests", () => {
       expect(html).toContain("5 Unassigned Tickets");
       expect(html).toContain("Resolved (weekly)");
     });
+
+    it("renders customer reply preview snippet, productivity pulse, tags, and unassigned backlog alert", () => {
+      const advancedAgentData: AgentDigestData = {
+        ...mockAgentData,
+        metrics: {
+          ...mockAgentData.metrics,
+          repliesSentCount: 12,
+          internalNotesCount: 4,
+          unassignedTeamCount: 6,
+        },
+        personalSlaComplianceRate: 98,
+        urgentTickets: [
+          {
+            id: "t-urg-1",
+            ticketNumber: 3044,
+            subject: "Payment webhook failing for Stripe",
+            priority: Priority.URGENT,
+            status: Status.OPEN,
+            category: "BILLING",
+            tags: ["vip", "escalated"],
+            customerCompany: "AcmeCorp",
+            slaDueAt: new Date("2026-09-13T09:00:00Z"),
+          },
+        ],
+        awaitingReplies: [
+          {
+            id: "t-rep-2",
+            ticketNumber: 3045,
+            subject: "OAuth2 configuration question",
+            priority: Priority.HIGH,
+            category: "INTEGRATION",
+            customerName: "David Miller",
+            lastReplySnippet: "I checked the redirect URI but still get invalid_grant...",
+            lastReplyTime: new Date("2026-09-13T08:00:00Z"),
+          },
+        ],
+      };
+
+      const html = DigestService.renderAgentDigestHtml(advancedAgentData, "https://support.busy.com");
+
+      // Verify unassigned team backlog alert
+      expect(html).toContain("Team Backlog:");
+      expect(html).toContain("6 unassigned ticket(s)");
+      expect(html).toContain("https://support.busy.com/tickets?scope=unassigned");
+
+      // Verify productivity pulse
+      expect(html).toContain("Your Activity");
+      expect(html).toContain("12");
+      expect(html).toContain("responses sent");
+      expect(html).toContain("4");
+      expect(html).toContain("internal notes");
+      expect(html).toContain("98% SLA Adherence");
+
+      // Verify ticket category and tags
+      expect(html).toContain("BILLING");
+      expect(html).toContain("#vip");
+      expect(html).toContain("#escalated");
+      expect(html).toContain("(AcmeCorp)");
+
+      // Verify customer snippet
+      expect(html).toContain("I checked the redirect URI but still get invalid_grant...");
+    });
   });
 });
 

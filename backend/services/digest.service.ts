@@ -13,6 +13,9 @@ export interface AgentDigestData {
     id: string;
     name: string;
     email: string;
+    digestFrequency?: DigestFrequency;
+    digestTime?: string;
+    digestTimezone?: string;
   };
   period: "daily" | "weekly";
   generatedAt: Date;
@@ -25,6 +28,9 @@ export interface AgentDigestData {
     resolvedRecentCount: number;
     awaitingAgentReplyCount: number;
     recentCsatRating: number | null;
+    repliesSentCount?: number;
+    internalNotesCount?: number;
+    unassignedTeamCount?: number;
   };
   urgentTickets: {
     id: string;
@@ -32,6 +38,8 @@ export interface AgentDigestData {
     subject: string;
     priority: Priority;
     status: Status;
+    category?: string;
+    tags?: string[];
     slaDueAt: Date | null;
     requesterName?: string;
     customerCompany?: string;
@@ -42,8 +50,10 @@ export interface AgentDigestData {
     ticketNumber: number;
     subject: string;
     priority: Priority;
+    category?: string;
     customerName: string;
     lastReplyTime?: Date;
+    lastReplySnippet?: string;
   }[];
   recentResolvedHighlights?: {
     id: string;
@@ -51,6 +61,35 @@ export interface AgentDigestData {
     subject: string;
     resolvedAt: Date | null;
   }[];
+  priorityBreakdown?: {
+    urgent: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  categoryBreakdown?: { category: string; count: number }[];
+  stalePendingTickets?: {
+    id: string;
+    ticketNumber: number;
+    subject: string;
+    requesterName: string;
+    waitingDays: number;
+  }[];
+  collaborationTickets?: {
+    id: string;
+    ticketNumber: number;
+    subject: string;
+    primaryAssigneeName: string;
+    priority: Priority;
+    status: Status;
+  }[];
+  recentCsatReviews?: {
+    rating: number;
+    comment: string | null;
+    ticketNumber: number;
+    createdAt: Date;
+  }[];
+  personalSlaComplianceRate?: number;
   shouldSuppress: boolean;
   suppressReason?: string;
 }
@@ -115,6 +154,29 @@ function formatSlaLabel(slaDueAt: Date | null, now: Date): string {
   }
 }
 
+/**
+ * Extracts a human-friendly organization or company name from customer email domain.
+ */
+function extractCompanyFromEmail(email?: string): string | undefined {
+  if (!email || !email.includes("@")) return undefined;
+  const domain = email.split("@")[1].toLowerCase();
+  const genericDomains = [
+    "gmail.com",
+    "yahoo.com",
+    "hotmail.com",
+    "outlook.com",
+    "icloud.com",
+    "proton.me",
+    "mail.com",
+    "example.com",
+    "test.com",
+  ];
+  if (genericDomains.includes(domain)) return undefined;
+  const namePart = domain.split(".")[0];
+  if (!namePart || namePart.length < 2) return undefined;
+  return namePart.charAt(0).toUpperCase() + namePart.slice(1);
+}
+
 export class DigestService {
   /**
    * Generates personal queue summary for an Agent.
@@ -125,7 +187,15 @@ export class DigestService {
   ): Promise<AgentDigestData> {
     const agent = await prisma.user.findUnique({
       where: { id: agentId },
-      select: { id: true, name: true, email: true, role: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        digestFrequency: true,
+        digestTime: true,
+        digestTimezone: true,
+      },
     });
 
     if (!agent) {
@@ -136,12 +206,15 @@ export class DigestService {
     const periodHours = period === "daily" ? 24 : 168; // 24h or 7 days
     const periodStart = new Date(now.getTime() - periodHours * 60 * 60 * 1000);
 
-    // Active assigned tickets
+    // Active assigned tickets with tags
     const activeTickets = await prisma.ticket.findMany({
       where: {
         primaryAssigneeId: agentId,
         archivedAt: null,
         status: { in: [Status.NEW, Status.OPEN, Status.PENDING] },
+      },
+      include: {
+        tags: { select: { tag: true } },
       },
       orderBy: [{ priority: "desc" }, { slaDueAt: "asc" }],
     });
@@ -182,7 +255,7 @@ export class DigestService {
       },
     });
 
-    // Customer replies waiting for response
+    // Customer replies waiting for response (with latest message snippet)
     const openWithCustomerReplies = await prisma.ticket.findMany({
       where: {
         primaryAssigneeId: agentId,
@@ -201,18 +274,25 @@ export class DigestService {
           take: 1,
         },
       },
-      take: 4,
+      take: 5,
     });
     const awaitingAgentReplyCount = openWithCustomerReplies.length;
 
-    const awaitingReplies = openWithCustomerReplies.map((t) => ({
-      id: t.id,
-      ticketNumber: t.ticketNumber,
-      subject: t.subject,
-      priority: t.priority,
-      customerName: t.requesterName || "Customer",
-      lastReplyTime: t.replies[0]?.createdAt,
-    }));
+    const awaitingReplies = openWithCustomerReplies.map((t) => {
+      const lastReply = t.replies[0];
+      const rawBody = lastReply?.body ? lastReply.body.replace(/[\r\n\t]+/g, " ").trim() : "";
+      const snippet = rawBody.length > 110 ? rawBody.slice(0, 110) + "…" : rawBody;
+      return {
+        id: t.id,
+        ticketNumber: t.ticketNumber,
+        subject: t.subject,
+        priority: t.priority,
+        category: t.category,
+        customerName: t.requesterName || "Customer",
+        lastReplyTime: lastReply?.createdAt,
+        lastReplySnippet: snippet || undefined,
+      };
+    });
 
     // Recent CSAT received
     const csatRecords = await prisma.customerSatisfaction.findMany({
@@ -232,7 +312,7 @@ export class DigestService {
           )
         : null;
 
-    // Extract urgent / breached tickets for highlight list
+    // Extract urgent / breached tickets for highlight list with category, tags, company
     const urgentTickets = activeTickets
       .filter((t) => t.priority === Priority.URGENT || (t.slaDueAt && new Date(t.slaDueAt) <= now))
       .slice(0, 6)
@@ -242,9 +322,11 @@ export class DigestService {
         subject: t.subject,
         priority: t.priority,
         status: t.status,
+        category: t.category,
+        tags: t.tags ? t.tags.map((tg) => tg.tag.name) : [],
         slaDueAt: t.slaDueAt,
         requesterName: t.requesterName || "Customer",
-        customerCompany: undefined,
+        customerCompany: extractCompanyFromEmail(t.requesterEmail),
         slaStatusLabel: formatSlaLabel(t.slaDueAt, now),
       }));
 
@@ -265,6 +347,136 @@ export class DigestService {
       take: 3,
     });
 
+    // Priority Breakdown
+    const priorityBreakdown = {
+      urgent: activeTickets.filter((t) => t.priority === Priority.URGENT).length,
+      high: activeTickets.filter((t) => t.priority === Priority.HIGH).length,
+      medium: activeTickets.filter((t) => t.priority === Priority.MEDIUM).length,
+      low: activeTickets.filter((t) => t.priority === Priority.LOW).length,
+    };
+
+    // Category Distribution
+    const catMap: Record<string, number> = {};
+    for (const t of activeTickets) {
+      catMap[t.category] = (catMap[t.category] || 0) + 1;
+    }
+    const categoryBreakdown = Object.entries(catMap)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Stale Pending (Waiting on Customer) Tickets
+    const stalePendingTickets = activeTickets
+      .filter((t) => t.status === Status.PENDING)
+      .map((t) => {
+        const diffMs = now.getTime() - new Date(t.updatedAt).getTime();
+        const waitingDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+        return {
+          id: t.id,
+          ticketNumber: t.ticketNumber,
+          subject: t.subject,
+          requesterName: t.requesterName || "Customer",
+          waitingDays: Math.max(1, waitingDays),
+        };
+      })
+      .slice(0, 4);
+
+    // Active Collaborations
+    const collabList = await prisma.ticketCollaborator.findMany({
+      where: {
+        userId: agentId,
+        ticket: {
+          archivedAt: null,
+          status: { in: [Status.NEW, Status.OPEN, Status.PENDING] },
+          primaryAssigneeId: { not: agentId },
+        },
+      },
+      include: {
+        ticket: {
+          select: {
+            id: true,
+            ticketNumber: true,
+            subject: true,
+            priority: true,
+            status: true,
+            primaryAssignee: { select: { name: true } },
+          },
+        },
+      },
+      take: 3,
+    });
+    const collaborationTickets = collabList.map((c) => ({
+      id: c.ticket.id,
+      ticketNumber: c.ticket.ticketNumber,
+      subject: c.ticket.subject,
+      primaryAssigneeName: c.ticket.primaryAssignee?.name || "Unassigned",
+      priority: c.ticket.priority,
+      status: c.ticket.status,
+    }));
+
+    // Customer Reviews with Comments
+    const csats = await prisma.customerSatisfaction.findMany({
+      where: {
+        ticket: { primaryAssigneeId: agentId },
+        createdAt: { gte: periodStart },
+      },
+      select: {
+        rating: true,
+        comment: true,
+        createdAt: true,
+        ticket: { select: { ticketNumber: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+    });
+    const recentCsatReviews = csats.map((c) => ({
+      rating: c.rating,
+      comment: c.comment,
+      ticketNumber: c.ticket.ticketNumber,
+      createdAt: c.createdAt,
+    }));
+
+    // Personal SLA Compliance Rate & Productivity Metrics in Period
+    const [resolvedInPeriod, repliesSentCount, internalNotesCount, unassignedTeamCount] =
+      await Promise.all([
+        prisma.ticket.findMany({
+          where: {
+            primaryAssigneeId: agentId,
+            resolvedAt: { gte: periodStart },
+          },
+          select: { slaDueAt: true, resolvedAt: true },
+        }),
+        prisma.reply.count({
+          where: {
+            authorId: agentId,
+            isInternal: false,
+            createdAt: { gte: periodStart },
+          },
+        }),
+        prisma.reply.count({
+          where: {
+            authorId: agentId,
+            isInternal: true,
+            createdAt: { gte: periodStart },
+          },
+        }),
+        prisma.ticket.count({
+          where: {
+            primaryAssigneeId: null,
+            archivedAt: null,
+            status: { in: [Status.NEW, Status.OPEN] },
+          },
+        }),
+      ]);
+
+    const onTimeCount = resolvedInPeriod.filter(
+      (t) => t.slaDueAt && t.resolvedAt && t.resolvedAt <= t.slaDueAt
+    ).length;
+    const personalSlaComplianceRate =
+      resolvedInPeriod.length > 0
+        ? Math.round((onTimeCount / resolvedInPeriod.length) * 100)
+        : 100;
+
     // Smart Suppression: suppress if agent has zero active tickets and zero customer replies
     const shouldSuppress =
       assignedOpenCount === 0 &&
@@ -274,7 +486,14 @@ export class DigestService {
       breachedCount === 0;
 
     return {
-      agent: { id: agent.id, name: agent.name, email: agent.email },
+      agent: {
+        id: agent.id,
+        name: agent.name,
+        email: agent.email,
+        digestFrequency: agent.digestFrequency,
+        digestTime: agent.digestTime,
+        digestTimezone: agent.digestTimezone,
+      },
       period,
       generatedAt: now,
       metrics: {
@@ -286,10 +505,19 @@ export class DigestService {
         resolvedRecentCount,
         awaitingAgentReplyCount,
         recentCsatRating,
+        repliesSentCount,
+        internalNotesCount,
+        unassignedTeamCount,
       },
       urgentTickets,
       awaitingReplies,
       recentResolvedHighlights,
+      priorityBreakdown,
+      categoryBreakdown,
+      stalePendingTickets,
+      collaborationTickets,
+      recentCsatReviews,
+      personalSlaComplianceRate,
       shouldSuppress,
       suppressReason: shouldSuppress
         ? "No active tickets or pending customer replies assigned."
@@ -493,7 +721,7 @@ export class DigestService {
     .header h1 { margin: 0 0 6px 0; font-size: 20px; font-weight: 700; letter-spacing: -0.025em; color: #ffffff; }
     .header p { margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.4; }
     .content { padding: 24px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
     .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 8px; text-align: center; }
     .stat-val { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
     .stat-val.alert { color: #dc2626; }
@@ -526,12 +754,24 @@ export class DigestService {
 <body>
   <div class="container">
     <div class="header">
-      <span class="brand-pill">SupportDesk • ${isDaily ? "Daily Intelligence" : "Weekly Briefing"}</span>
+      <span class="brand-pill">SupportDesk • ${isDaily ? "Daily Intelligence" : "Weekly Briefing"}${agent.digestTime ? ` • Scheduled ${agent.digestTime} (${agent.digestTimezone || "UTC"})` : ""}</span>
       <h1>Good morning, ${agent.name}</h1>
       <p>Here is your personal queue briefing for ${data.generatedAt.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}.</p>
     </div>
 
     <div class="content">
+      <!-- Situational Awareness: Unassigned Backlog Alert -->
+      ${
+        metrics.unassignedTeamCount && metrics.unassignedTeamCount > 0
+          ? `
+        <div style="margin-bottom: 18px; padding: 10px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; font-size: 12px; color: #1e40af; display: flex; align-items: center; justify-content: space-between;">
+          <span>📥 <strong>Team Backlog:</strong> ${metrics.unassignedTeamCount} unassigned ticket(s) waiting in the triage queue.</span>
+          <a href="${appUrl}/tickets?scope=unassigned" style="color: #1d4ed8; font-weight: 700; text-decoration: underline; font-size: 11px;">Triage Pool &rarr;</a>
+        </div>
+        `
+          : ""
+      }
+
       <!-- High-Signal KPI Scorecard -->
       <div class="stats-grid">
         <div class="stat-card">
@@ -552,6 +792,44 @@ export class DigestService {
         </div>
       </div>
 
+      <!-- Productivity & Impact Row -->
+      ${
+        metrics.repliesSentCount !== undefined || data.personalSlaComplianceRate !== undefined
+          ? `
+        <div style="margin-bottom: 20px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; color: #334155; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <span>⚡ <strong>Your Activity (${isDaily ? "Last 24h" : "This Week"}):</strong> <strong>${metrics.repliesSentCount ?? 0}</strong> responses sent • <strong>${metrics.resolvedRecentCount}</strong> resolved ${metrics.internalNotesCount ? `• <strong>${metrics.internalNotesCount}</strong> internal notes` : ""}</span>
+          <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px;">🎯 ${data.personalSlaComplianceRate ?? 100}% SLA Adherence</span>
+        </div>
+        `
+          : ""
+      }
+
+      <!-- Priority Distribution & Category Mix -->
+      ${
+        data.priorityBreakdown
+          ? `
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center;">
+          <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Priority Mix:</span>
+          ${data.priorityBreakdown.urgent > 0 ? `<span class="badge badge-urgent">🔴 ${data.priorityBreakdown.urgent} Urgent</span>` : ""}
+          ${data.priorityBreakdown.high > 0 ? `<span class="badge badge-high">🟠 ${data.priorityBreakdown.high} High</span>` : ""}
+          ${data.priorityBreakdown.medium > 0 ? `<span class="badge badge-medium">🔵 ${data.priorityBreakdown.medium} Medium</span>` : ""}
+          ${data.priorityBreakdown.low > 0 ? `<span class="badge" style="background: #f1f5f9; color: #475569;">⚪ ${data.priorityBreakdown.low} Low</span>` : ""}
+        </div>
+        `
+          : ""
+      }
+
+      ${
+        data.categoryBreakdown && data.categoryBreakdown.length > 0
+          ? `
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+          <span style="font-size: 11px; font-weight: 700; color: #475569;">Top Topics:</span>
+          ${data.categoryBreakdown.map((c) => `<span style="font-size: 11px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 7px; color: #334155; font-weight: 500;">🏷️ ${c.category} <strong>(${c.count})</strong></span>`).join("")}
+        </div>
+        `
+          : ""
+      }
+
       <!-- Action Required: Urgent & SLA Risk Tickets -->
       <div class="section-header">
         <span class="section-title">🚨 Action Required (Priority & SLA Watch)</span>
@@ -570,8 +848,10 @@ export class DigestService {
                 <span class="badge ${t.priority === Priority.URGENT ? "badge-urgent" : "badge-high"}">${t.priority}</span>
               </div>
               <div class="ticket-meta">
-                <span>👤 ${t.requesterName || "Customer"} ${t.customerCompany ? `(${t.customerCompany})` : ""}</span>
+                <span>👤 ${t.requesterName || "Customer"}${t.customerCompany ? ` (${t.customerCompany})` : ""}</span>
                 <span>•</span>
+                ${t.category ? `<span>🏷️ ${t.category}</span><span>•</span>` : ""}
+                ${t.tags && t.tags.length > 0 ? `${t.tags.map((tg) => `<span style="background: #f1f5f9; color: #475569; padding: 1px 5px; border-radius: 3px; font-size: 10px;">#${tg}</span>`).join(" ")}<span>•</span>` : ""}
                 <span class="badge ${
                   t.slaDueAt && new Date(t.slaDueAt) <= data.generatedAt
                     ? "badge-sla-breach"
@@ -610,9 +890,108 @@ export class DigestService {
                 <span style="font-size: 11px; color: #0284c7; font-weight: 600;">Open &rarr;</span>
               </div>
               <div class="ticket-meta">
-                <span>Customer: <strong>${r.customerName}</strong> responded recently</span>
+                <span>Customer: <strong>${r.customerName}</strong> responded</span>
+                ${r.category ? `<span>•</span><span>🏷️ ${r.category}</span>` : ""}
+              </div>
+              ${
+                r.lastReplySnippet
+                  ? `
+                <div style="margin-top: 6px; padding: 6px 10px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; color: #334155; font-style: italic; line-height: 1.4;">
+                  &ldquo;${r.lastReplySnippet}&rdquo;
+                </div>
+              `
+                  : ""
+              }
+            </a>
+          `
+            )
+            .join("")}
+        </div>
+        `
+          : ""
+      }
+
+      <!-- Active Collaborations -->
+      ${
+        data.collaborationTickets && data.collaborationTickets.length > 0
+          ? `
+        <div class="section-header" style="margin-top: 24px;">
+          <span class="section-title">🤝 Collaborating On (${data.collaborationTickets.length})</span>
+        </div>
+        <div>
+          ${data.collaborationTickets
+            .map(
+              (c) => `
+            <a href="${appUrl}/tickets/${c.id}" class="ticket-row" style="border-left: 3px solid #3b82f6;">
+              <div class="ticket-header">
+                <span class="ticket-subject">#${c.ticketNumber} ${c.subject}</span>
+                <span class="badge ${c.priority === Priority.URGENT ? "badge-urgent" : "badge-high"}">${c.priority}</span>
+              </div>
+              <div class="ticket-meta">
+                <span>Primary: <strong>${c.primaryAssigneeName}</strong></span>
+                <span>•</span>
+                <span>Status: ${c.status}</span>
+                <span>•</span>
+                <span style="color: #2563eb; font-weight: 600;">View &rarr;</span>
               </div>
             </a>
+          `
+            )
+            .join("")}
+        </div>
+        `
+          : ""
+      }
+
+      <!-- Waiting on Customer Follow-up (Stale Pending) -->
+      ${
+        data.stalePendingTickets && data.stalePendingTickets.length > 0
+          ? `
+        <div class="section-header" style="margin-top: 24px;">
+          <span class="section-title">⏳ Waiting on Customer (${data.stalePendingTickets.length})</span>
+        </div>
+        <div>
+          ${data.stalePendingTickets
+            .map(
+              (p) => `
+            <a href="${appUrl}/tickets/${p.id}" class="ticket-row" style="background: #fafafa;">
+              <div class="ticket-header">
+                <span class="ticket-subject">#${p.ticketNumber} ${p.subject}</span>
+                <span style="font-size: 10px; color: #b45309; font-weight: 700; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 4px;">Waiting ${p.waitingDays}d</span>
+              </div>
+              <div class="ticket-meta">
+                <span>Requester: <strong>${p.requesterName}</strong></span>
+                <span>•</span>
+                <span style="color: #475569;">Ready for follow-up</span>
+              </div>
+            </a>
+          `
+            )
+            .join("")}
+        </div>
+        `
+          : ""
+      }
+
+      <!-- Customer Voice / CSAT Review Quote -->
+      ${
+        data.recentCsatReviews && data.recentCsatReviews.some((r) => r.comment)
+          ? `
+        <div style="margin-top: 20px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px 16px;">
+          <div style="font-size: 10px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+            ⭐ Customer Feedback Received
+          </div>
+          ${data.recentCsatReviews
+            .filter((r) => r.comment)
+            .slice(0, 3)
+            .map(
+              (r) => `
+            <div style="font-size: 13px; color: #14532d; font-style: italic; margin-bottom: 4px; line-height: 1.4;">
+              &ldquo;${r.comment}&rdquo;
+            </div>
+            <div style="font-size: 11px; color: #16a34a; font-weight: 600; margin-bottom: 8px;">
+              ${r.rating} ★ on Ticket #${r.ticketNumber}
+            </div>
           `
             )
             .join("")}
@@ -633,9 +1012,42 @@ export class DigestService {
           : ""
       }
 
-      <!-- Primary Workspace Call to Action -->
-      <div style="text-align: center; margin-top: 28px;">
-        <a href="${appUrl}/tickets?scope=assigned_to_me" class="btn">Open My Workspace &rarr;</a>
+      <!-- Quick Filter Toolbar & Primary CTA -->
+      <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #f1f5f9; text-align: center;">
+        <div style="font-size: 11px; color: #64748b; margin-bottom: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">
+          Quick Queue Shortcuts
+        </div>
+        <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px;">
+          <a href="${appUrl}/tickets?scope=assigned_to_me&priority=URGENT" style="display: inline-block; background: #fee2e2; color: #991b1b; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; text-decoration: none;">
+            🚨 Urgent Queue (${metrics.urgentCount})
+          </a>
+          <a href="${appUrl}/tickets?scope=assigned_to_me&status=OPEN" style="display: inline-block; background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; text-decoration: none;">
+            💬 Open Queue (${metrics.assignedOpenCount})
+          </a>
+          <a href="${appUrl}/tickets?scope=assigned_to_me&status=PENDING" style="display: inline-block; background: #fef3c7; color: #92400e; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; text-decoration: none;">
+            ⏳ Waiting on Customer (${metrics.assignedPendingCount})
+          </a>
+          ${
+            data.collaborationTickets && data.collaborationTickets.length > 0
+              ? `
+            <a href="${appUrl}/tickets" style="display: inline-block; background: #ede9fe; color: #6d28d9; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; text-decoration: none;">
+              🤝 Collaborating (${data.collaborationTickets.length})
+            </a>
+          `
+              : ""
+          }
+          ${
+            metrics.unassignedTeamCount && metrics.unassignedTeamCount > 0
+              ? `
+            <a href="${appUrl}/tickets?scope=unassigned" style="display: inline-block; background: #eff6ff; color: #1d4ed8; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; text-decoration: none;">
+              📥 Team Pool (${metrics.unassignedTeamCount})
+            </a>
+          `
+              : ""
+          }
+        </div>
+
+        <a href="${appUrl}/tickets?scope=assigned_to_me" class="btn">Open Full Workspace &rarr;</a>
       </div>
     </div>
 
