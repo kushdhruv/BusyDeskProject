@@ -129,37 +129,40 @@ export class SlaController {
     );
 
     if (isBreached) {
-      if (!existingAlert) {
-        await tx.slaAlert.create({
-          data: {
+      await tx.slaAlert.upsert({
+        where: {
+          ticketId_breachCycle: {
             ticketId: ticket.id,
-            type: SlaAlertType.BREACHED,
-            status: SlaAlertStatus.ACTIVE,
             breachCycle: ticket.slaCycle,
           },
-        });
-      } else if (
-        existingAlert.type !== SlaAlertType.BREACHED ||
-        existingAlert.status !== SlaAlertStatus.ACTIVE
-      ) {
-        // Escalate acknowledged or DUE_SOON warning to active BREACHED alert
-        await tx.slaAlert.update({
-          where: { id: existingAlert.id },
-          data: {
-            type: SlaAlertType.BREACHED,
-            status: SlaAlertStatus.ACTIVE,
-          },
-        });
-      }
+        },
+        create: {
+          ticketId: ticket.id,
+          type: SlaAlertType.BREACHED,
+          status: SlaAlertStatus.ACTIVE,
+          breachCycle: ticket.slaCycle,
+        },
+        update: {
+          type: SlaAlertType.BREACHED,
+          status: SlaAlertStatus.ACTIVE,
+        },
+      });
     } else if (isDueSoon) {
       if (!existingAlert) {
-        await tx.slaAlert.create({
-          data: {
+        await tx.slaAlert.upsert({
+          where: {
+            ticketId_breachCycle: {
+              ticketId: ticket.id,
+              breachCycle: ticket.slaCycle,
+            },
+          },
+          create: {
             ticketId: ticket.id,
             type: SlaAlertType.DUE_SOON,
             status: SlaAlertStatus.ACTIVE,
             breachCycle: ticket.slaCycle,
           },
+          update: {},
         });
       }
     }
