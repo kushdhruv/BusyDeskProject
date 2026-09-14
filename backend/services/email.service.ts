@@ -81,6 +81,43 @@ async function sendViaSmtp(options: {
   throw lastError || new Error("All SMTP ports failed.");
 }
 
+async function sendViaFrontendRelay(options: {
+  from?: string;
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<{ messageId: string }> {
+  const frontendUrl =
+    process.env.FRONTEND_URL?.trim() || "https://busydesk.vercel.app";
+  const secret =
+    process.env.SESSION_SECRET ||
+    "support-ticketing-super-secret-key-change-in-production-minimum-32-chars-long";
+
+  const res = await fetch(`${frontendUrl}/internal-mail`, {
+    method: "POST",
+    signal: AbortSignal.timeout(9000),
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-secret": secret,
+    },
+    body: JSON.stringify(options),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(
+      `Frontend relay (${frontendUrl}/internal-mail) failed (${res.status}): ${errText.slice(0, 100)}`
+    );
+  }
+
+  const data = await res.json();
+  if (!data.success) {
+    throw new Error(data.error || "Frontend relay returned success=false");
+  }
+  return { messageId: data.messageId };
+}
+
 export interface SendInvitationParams {
   to: string;
   name: string;
@@ -296,7 +333,7 @@ This invitation expires in 24 hours.
           html: htmlContent,
         });
 
-        console.log(`[EmailService] Invitation email delivered via SMTP (port ${result.portUsed}) to ${to} (id: ${result.messageId})`);
+        console.log(`[EmailService] Invitation email delivered via direct SMTP (port ${result.portUsed}) to ${to} (id: ${result.messageId})`);
         return {
           success: true,
           mode: "smtp",
@@ -304,9 +341,29 @@ This invitation expires in 24 hours.
           previewUrl: setupUrl,
         };
       } catch (smtpErr: any) {
-        console.error("[EmailService:SMTP Exception]", smtpErr?.message || smtpErr);
-        // Fall through to Resend or Dev Console if SMTP fails
+        console.warn("[EmailService:Direct SMTP failed, trying Vercel HTTPS Relay]", smtpErr?.message || smtpErr);
       }
+    }
+
+    // 2. Secondary Mode: Vercel HTTPS Relay (bypasses cloud host SMTP egress firewalls via port 443)
+    try {
+      const relayResult = await sendViaFrontendRelay({
+        from: process.env.SMTP_FROM || (user ? `Busy Infotech Support <${user}>` : undefined),
+        to,
+        subject,
+        text: plainText,
+        html: htmlContent,
+      });
+
+      console.log(`[EmailService] Invitation email delivered via Vercel HTTPS Relay to ${to} (id: ${relayResult.messageId})`);
+      return {
+        success: true,
+        mode: "smtp",
+        id: relayResult.messageId,
+        previewUrl: setupUrl,
+      };
+    } catch (relayErr: any) {
+      console.warn("[EmailService:Vercel HTTPS Relay failed or not reachable]", relayErr?.message || relayErr);
     }
 
     // 2. Secondary Mode: Resend API is configured
@@ -394,16 +451,35 @@ This invitation expires in 24 hours.
           html: htmlContent,
         });
 
-        console.log(`[EmailService] Digest email delivered via SMTP (port ${result.portUsed}) to ${to} (id: ${result.messageId})`);
+        console.log(`[EmailService] Digest email delivered via direct SMTP (port ${result.portUsed}) to ${to} (id: ${result.messageId})`);
         return {
           success: true,
           mode: "smtp",
           id: result.messageId,
         };
       } catch (smtpErr: any) {
-        console.error("[EmailService:SMTP Digest Exception]", smtpErr?.message || smtpErr);
-        // Fall through to Resend or Dev Console if SMTP fails
+        console.warn("[EmailService:Direct SMTP failed for digest, trying Vercel HTTPS Relay]", smtpErr?.message || smtpErr);
       }
+    }
+
+    // 2. Secondary Mode: Vercel HTTPS Relay (bypasses cloud host SMTP egress firewalls via port 443)
+    try {
+      const relayResult = await sendViaFrontendRelay({
+        from: process.env.SMTP_FROM || (user ? `Busy Infotech Support <${user}>` : undefined),
+        to,
+        subject,
+        text: plainText,
+        html: htmlContent,
+      });
+
+      console.log(`[EmailService] Digest email delivered via Vercel HTTPS Relay to ${to} (id: ${relayResult.messageId})`);
+      return {
+        success: true,
+        mode: "smtp",
+        id: relayResult.messageId,
+      };
+    } catch (relayErr: any) {
+      console.warn("[EmailService:Vercel HTTPS Relay digest failed or not reachable]", relayErr?.message || relayErr);
     }
 
     // 2. Secondary Mode: Resend API
