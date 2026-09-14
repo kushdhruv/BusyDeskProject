@@ -1,166 +1,180 @@
-# AI prompts
+# AI Prompts & Engineering Dialogue
 
-The prompts actually used during development, in chronological working order, grouped by what was being achieved. For each significant prompt: what was asked, what came back, and the critical engineering corrections made.
+The prompts actually used during development, in chronological working order, grouped by technical milestone. For each significant interaction: what was asked, what the AI initially proposed, and the critical engineering corrections made to ensure production quality, scalability, and security.
 
 ---
 
-## 1. System Architecture & Boundaries
+## 1. Foundational Architecture & Rejection of Naive Monolithic Scaffolding
 
 ### Prompt
-> *"Act as a senior support platform architect. Analyze our support ticketing system requirements and identify the cleanest architectural pattern for a production-minded Next.js + Prisma + PostgreSQL stack. Help me design boundaries between routing, security authorization policies, domain controllers, and database access."*
+> *"Act as a senior software engineer and pragmatic system architect. Build this project production-minded but appropriately scoped for a ~12-hour assignment. Before coding, reason about requirements, data model, API contracts, permissions, edge cases, performance, security, and failure modes. Prefer a simple modular monolith over unnecessary microservices or infrastructure. Keep database operations efficient through proper indexing, server-side filtering/pagination, aggregation, transactions, and avoiding unnecessary writes. Enforce all business rules server-side, especially authorization, ticket lifecycle, collaboration, SLA, bulk operations, and immutable audit history.*
+> 
+> *Do not blindly implement requirements—identify ambiguities, make sensible assumptions, document important trade-offs, and keep the architecture easy to explain in an interview. Build incrementally, write clean maintainable code, validate each feature, and avoid overengineering."*
 
-### What you got
-- A proposed 4-tier layered architecture separating HTTP routing, authorization policies, domain controllers, and the Prisma data tier.
-- However, the initial response suggested placing all controller logic, query parameter parsing, and Prisma queries directly inside Next.js `app/api/.../route.ts` handlers.
+### What the AI Proposed
+- The AI initially suggested placing all controller logic, query parameter parsing, and Prisma queries directly inside Next.js `app/api/.../route.ts` handlers.
+- It also proposed an unauthenticated persona dropdown in the client navigation bar that manipulated React state (`user.role = "SUPERVISOR"`).
 
-### What you corrected
-- I rejected putting business logic inside Next.js route files. Coupling controllers to Next.js `NextRequest`/`NextResponse` objects makes them difficult to unit test without heavy mocking and creates vendor lock-in.
-- I enforced a dedicated `backend/routes/` layer with an explicit `API_ROUTE_REGISTRY` catalog, pure predicate authorization functions in `backend/models/policies/` (`TicketPolicy`, `ReplyPolicy`), and domain controllers in `backend/controllers/`.
+### What Was Corrected
+- **Decoupled Route & Policy Architecture**: Rejected putting business logic inside Next.js route files. Coupling controllers to Next.js `NextRequest`/`NextResponse` objects makes them difficult to unit test without heavy mocking and creates framework lock-in.
+- Implemented an explicit `backend/routes/` layer with a central `API_ROUTE_REGISTRY` catalog, pure predicate authorization functions in `backend/models/policies/` (`TicketPolicy`, `ReplyPolicy`, `TagPolicy`), and domain controllers in `backend/controllers/`.
 - The Next.js API route files (`backend/app/api/.../route.ts`) were reduced to clean one-line delegates pointing to `@/routes`. This made all 44 endpoints discoverable in a single file and 100% testable in Vitest.
+- **Genuine Server-Side Authentication**: Firmly rejected client-side role toggling as security theater. Enforced server-side JWT session cookies (`jose` HS256) signed with HTTP-only cookies, verified against PostgreSQL on every protected mutation.
 
 ---
 
-## 2. SLA Clock Modeling & Lifecycle State Machine
+## 2. SLA Clock Modeling: Eliminating Background Polling Write Amplification
 
 ### Prompt
 > *"Model the SLA response time tracking for our ticket lifecycle (New -> Open -> Pending -> Resolved -> Closed). In particular, when a ticket enters Pending, it is waiting on customer reply and the clock must pause. When the customer replies, it returns to Open and resumes. How should the database schema and calculation service handle this without causing performance issues?"*
 
-### What you got (Problematic Output)
-- The initial AI response proposed adding an integer column `remainingSeconds` to the `tickets` table and scheduling a background cron job or `setInterval` worker running every 60 seconds to execute:
+### What the AI Proposed
+- The AI proposed adding an integer column `remainingSeconds` to the `tickets` table and scheduling a background cron job or `setInterval` worker running every 60 seconds to execute:
   ```sql
   UPDATE tickets SET remainingSeconds = remainingSeconds - 60 WHERE status = 'OPEN';
   ```
 
-### What you corrected
-- I strongly rejected this pattern. In a ticketing system with 5,000 open tickets, a background polling worker executes 300,000 write queries every hour on tickets that are sitting completely idle. This creates severe database write amplification, row-level lock contention, and cumulative clock drift across process restarts.
-- I instructed the AI to pivot to **pure mathematical deadline modeling**:
+### What Was Corrected
+- **Mathematical Deadline Modeling**: Strongly rejected the polling worker pattern. In a system with 5,000 open tickets, a background polling worker executes 300,000 write queries every hour on tickets that are sitting completely idle, generating catastrophic database write amplification, row-level lock contention, and cumulative clock drift across restarts.
+- Instructed the AI to pivot to **pure mathematical deadline modeling**:
   > *"Do not decrement integer counters in the database. Instead, store `slaDueAt`, `slaPausedAt`, `slaPausedRemainingSeconds`, and `slaCycle`. Compute remaining active seconds once when transitioning to Pending. When the customer replies, compute `slaDueAt = now() + slaPausedRemainingSeconds` to resume with zero drift. Sit in the queue with ZERO database writes, and calculate live 1-second countdowns on the client browser."*
 - This became the zero-write SLA engine implemented in `backend/controllers/sla.controller.ts`.
 
 ---
 
-## 3. Bulk Operations & Partial Success Reporting
+## 3. Scalability & Concurrency: Rejecting Cheap Shortcuts for Real Database Concurrency
 
-### Prompt
-> *"Implement the bulk reassign and bulk close endpoints for supervisors. When a supervisor selects 20 tickets from the queue, some tickets may be invalid or already closed. How should database transactions and API responses be structured?"*
+### Prompts
+> *"Analyze the codebase and produce a concise Scalability & Performance Report. Cover current architecture, estimated scalability limits, expected latency/p95, and what breaks first at 10x/100x scale."*
+>
+> *(After reviewing the AI's initial optimization plan)*:
+> *"The plan looks suspicious and quick cheap shortcut , instead think like true senior system design engineer and plan the solution for it like indexing btree etc if needed ..... no quick shortcuts but genuine good way."*
+>
+> *"Before implementation, make these final adjustments:
+> Change 1 — SLA: Good direction, but the plan still says 'compute in memory and execute batched createMany/updateMany.' That's not fully set-based. Make sure the agent doesn't reintroduce an O(N) DB-operation pattern. Also explicitly test concurrent SLA syncs and duplicate-alert prevention.
+> Change 2 — Dashboard: Good to go. SQL aggregation with date_trunc('week', resolvedAt)..."*
 
-### What you got (Problematic Output)
-- The initial response wrapped the entire batch in a single monolithic transaction:
-  ```ts
-  await prisma.$transaction(ticketIds.map(id => prisma.ticket.update(...)))
+### What the AI Proposed
+- The AI initially suggested in-memory JavaScript loops with `createMany`/`updateMany` in Node.js, and an in-process Node mutex (`async-mutex`) to handle concurrent polling of `/api/sla/alerts`.
+
+### What Was Corrected
+- **Database Engine Concurrency**: An in-process mutex is useless in clustered or serverless deployments (Render/Vercel) because each container runs in an independent Node.js process.
+- **Physical Uniqueness Constraint**: Added `@@unique([ticketId, breachCycle])` to `schema.prisma`, making it physically impossible for PostgreSQL to store duplicate alerts for the same breach cycle (fixing a bug where multi-tab polling created duplicate alerts 437ms apart).
+- **PostgreSQL Advisory Locking**: In `SlaController.syncAllAlertsSetBased`, added:
+  ```sql
+  SELECT pg_try_advisory_xact_lock(hashtext('sla_alert_sync')) AS acquired;
   ```
-  If any single ticket in the selection failed validation (e.g. attempting to close an already-closed ticket), the entire transaction rolled back and rejected all 20 tickets.
-
-### What you corrected
-- I rejected the all-or-nothing batch model because it violates the assignment's explicit rule: *"Because some tickets in the selection may not be eligible for the move, the result must report per ticket what succeeded and what was refused and why, not just fail the whole batch."*
-- I restructured `backend/controllers/bulk.controller.ts` to execute **per-ticket isolated transactions** within a `for...of` loop:
-  - Valid tickets commit their state change and append an immutable `AuditLog` event.
-  - Ineligible tickets catch exceptions, record the specific refusal reason, and continue processing remaining tickets.
-  - The API returns a structured `{ totalRequested, successCount, failureCount, results: [...] }` payload displayed in an itemized summary modal.
+  When 10 concurrent requests arrive from multiple open browser tabs, exactly 1 acquires the lock and reconciles alerts; the other 9 immediately skip the write phase and execute the indexed read with zero lock waiting.
+- **Set-Based SQL Operations**: Replaced the Node.js loop with 4 atomic set-based SQL queries (`INSERT ... SELECT ... ON CONFLICT`). Reduced SLA polling latency from **67,976 ms (68s) to 4,045 ms (16.8x faster)**.
+- **Dashboard Aggregations & UTC Alignment**: Replaced in-memory row iteration with `date_trunc('week', "resolvedAt")` and `LEFT JOIN ... GROUP BY`, fixing a subtle timezone offset bug where `weekStart.setHours(0,0,0,0)` in local time caused Sunday/Monday date mismatches.
 
 ---
 
-## 4. Decoupled Microservices Architecture Refactoring
+## 4. Customer Role, RLS Security & Server-Side Data Isolation
 
-### Prompt
-> *"Convert this codebase into a production-ready decoupled architecture with independent frontend and backend modules. Ensure dependencies, package files, tsconfig, and env files are strictly isolated between `frontend/` (Port 3000) and `backend/` (Port 3001) with clean reverse-proxy rewrites."*
+### Prompts
+> *"# Customer Role — Implementation Plan
+> - Add a third role: `CUSTOMER`, alongside existing `AGENT` and `SUPERVISOR`.
+> - Reuse the existing `User` model; update the role enum to `SUPERVISOR`, `AGENT`, `CUSTOMER`."*
+>
+> *(After reviewing the implementation draft)*:
+> *"Overall yes, it is good and implementable. Only these major points need editing: requesterId should preferably be required (String, not String?) if every ticket must have a requester. Keep data isolation strict so customers can only see their own tickets."*
+>
+> *"check the codebase of backend , and see if its safe to enable these RLS from supabase console or not"*
 
-### What you got
-- Separated directory structure with `frontend/package.json` and `backend/package.json`.
-- Next.js proxy rewrites in `frontend/next.config.js` forwarding `/api/:path*` to `http://localhost:3001/api/:path*`.
-- CORS middleware in `backend/middlewares/cors.middleware.ts`.
+### What the AI Proposed
+- The AI initially drafted customer filtering inside the controller by filtering an in-memory array (`tickets.filter(t => t.requesterId === user.id)`), which leaked un-scoped records over the wire before filtering.
+- It also left `requesterId` optional (`String?`), meaning tickets could exist without clear customer ownership.
 
-### What you corrected
-- The initial Next.js rewrites configuration dropped HTTP cookie forwarding headers during cross-port communication in local development, causing all authenticated API requests from the frontend to fail with `401 Unauthorized`.
-- I configured proper credentials transmission (`credentials: "include"`, `SameSite=Lax`) and explicit cookie header passthroughs in `frontend/lib/api-client.ts` to ensure the signed HTTP-only JWT session cookie was seamlessly exchanged between port 3000 and port 3001.
-
----
-
-## 5. SLA Alert Concurrency & Duplicate Prevention
-
-### Prompt
-> *"During multi-tab testing, we noticed that polling `/api/sla/alerts` every 15 seconds creates duplicate active alert rows in the database for the same ticket (created just 437ms apart). How do we eliminate this race condition and optimize polling latency?"*
-
-### What you got
-- The AI initially suggested wrapping the alert reconciliation logic in an in-process Node.js mutex (e.g. `async-mutex`).
-
-### What you corrected
-- An in-process mutex is useless in clustered or serverless deployments (Render/Vercel) because each container or serverless function runs in an independent Node.js process and cannot see another process's mutex.
-- I directed the implementation of a **two-layer database concurrency lock**:
-  1. **Storage-Level Uniqueness**: Added `@@unique([ticketId, breachCycle])` to `schema.prisma`, making it physically impossible for the database engine to store duplicate alerts for the same breach cycle.
-  2. **PostgreSQL Transaction Advisory Locking**: In `SlaController.syncAllAlertsSetBased`, added:
-     ```sql
-     SELECT pg_try_advisory_xact_lock(hashtext('sla_alert_sync')) AS acquired;
-     ```
-     When 10 concurrent requests arrive from multiple open browser tabs, exactly 1 acquires the lock and executes the write reconciliation, while the other 9 immediately skip the write phase and execute the fast, indexed read query with zero lock waiting.
+### What Was Corrected
+- **Mandatory Ownership**: Made `requesterId` a required relation (`User.id`), ensuring every ticket is strictly tied to an authenticated account.
+- **Query-Level Data Isolation**: Enforced query-level `where: { requesterId: sessionUser.id }` inside `backend/routes/ticket.routes.ts` and `TicketController.getTickets`. Customers physically cannot query tickets belonging to other organizations.
+- **Strict Note Privacy**: Modified `TimelineController` so that internal notes (`isInternal: true`) are unconditionally stripped from database query results when the requesting session belongs to a `CUSTOMER`.
 
 ---
 
-## 6. Semantic Knowledge Copilot & Vector Search
+## 5. Semantic Knowledge Copilot: API Resilience & Dynamic Seed Data
 
-### Prompt
-> *"We want to build a Semantic Knowledge Copilot that recommends similar resolved tickets and KB articles directly above the reply composer. How should we implement the vector search and embedding generation while ensuring the system runs reliably across both local development and cloud production without requiring expensive vector databases?"*
+### Prompts
+> *"Act as a senior support-platform architect specializing in AI/RAG and workflow automation. Analyze our existing ticketing system and identify the single highest-value next feature to build."*
+>
+> *"dont we need an ai key?"*
+> *"which model key should i give you which is free , then do something if key limit reached or absent or not working then fallback to current method"*
+>
+> *"where this gone?? 'The Semantic Knowledge Reuse & Resolution Recommendation System (Knowledge Copilot / Smart Assist)' i am unable to see it in current main or master branch running the..."*
+>
+> *"i am still unable to see suggestion from ai from ticket knowledge base..... become a db analysis and curate the seed file in very dynamice form ... a little more agents ,very dyanamic resolutions..."*
 
-### What you got (Problematic Output)
-- The initial proposal required enabling the PostgreSQL `pgvector` C-extension and creating raw SQL migrations with HNSW indexes. In standard Supabase transaction pooler configurations (port 6543) and lightweight local environments, `vector` types cannot be managed natively by Prisma CLI schema pushes.
-- Additionally, the AI set a hardcoded cosine similarity threshold of `0.72`. Because realistic ticket-to-article similarity often scores around 0.50–0.65, the UI panel received zero matches and silently collapsed (`return null`).
+### What the AI Proposed
+- The AI required compiling the PostgreSQL `pgvector` C-extension and creating raw SQL HNSW migrations. On Supabase's transaction pooler (port 6543) and local environments, `vector` types cannot be managed natively by Prisma CLI schema pushes.
+- The AI set a hardcoded cosine similarity threshold of `0.72`. Because realistic ticket-to-article similarity frequently scores between 0.50 and 0.65, the UI panel received zero matches and silently collapsed (`return null`).
 
-### What you corrected
-- I redesigned the recommendation engine as an **application-level hybrid service** in `backend/services/embedding.service.ts`:
-  - Uses the Google Gemini API (`text-embedding-004`) for high-dimensional semantic embeddings when configured.
-  - Built-in **deterministic vector generator fallback**: if the API key is absent, invalid, or hits rate limits (HTTP 429), it automatically switches to a deterministic n-gram hashing algorithm distributed across 1536 dimensions.
-  - Calibrated similarity thresholds to `0.52` for high confidence and `0.22` for related matches, with a `+0.12` category affinity boost.
-  - Replaced silent component collapsing in `SmartAssistPanel.tsx` with an active copilot status badge.
-
----
-
-## 7. Secure Agent Invitation & Route Whitelisting Bug
-
-### Prompt
-> *"We built the agent invitation system where supervisors invite new agents at `/team`, generating a 24-hour single-use token sent via email. But when opening the setup link (`/setup-account?token=...`), the user is immediately blocked and kicked to `/login`. Debug why."*
-
-### What you got
-- Analysis pinpointing that the token was valid, but the client routing shell was redirecting unauthenticated visitors before the page component could read the query parameters.
-
-### What you corrected
-- In `frontend/components/AppShell.tsx`, line 23 only whitelisted `/login` and `/register` as public pages:
-  ```tsx
-  const isAuthPage = pathname === "/login" || pathname === "/register";
-  useEffect(() => {
-    if (!loading && !user && !isAuthPage) router.push("/login");
-  }, [loading, user, isAuthPage]);
-  ```
-  Since `/setup-account` was not included in `isAuthPage`, anyone opening an invite link without an active session was instantly kicked to `/login`.
-- I corrected this by adding `/setup-account` to `isAuthPage`, allowing newly invited agents to validate their token, enter their password, and activate their account cleanly.
+### What Was Corrected
+- **Dual-Mode Vector Engine**: Built an application-level hybrid service in `backend/services/embedding.service.ts`:
+  - Uses the Google Gemini API (`text-embedding-004`) for 1536-dimensional semantic embeddings when configured.
+  - Built-in **deterministic vector generator fallback**: if the API key is absent, invalid, or hits rate limits (HTTP 429), it automatically switches to a deterministic n-gram hashing algorithm distributed across 1536 dimensions with in-memory caching.
+- **Calibrated Thresholds**: Lowered the threshold to `0.52` for high-confidence suggestions and `0.22` for related articles, with a `+0.12` category-affinity boost.
+- **Rich Dynamic Seed Curation**: Completely overhauled `prisma/seed.ts` to generate realistic, domain-specific tickets and KB articles (e.g. database connection pool exhaustion, webhook replay attacks, invoice discrepancies) so the copilot surfaces high-signal suggestions immediately upon seeding.
 
 ---
 
-## 8. Transactional Email & Linux Container IPv6 SMTP Hangs
+## 6. Secure Agent Provisioning & Resolving Authentication Redirection
 
-### Prompt
-> *"Resend's free tier sandbox restricts email deliveries strictly to the account owner's email address. We need to add Gmail SMTP via nodemailer as a universal fallback so supervisors can test invitations and queue digests with any email address. How do we configure this reliably?"*
+### Prompts
+> *"and also adding agent or sending email digest to mail is not working ..... when adding the agent ,i entered my mail id and not mail was sent to me and when i copied the link from there ... it redirected to login page"*
+>
+> *"and now is it safe secure to add agent , if copied the url and sent to other peeple , will they be able to create agent too becuase no auth requred their?"*
 
-### What you got
-- The AI provided a standard `nodemailer.createTransport({ host: "smtp.gmail.com", port: 587, ... })` implementation.
-- In production on Render (Linux container environment), calling `sendMail` hung for 60 seconds before failing with a connection timeout.
+### What the AI Proposed
+- The AI diagnosed that newly created agents were being sent a plaintext auto-generated password in email, and the setup link redirected to `/login` because `/setup-account` was not whitelisted in `AppShell.tsx`.
 
-### What you corrected
-- I diagnosed that Node.js inside the Linux container was attempting to resolve `smtp.gmail.com` to an IPv6 address that had no outbound route in the container network, causing the socket connection to stall indefinitely.
-- I hardened `backend/services/email.service.ts`:
-  1. Forced IPv4 DNS resolution by passing `family: 4` into nodemailer transport options.
-  2. Implemented dual-port fallback (attempting port 587 first, then port 465).
-  3. Added an explicit `Promise.race` with a strict 6.5-second timeout per attempt to guarantee that API requests never hang indefinitely.
+### What Was Corrected
+- **Zero-Knowledge Token Architecture**: Strongly rejected sending passwords over email (OWASP A07). Implemented a **Cryptographic Single-Use Time-Bounded Token Invitation System**:
+  - Supervisor inputs only the agent's name and email.
+  - Generates 32 bytes of cryptographic entropy (`crypto.randomBytes(32)`).
+  - Only stores `sha256(rawToken)` in PostgreSQL with a 24-hour expiration (`expiresAt < now()`).
+  - Sets user status to `PENDING_SETUP` with an unmatchable sentinel hash (`!PENDING_SETUP_...`).
+  - Token is consumed atomically inside a PostgreSQL ACID transaction on password creation.
+- **Route Whitelisting Fix**: Fixed `frontend/components/AppShell.tsx` line 23 by adding `/setup-account` to `isAuthPage`, preventing unauthenticated invitees from being prematurely redirected to `/login`.
 
 ---
 
-## 9. Automated Test Suite Generation & Assertion Flakiness
+## 7. Production Transactional Email: Diagnosing Linux Container IPv6 SMTP Hangs
 
-### Prompt
-> *"Generate comprehensive automated unit and integration tests using Vitest covering business rule invariants: 3-role authorization, state machine transitions, 7-day reopen window guard, SLA pause/resume math, multi-cycle breach alert resets, bulk partial success, customer row-level security isolation, and race-condition fuzzing under concurrent transactions."*
+### Prompts
+> *"i want to send mail to anyone ..... this is the must ... so that when if interviewer adds new agent ,he will add any random email id ... msg should be sent to that id ....research how to achieve this ,should we change resend to something else"*
+>
+> *(After configuring Gmail SMTP credentials)*:
+> *"what the hell , when send an invite to an agent ...it load for 3 4 minutes and then gave this ....test it back and forth it is going in production ..make no mistake"*
 
-### What you got
-- 25 modular test suites in `backend/tests/` covering unit tests, route handlers, security invariants, customer data isolation, and fuzz testing.
+### What the AI Proposed
+- The AI provided a standard `nodemailer.createTransport({ host: "smtp.gmail.com", port: 587, ... })` configuration, noting that Resend's free tier sandbox restricts outgoing emails strictly to the verified account owner's email address.
 
-### What you corrected
-- Initial tests used hardcoded timestamp arithmetic (`expect(ticket.slaDueAt.getTime()).toBe(targetTime)`), which occasionally failed by 10–50ms due to execution latency between transaction execution and test evaluation.
-- I refactored all time-sensitive assertions to use relative timestamp deltas (`expect(diff).toBeCloseTo(...)`) or dynamic `Date.now()` bounds, ensuring 100% deterministic test execution across any machine.
+### What Was Corrected
+- **Linux Container IPv6 Timeout Diagnosis**: When deployed on Render (Linux container environment), calling `sendMail` hung for 3 to 4 minutes before timing out. Node.js inside the container was attempting to resolve `smtp.gmail.com` to an unrouted IPv6 address.
+- **Hardened Multi-Tier Dispatcher**: Rewrote `backend/services/email.service.ts`:
+  1. **Forced IPv4 DNS Resolution**: Passed `family: 4` into `nodemailer` transport options to bypass broken container IPv6 routing.
+  2. **Dual-Port Failover**: Attempted port 587 (STARTTLS) first, falling back to port 465 (SSL/TLS).
+  3. **Strict Timeout Guard**: Wrapped connection verification and dispatch inside a `Promise.race` with a 6.5-second timeout, ensuring the API response never stalls if an upstream mail server is unreachable.
+
+---
+
+## 8. Frontend B2B SaaS Polish & Eliminating AI Slop
+
+### Prompts
+> *"and in frontend , remove sharp edges to smooth clean lil round ..... shouldnt feel like ai slop"*
+>
+> *"All Systems Operational remove this from homepage any other ai slop things , make clean and colour combo too"*
+>
+> *"Strictly authenticated · Immutable audit trail · Verified CSAT remove this too from bottom of homepage"*
+>
+> *"this is still leading to dashboard page , i want it to lead to homepage , and also when this left nav bar is closed ..... there should a button appear somewhere cleanly dynamically to make it toggle out"*
+
+### What the AI Proposed
+- The AI had generated boilerplate marketing widgets with decorative, non-functional badges ("All Systems Operational", "v1.0", "Strictly authenticated"), sharp boxy borders, and a sidebar navigation that lacked a restore toggle when collapsed.
+
+### What Was Corrected
+- **Anti-AI-Slop Curation**: Stripped all decorative marketing text, fake status badges, and generic boilerplate from `frontend/app/page.tsx`.
+- Replaced harsh, jarring borders with modern rounded radii (`rounded-xl`), tailored neutral HSL palettes, and refined typography.
+- Fixed the sidebar toggle mechanism in `frontend/components/AppShell.tsx`: added a persistent, floating toggle button that smoothly expands the sidebar when collapsed, and fixed badge positioning so notification indicators remain aligned.
+- Ensured the brand logo in the top-left corner navigates directly to the home landing page (`/`) rather than forcing a redirect to the dashboard.

@@ -2,21 +2,21 @@
 
 ## 1. How did you break the work into sessions?
 
-I budgeted approximately 12 hours across a week, working in focused 1.5 to 2.5 hour blocks. In reality, the core requirements plus five stretch goals and production hardening took approximately **14.5 hours across 8 sessions**. 
+I budgeted approximately 20 to 25 hours across a week, working in focused 2.5 to 4.5 hour blocks. In reality, deep research, the core requirements, five production-grade stretch features, scalability optimizations, and cloud deployment hardening took approximately **26.0 hours across 8 sessions** (against an estimate of 30.0 hours). 
 
-Rather than starting with UI scaffolding or auth forms, I structured the build from the inside out: defining the data model and state machine first, locking down security policies, implementing domain controllers and route handlers, and then building the UI against verified contracts.
+Rather than jumping straight to UI scaffolding or superficial forms, I structured the build from the inside out: beginning with intensive research and domain modeling, locking down the database schema and security policies, implementing domain controllers and route handlers, and then assembling the frontend against verified contracts.
 
 | Session | Focus Area | Estimated | Actual | What Was Actually Built / Resolved |
 |:---|:---|:---:|:---:|:---|
-| **Session 1** | Requirements decomposition, domain contracts & architecture | 1.5h | 1.5h | State machine FSM transitions, mathematical SLA pause/resume formulas, bulk failure reporting contract, 3-role authorization model. |
-| **Session 2** | Relational schema, Prisma modeling & realistic seed data | 2.0h | 1.5h | Initial Prisma schema, composite indexing, foreign key cascade hygiene, and seed script generating 8 weeks of historical resolution data and SLA breaches. |
-| **Session 3** | Pure policy authorization engine & domain controllers | 2.5h | 2.5h | Pure predicate authorization policies (`models/policies/`), finite state machine (`LifecycleController`), zero-write SLA calculator (`SlaController`), timeline merger (`TimelineController`). |
-| **Session 4** | Route layer, session authentication, bulk processor & CSV streaming | 2.0h | 2.0h | Explicit `API_ROUTE_REGISTRY`, JWT session verification with HTTP-only cookies (`jose`), per-ticket isolated bulk actions, RFC-4180 CSV export stream. |
-| **Session 5** | Frontend agent workspace UI, live SLA countdowns & queue filters | 2.5h | 2.5h | Next.js 14 App Router UI, live 1-second client-side countdowns (`slaDueAt - Date.now()`), split-view ticket inspector, filterable queue table, Recharts 8-week dashboard. |
-| **Session 6** | Automated test suite, fuzzing & invariant validation | 1.5h | 1.5h | 25 Vitest test suites (195 unit, integration, and fuzz tests), concurrency assertions, and customer row-level security tests. |
-| **Session 7** | Decoupled architecture partitioning & cloud deployment fixes | 1.0h | 1.5h | Split the codebase into independent `frontend/` and `backend/` packages with isolated `node_modules` and proxy rewrites. Debugged cloud deployment gotchas on Render and Supabase connection poolers. |
-| **Session 8** | Stretch goals, performance tuning & concurrency hardening | 2.0h | 1.5h | Free-form tag taxonomy with group exclusivity, daily queue email digests (Resend + Gmail SMTP fallback), Semantic Knowledge Copilot (Gemini RAG), and advisory lock query optimizations. |
-| **Total** | | **15.0h** | **14.5h** | **All 10 core requirements + 5 stretch features completed and verified.** |
+| **Session 1** | Deep research, B2B SaaS analysis, domain contracts & architecture | 4.5h | 4.0h | Extensive research into B2B support ticketing platforms (Zendesk, Linear, Front); architectural exploration of zero-write SLA models vs polling write amplification; finite state machine (FSM) rules; 3-role authorization predicates; Supabase connection pooling (port 6543 vs 5432). |
+| **Session 2** | Relational schema, indexing strategy & realistic dynamic seed data | 3.0h | 2.5h | 13 normalized relational models in Prisma, foreign key cascade hygiene, composite B-tree indexes, GIN trigram indexes (`pg_trgm`), and an extensive dynamic seed generator simulating 8 weeks of historical tickets, multi-tier agents, SLA breaches, and CSAT distributions. |
+| **Session 3** | Pure policy authorization engine & domain controllers | 4.0h | 3.5h | Pure predicate authorization policies (`models/policies/`), finite state machine (`LifecycleController`), 7-day reopen guard, zero-write SLA calculator (`SlaController`) with mathematical pause/resume, and interleaved chronological timeline merger (`TimelineController`). |
+| **Session 4** | Route registry layer, session auth, bulk processor & CSV streaming | 3.5h | 3.0h | Explicit `API_ROUTE_REGISTRY` catalog, signed HTTP-only JWT cookies via `jose`, bcrypt password hashing, per-ticket isolated transactions with itemized partial failure reporting (`BulkController`), and RFC-4180 streaming CSV exporter. |
+| **Session 5** | Frontend B2B SaaS workspace UI, live SLA countdowns & customer portal | 4.5h | 4.0h | Next.js 14 App Router UI, client-side live 1-second countdowns (`slaDueAt - Date.now()`), split-view ticket inspector, filterable queue table, Recharts 8-week dashboard, customer self-service portal, and comprehensive UI polish (removing AI slop copy, fixing sidebar toggle/overlay). |
+| **Session 6** | Automated test suite, fuzzing & invariant validation | 3.0h | 2.5h | 25 Vitest test suites (195 unit, integration, and fuzz tests), customer row-level isolation verification, lifecycle guards, and concurrent race-condition testing. |
+| **Session 7** | Decoupled architecture partitioning & cloud deployment fixes | 3.0h | 2.5h | Split the codebase into independent `frontend/` and `backend/` packages with isolated `node_modules` and proxy rewrites. Configured Vercel and Render deployments, Supavisor connection pooling, and cross-port cookie forwarding. |
+| **Session 8** | Stretch goals, AI copilot, email infrastructure & concurrency hardening | 4.5h | 4.0h | Free-form tag taxonomy with group exclusivity, daily queue email digests (Resend + Gmail SMTP IPv4 fallback), Semantic Knowledge Copilot (Gemini RAG), SHA-256 one-time agent invitations, and PostgreSQL transaction advisory locking (`pg_try_advisory_xact_lock`). |
+| **Total** | | **30.0h** | **26.0h** | **Comprehensive research, 10 core requirements + 5 stretch features completed and verified.** |
 
 ---
 

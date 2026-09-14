@@ -137,44 +137,44 @@ This action exercises cross-tier proxying, authentication, ownership validation,
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Customer as Customer (Alice)
-    participant Browser as Browser Client (Port 3000)
+    actor Customer as Customer Alice
+    participant Browser as Browser Client
     participant Proxy as Next.js Proxy Rewrite
-    participant Route as Backend Route (reply.routes.ts)
-    participant Auth as Auth Middleware & Policy
-    participant Ctrl as ReplyController & SlaController
-    participant DB as PostgreSQL (Supabase Prisma $transaction)
-    participant SSE as ticketBroadcaster (SSE)
-    actor Agent as Assigned Agent (Sarah)
+    participant Route as Backend Route Layer
+    participant Auth as Auth Policy Layer
+    participant Ctrl as Reply and SLA Controllers
+    participant DB as PostgreSQL Database
+    participant SSE as Realtime Event Bus
+    actor Agent as Assigned Agent Sarah
 
     Customer->>Browser: Enters reply message and clicks Send Reply
-    Browser->>Proxy: POST /api/tickets/:id/customer-reply (with message body)
-    Proxy->>Route: Forward to backend on port 3001
-    Route->>Auth: Verify signed HTTP-only session cookie via jose
-    Auth-->>Route: Authenticated Session (userId: cust_1, role: CUSTOMER)
-    Route->>Ctrl: ReplyController.addCustomerReply(ticketId, data, sessionUser)
+    Browser->>Proxy: POST to customer reply endpoint
+    Proxy->>Route: Forward to backend service on port 3001
+    Route->>Auth: Verify signed HTTP-only session cookie
+    Auth-->>Route: Authenticated Customer Session confirmed
+    Route->>Ctrl: Invoke ReplyController addCustomerReply
     Ctrl->>DB: Fetch ticket by ID and verify requester ownership
-    Note over Ctrl,DB: Ticket is currently in PENDING status (waiting on customer)
+    Note over Ctrl,DB: Ticket is currently in PENDING status waiting on customer
     
     Ctrl->>DB: BEGIN Transaction
-    Ctrl->>DB: INSERT reply (authorType: CUSTOMER, isInternal: false)
-    Ctrl->>DB: INSERT audit_log (eventType: REPLY_ADDED, actor: Alice Henderson)
+    Ctrl->>DB: INSERT reply row with authorType CUSTOMER
+    Ctrl->>DB: INSERT audit log entry for reply creation
     
-    Ctrl->>Ctrl: SlaController.computeStateOnStatusChange(ticket, OPEN, now)
-    Note over Ctrl: Read frozen paused seconds.<br/>Compute resumed deadline = now + paused seconds.<br/>Clear paused state.
+    Ctrl->>Ctrl: SlaController recalculates active deadline
+    Note over Ctrl: Read frozen paused seconds<br/>Resumed deadline = now + paused seconds<br/>Clear paused state
     
-    Ctrl->>DB: UPDATE ticket (status: OPEN, slaDueAt: resumedDueAt, slaPausedAt: null)
-    Ctrl->>DB: INSERT audit_log (STATUS_CHANGED: PENDING to OPEN, SLA clock resumed)
-    Ctrl->>DB: UPSERT sla_alerts (sync alert to resumed deadline)
+    Ctrl->>DB: UPDATE ticket status to OPEN with resumed SLA deadline
+    Ctrl->>DB: INSERT audit log for status transition and SLA clock resumption
+    Ctrl->>DB: UPSERT sla_alerts record for resumed deadline
     Ctrl->>DB: COMMIT Transaction
     DB-->>Ctrl: Transaction Committed Successfully
     
-    Ctrl->>SSE: ticketBroadcaster.broadcast(ticketId, reply)
-    SSE-->>Agent: Live message pushed to active agent workspace without page reload
-    Ctrl->>Ctrl: invalidateMetricsCache (clears 15s supervisor dashboard cache)
+    Ctrl->>SSE: Broadcast ticket event with new reply payload
+    SSE-->>Agent: Live reply pushed to active agent workspace
+    Ctrl->>Ctrl: Invalidate metrics cache
     Ctrl-->>Route: Return success payload
     Route-->>Browser: HTTP 201 Created
-    Browser->>Customer: Timeline appends reply, status changes to OPEN, SLA countdown resumes ticking
+    Browser->>Customer: Timeline appends reply and live SLA countdown resumes
 ```
 
 ---
