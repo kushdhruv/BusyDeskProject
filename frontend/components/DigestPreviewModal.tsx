@@ -90,6 +90,27 @@ export const DigestPreviewModal: React.FC<DigestPreviewModalProps> = ({
     }
   };
 
+  const handleSendToMyInbox = async () => {
+    try {
+      setSendingTest(true);
+      setError(null);
+
+      const res = await fetch("/api/digest/send-now", {
+        method: "POST",
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send digest.");
+
+      setSendSuccess(data.message || `Live digest sent to your inbox (${user?.email})!`);
+      setTimeout(() => setSendSuccess(null), 6000);
+    } catch (err: any) {
+      setError(err.message || "Failed to send digest to inbox.");
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -216,6 +237,16 @@ export const DigestPreviewModal: React.FC<DigestPreviewModalProps> = ({
             <Button variant="secondary" size="sm" onClick={onClose}>
               Done
             </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleSendToMyInbox}
+              loading={sendingTest}
+              icon={<Send className="w-3.5 h-3.5" />}
+              title="Dispatches this preview to your email inbox"
+            >
+              Send to My Inbox
+            </Button>
             {isSupervisor && (
               <Button
                 variant="primary"
@@ -223,8 +254,9 @@ export const DigestPreviewModal: React.FC<DigestPreviewModalProps> = ({
                 onClick={handleSendTestDispatch}
                 loading={sendingTest}
                 icon={<Send className="w-3.5 h-3.5" />}
+                title="Dispatches to all opted-in staff members"
               >
-                Send Test Dispatch
+                Dispatch All Staff
               </Button>
             )}
           </div>

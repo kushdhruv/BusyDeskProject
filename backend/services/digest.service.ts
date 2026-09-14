@@ -33,6 +33,23 @@ export interface AgentDigestData {
     priority: Priority;
     status: Status;
     slaDueAt: Date | null;
+    requesterName?: string;
+    customerCompany?: string;
+    slaStatusLabel?: string;
+  }[];
+  awaitingReplies?: {
+    id: string;
+    ticketNumber: number;
+    subject: string;
+    priority: Priority;
+    customerName: string;
+    lastReplyTime?: Date;
+  }[];
+  recentResolvedHighlights?: {
+    id: string;
+    ticketNumber: number;
+    subject: string;
+    resolvedAt: Date | null;
   }[];
   shouldSuppress: boolean;
   suppressReason?: string;
@@ -55,6 +72,7 @@ export interface SupervisorDigestData {
     slaComplianceRate: number;
     averageCsat: number | null;
     csatResponseCount: number;
+    unassignedCount?: number;
   };
   agentWorkloads: {
     id: string;
@@ -62,6 +80,7 @@ export interface SupervisorDigestData {
     activeTicketsCount: number;
     breachedCount: number;
     resolvedCount: number;
+    capacityStatus?: "Optimal" | "High Load" | "Over Capacity";
   }[];
   atRiskTickets: {
     id: string;
@@ -70,7 +89,30 @@ export interface SupervisorDigestData {
     priority: Priority;
     assigneeName: string;
     slaDueAt: Date | null;
+    slaStatusLabel?: string;
   }[];
+}
+
+/**
+ * Formats relative SLA deadline label for high-signal email display.
+ */
+function formatSlaLabel(slaDueAt: Date | null, now: Date): string {
+  if (!slaDueAt) return "No SLA Target";
+  const diffMs = new Date(slaDueAt).getTime() - now.getTime();
+  const isOverdue = diffMs <= 0;
+  const absMins = Math.round(Math.abs(diffMs) / (60 * 1000));
+  const hours = Math.floor(absMins / 60);
+  const mins = absMins % 60;
+
+  if (isOverdue) {
+    return `Overdue by ${hours > 0 ? `${hours}h ` : ""}${mins}m`;
+  } else if (absMins <= 120) {
+    return `Due in ${hours > 0 ? `${hours}h ` : ""}${mins}m`;
+  } else if (hours < 24) {
+    return `Due today (${new Date(slaDueAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`;
+  } else {
+    return `Due ${new Date(slaDueAt).toLocaleDateString([], { month: "short", day: "numeric" })}`;
+  }
 }
 
 export class DigestService {
@@ -141,7 +183,6 @@ export class DigestService {
     });
 
     // Customer replies waiting for response
-    // Tickets assigned to this agent where the latest reply is by a customer
     const openWithCustomerReplies = await prisma.ticket.findMany({
       where: {
         primaryAssigneeId: agentId,
@@ -153,9 +194,25 @@ export class DigestService {
           },
         },
       },
-      select: { id: true },
+      include: {
+        replies: {
+          where: { authorType: "CUSTOMER" },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+      take: 4,
     });
     const awaitingAgentReplyCount = openWithCustomerReplies.length;
+
+    const awaitingReplies = openWithCustomerReplies.map((t) => ({
+      id: t.id,
+      ticketNumber: t.ticketNumber,
+      subject: t.subject,
+      priority: t.priority,
+      customerName: t.requesterName || "Customer",
+      lastReplyTime: t.replies[0]?.createdAt,
+    }));
 
     // Recent CSAT received
     const csatRecords = await prisma.customerSatisfaction.findMany({
@@ -178,7 +235,7 @@ export class DigestService {
     // Extract urgent / breached tickets for highlight list
     const urgentTickets = activeTickets
       .filter((t) => t.priority === Priority.URGENT || (t.slaDueAt && new Date(t.slaDueAt) <= now))
-      .slice(0, 5)
+      .slice(0, 6)
       .map((t) => ({
         id: t.id,
         ticketNumber: t.ticketNumber,
@@ -186,7 +243,27 @@ export class DigestService {
         priority: t.priority,
         status: t.status,
         slaDueAt: t.slaDueAt,
+        requesterName: t.requesterName || "Customer",
+        customerCompany: undefined,
+        slaStatusLabel: formatSlaLabel(t.slaDueAt, now),
       }));
+
+    // Highlights of recently resolved tickets
+    const recentResolvedHighlights = await prisma.ticket.findMany({
+      where: {
+        primaryAssigneeId: agentId,
+        status: { in: [Status.RESOLVED, Status.CLOSED] },
+        resolvedAt: { gte: periodStart },
+      },
+      select: {
+        id: true,
+        ticketNumber: true,
+        subject: true,
+        resolvedAt: true,
+      },
+      orderBy: { resolvedAt: "desc" },
+      take: 3,
+    });
 
     // Smart Suppression: suppress if agent has zero active tickets and zero customer replies
     const shouldSuppress =
@@ -211,6 +288,8 @@ export class DigestService {
         recentCsatRating,
       },
       urgentTickets,
+      awaitingReplies,
+      recentResolvedHighlights,
       shouldSuppress,
       suppressReason: shouldSuppress
         ? "No active tickets or pending customer replies assigned."
@@ -239,7 +318,7 @@ export class DigestService {
     const periodStart = new Date(now.getTime() - periodHours * 60 * 60 * 1000);
 
     // Queue Totals
-    const [totalOpenTickets, totalPendingTickets, newTicketsCount, resolvedTicketsCount] =
+    const [totalOpenTickets, totalPendingTickets, newTicketsCount, resolvedTicketsCount, unassignedCount] =
       await Promise.all([
         prisma.ticket.count({
           where: { archivedAt: null, status: { in: [Status.NEW, Status.OPEN] } },
@@ -252,6 +331,13 @@ export class DigestService {
         }),
         prisma.ticket.count({
           where: { resolvedAt: { gte: periodStart } },
+        }),
+        prisma.ticket.count({
+          where: {
+            archivedAt: null,
+            primaryAssigneeId: null,
+            status: { in: [Status.NEW, Status.OPEN] },
+          },
         }),
       ]);
 
@@ -320,12 +406,17 @@ export class DigestService {
           }),
         ]);
 
+        let capacityStatus: "Optimal" | "High Load" | "Over Capacity" = "Optimal";
+        if (activeCount >= 10) capacityStatus = "Over Capacity";
+        else if (activeCount >= 6) capacityStatus = "High Load";
+
         return {
           id: a.id,
           name: a.name,
           activeTicketsCount: activeCount,
           breachedCount: breached,
           resolvedCount: resolved,
+          capacityStatus,
         };
       })
     );
@@ -351,6 +442,7 @@ export class DigestService {
       priority: t.priority,
       assigneeName: t.primaryAssignee?.name || "Unassigned",
       slaDueAt: t.slaDueAt,
+      slaStatusLabel: formatSlaLabel(t.slaDueAt, now),
     }));
 
     return {
@@ -366,6 +458,7 @@ export class DigestService {
         slaComplianceRate,
         averageCsat,
         csatResponseCount: csats.length,
+        unassignedCount,
       },
       agentWorkloads,
       atRiskTickets,
@@ -375,59 +468,83 @@ export class DigestService {
   /**
    * Renders high-fidelity responsive HTML email template for an Agent.
    */
-  static renderAgentDigestHtml(data: AgentDigestData, baseUrl: string = "http://localhost:3000"): string {
-    const { agent, metrics, urgentTickets, period } = data;
+  static renderAgentDigestHtml(
+    data: AgentDigestData,
+    baseUrl: string = process.env.FRONTEND_URL || "https://busy-desk-project.vercel.app"
+  ): string {
+    const { agent, metrics, urgentTickets, awaitingReplies, recentResolvedHighlights, period } = data;
     const isDaily = period === "daily";
+
+    // Clean normalized base URL
+    const appUrl = baseUrl.replace(/\/+$/, "");
 
     return `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Your SupportDesk Queue Summary</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
-    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .header { background: #0f172a; color: #ffffff; padding: 24px; }
-    .header h1 { margin: 0 0 4px 0; font-size: 18px; font-weight: 700; letter-spacing: -0.025em; }
-    .header p { margin: 0; font-size: 13px; color: #94a3b8; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #0f172a; -webkit-font-smoothing: antialiased; }
+    .container { max-width: 620px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .header { background: #0f172a; color: #ffffff; padding: 28px 24px; position: relative; }
+    .brand-pill { display: inline-block; background: #1e293b; color: #94a3b8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 9999px; margin-bottom: 12px; }
+    .header h1 { margin: 0 0 6px 0; font-size: 20px; font-weight: 700; letter-spacing: -0.025em; color: #ffffff; }
+    .header p { margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.4; }
     .content { padding: 24px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
-    .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; text-align: center; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+    .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 8px; text-align: center; }
     .stat-val { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
     .stat-val.alert { color: #dc2626; }
     .stat-val.warning { color: #d97706; }
     .stat-val.success { color: #16a34a; }
-    .stat-label { font-size: 11px; text-transform: uppercase; font-weight: 600; color: #64748b; letter-spacing: 0.05em; }
-    .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #334155; margin: 24px 0 12px 0; }
-    .ticket-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; text-decoration: none; color: inherit; }
-    .ticket-row:hover { background: #f8fafc; }
-    .ticket-subject { font-size: 13px; font-weight: 600; color: #0f172a; margin-bottom: 2px; }
-    .ticket-meta { font-size: 11px; color: #64748b; }
-    .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .stat-label { font-size: 10px; text-transform: uppercase; font-weight: 600; color: #64748b; letter-spacing: 0.04em; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin: 24px 0 12px 0; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }
+    .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #334155; }
+    .ticket-row { display: block; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; text-decoration: none; color: inherit; background: #ffffff; transition: border-color 0.15s; }
+    .ticket-row:hover { border-color: #cbd5e1; background: #fafafa; }
+    .ticket-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; gap: 8px; }
+    .ticket-subject { font-size: 13px; font-weight: 600; color: #0f172a; line-height: 1.3; }
+    .ticket-meta { font-size: 11px; color: #64748b; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
     .badge-urgent { background: #fee2e2; color: #991b1b; }
     .badge-high { background: #ffedd5; color: #9a3412; }
-    .btn { display: inline-block; background: #0f172a; color: #ffffff !important; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; text-align: center; margin-top: 16px; }
-    .footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; font-size: 11px; color: #94a3b8; text-align: center; }
+    .badge-medium { background: #e0f2fe; color: #0369a1; }
+    .badge-sla-breach { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .badge-sla-due { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .badge-sla-ok { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .btn { display: inline-block; background: #0f172a; color: #ffffff !important; padding: 11px 22px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; text-align: center; }
+    .btn-secondary { display: inline-block; background: #f1f5f9; color: #0f172a !important; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: 600; text-decoration: none; }
+    .footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.5; }
+    @media only screen and (max-width: 480px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .header h1 { font-size: 18px; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
+      <span class="brand-pill">SupportDesk • ${isDaily ? "Daily Intelligence" : "Weekly Briefing"}</span>
       <h1>Good morning, ${agent.name}</h1>
-      <p>Here is your ${isDaily ? "daily" : "weekly"} SupportDesk queue briefing for ${data.generatedAt.toLocaleDateString()}</p>
+      <p>Here is your personal queue briefing for ${data.generatedAt.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}.</p>
     </div>
 
     <div class="content">
+      <!-- High-Signal KPI Scorecard -->
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-val ${metrics.assignedOpenCount > 8 ? "warning" : ""}">${metrics.assignedOpenCount}</div>
           <div class="stat-label">Open Assigned</div>
         </div>
         <div class="stat-card">
-          <div class="stat-val ${metrics.breachedCount > 0 ? "alert" : metrics.dueSoonCount > 0 ? "warning" : ""}">${metrics.breachedCount > 0 ? `${metrics.breachedCount} Breached` : metrics.dueSoonCount > 0 ? `${metrics.dueSoonCount} Due Soon` : "On Track"}</div>
+          <div class="stat-val ${metrics.breachedCount > 0 ? "alert" : metrics.dueSoonCount > 0 ? "warning" : "success"}">${metrics.breachedCount > 0 ? `${metrics.breachedCount} Breached` : metrics.dueSoonCount > 0 ? `${metrics.dueSoonCount} Due Soon` : "On Track"}</div>
           <div class="stat-label">SLA Status</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val ${metrics.awaitingAgentReplyCount > 0 ? "warning" : ""}">${metrics.awaitingAgentReplyCount}</div>
+          <div class="stat-label">Pending Reply</div>
         </div>
         <div class="stat-card">
           <div class="stat-val success">${metrics.recentCsatRating ? `${metrics.recentCsatRating} ★` : metrics.resolvedRecentCount}</div>
@@ -435,39 +552,98 @@ export class DigestService {
         </div>
       </div>
 
+      <!-- Action Required: Urgent & SLA Risk Tickets -->
+      <div class="section-header">
+        <span class="section-title">🚨 Action Required (Priority & SLA Watch)</span>
+      </div>
+
       ${
         urgentTickets.length > 0
           ? `
-      <div class="section-title">🚨 Action Required (High Priority & Breaching)</div>
-      ${urgentTickets
-        .map(
-          (t) => `
-        <a href="${baseUrl}/tickets/${t.id}" class="ticket-row">
-          <div>
-            <div class="ticket-subject">#${t.ticketNumber} ${t.subject}</div>
-            <div class="ticket-meta">Status: ${t.status} • Due: ${t.slaDueAt ? new Date(t.slaDueAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}</div>
-          </div>
-          <span class="badge ${t.priority === Priority.URGENT ? "badge-urgent" : "badge-high"}">${t.priority}</span>
-        </a>
-      `
-        )
-        .join("")}
-      `
+        <div>
+          ${urgentTickets
+            .map(
+              (t) => `
+            <a href="${appUrl}/tickets/${t.id}" class="ticket-row">
+              <div class="ticket-header">
+                <span class="ticket-subject">#${t.ticketNumber} ${t.subject}</span>
+                <span class="badge ${t.priority === Priority.URGENT ? "badge-urgent" : "badge-high"}">${t.priority}</span>
+              </div>
+              <div class="ticket-meta">
+                <span>👤 ${t.requesterName || "Customer"} ${t.customerCompany ? `(${t.customerCompany})` : ""}</span>
+                <span>•</span>
+                <span class="badge ${
+                  t.slaDueAt && new Date(t.slaDueAt) <= data.generatedAt
+                    ? "badge-sla-breach"
+                    : "badge-sla-due"
+                }">${t.slaStatusLabel || (t.slaDueAt ? new Date(t.slaDueAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A")}</span>
+                <span>•</span>
+                <span style="color: #0f172a; font-weight: 600;">Reply & Resolve &rarr;</span>
+              </div>
+            </a>
+          `
+            )
+            .join("")}
+        </div>
+        `
           : `
-      <div style="padding: 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 13px; color: #166534;">
-        ✅ <strong>All clear on SLAs!</strong> You have no breaching or urgent tickets in your immediate queue.
-      </div>
-      `
+        <div style="padding: 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 13px; color: #166534; margin-bottom: 16px;">
+          ✅ <strong>All clear on SLAs!</strong> You have no breaching or urgent tickets in your immediate queue.
+        </div>
+        `
       }
 
-      <div style="text-align: center; margin-top: 24px;">
-        <a href="${baseUrl}/tickets?scope=assigned_to_me" class="btn">Open My Workspace &rarr;</a>
+      <!-- Customer Responses Pending Follow-up -->
+      ${
+        awaitingReplies && awaitingReplies.length > 0
+          ? `
+        <div class="section-header" style="margin-top: 24px;">
+          <span class="section-title">💬 Customer Follow-ups Awaiting Reply (${awaitingReplies.length})</span>
+        </div>
+        <div>
+          ${awaitingReplies
+            .map(
+              (r) => `
+            <a href="${appUrl}/tickets/${r.id}" class="ticket-row" style="background: #fafafa;">
+              <div class="ticket-header">
+                <span class="ticket-subject">#${r.ticketNumber} ${r.subject}</span>
+                <span style="font-size: 11px; color: #0284c7; font-weight: 600;">Open &rarr;</span>
+              </div>
+              <div class="ticket-meta">
+                <span>Customer: <strong>${r.customerName}</strong> responded recently</span>
+              </div>
+            </a>
+          `
+            )
+            .join("")}
+        </div>
+        `
+          : ""
+      }
+
+      <!-- Positive Reinforcement / Resolved Wins -->
+      ${
+        metrics.resolvedRecentCount > 0
+          ? `
+        <div style="margin-top: 20px; padding: 14px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; color: #334155; display: flex; align-items: center; justify-content: space-between;">
+          <span>🎉 <strong>Momentum:</strong> You resolved <strong>${metrics.resolvedRecentCount} tickets</strong> in this ${period} period.</span>
+          ${metrics.recentCsatRating ? `<span style="font-weight: 700; color: #16a34a;">${metrics.recentCsatRating} ★ CSAT</span>` : ""}
+        </div>
+        `
+          : ""
+      }
+
+      <!-- Primary Workspace Call to Action -->
+      <div style="text-align: center; margin-top: 28px;">
+        <a href="${appUrl}/tickets?scope=assigned_to_me" class="btn">Open My Workspace &rarr;</a>
       </div>
     </div>
 
+    <!-- Informative Footer with Preferences Deep-Link -->
     <div class="footer">
       SupportDesk Notification • Sent to ${agent.email}<br>
-      You can manage your digest preferences in <a href="${baseUrl}/dashboard" style="color: #64748b;">Profile Settings</a>.
+      You are receiving this ${isDaily ? "daily" : "weekly"} digest based on your notification preferences.<br>
+      To adjust delivery time or frequency, visit <a href="${appUrl}/dashboard" style="color: #475569; text-decoration: underline;">Profile Settings</a>.
     </div>
   </div>
 </body>
@@ -478,44 +654,54 @@ export class DigestService {
   /**
    * Renders responsive HTML email template for a Supervisor.
    */
-  static renderSupervisorDigestHtml(data: SupervisorDigestData, baseUrl: string = "http://localhost:3000"): string {
+  static renderSupervisorDigestHtml(
+    data: SupervisorDigestData,
+    baseUrl: string = process.env.FRONTEND_URL || "https://busy-desk-project.vercel.app"
+  ): string {
     const { supervisor, metrics, agentWorkloads, atRiskTickets, period } = data;
+    const appUrl = baseUrl.replace(/\/+$/, "");
 
     return `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Support Department Queue Overview</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
-    .container { max-width: 620px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .header { background: #0f172a; color: #ffffff; padding: 24px; }
-    .header h1 { margin: 0 0 4px 0; font-size: 18px; font-weight: 700; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #0f172a; -webkit-font-smoothing: antialiased; }
+    .container { max-width: 640px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .header { background: #0f172a; color: #ffffff; padding: 28px 24px; }
+    .brand-pill { display: inline-block; background: #1e293b; color: #94a3b8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 9999px; margin-bottom: 12px; }
+    .header h1 { margin: 0 0 6px 0; font-size: 20px; font-weight: 700; color: #ffffff; }
     .header p { margin: 0; font-size: 13px; color: #94a3b8; }
     .content { padding: 24px; }
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
-    .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; text-align: center; }
+    .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 8px; text-align: center; }
     .stat-val { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
     .stat-val.alert { color: #dc2626; }
     .stat-label { font-size: 10px; text-transform: uppercase; font-weight: 600; color: #64748b; }
-    .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #334155; margin: 24px 0 12px 0; }
+    .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #334155; margin: 24px 0 10px 0; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
-    th { background: #f8fafc; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; color: #64748b; border-bottom: 1px solid #e2e8f0; }
-    td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; color: #334155; }
-    .btn { display: inline-block; background: #0f172a; color: #ffffff !important; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; text-align: center; }
-    .footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; font-size: 11px; color: #94a3b8; text-align: center; }
+    th { background: #f8fafc; padding: 9px 10px; text-align: left; font-size: 10px; text-transform: uppercase; color: #64748b; border-bottom: 1px solid #e2e8f0; font-weight: 700; }
+    td { padding: 10px 10px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+    .btn { display: inline-block; background: #0f172a; color: #ffffff !important; padding: 11px 22px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; text-align: center; }
+    .footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; font-size: 11px; color: #94a3b8; text-align: center; }
+    @media only screen and (max-width: 480px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
+      <span class="brand-pill">Operations Briefing • Supervisor Overview</span>
       <h1>Support Operations Briefing</h1>
-      <p>Supervisor: ${supervisor.name} • ${data.generatedAt.toLocaleDateString()}</p>
+      <p>Supervisor: ${supervisor.name} • ${data.generatedAt.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
     </div>
 
     <div class="content">
+      <!-- Department Scorecard -->
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-val">${metrics.totalOpenTickets}</div>
@@ -535,7 +721,20 @@ export class DigestService {
         </div>
       </div>
 
-      <div class="section-title">Team Workload Distribution</div>
+      <!-- Unassigned Queue Alert if present -->
+      ${
+        metrics.unassignedCount && metrics.unassignedCount > 0
+          ? `
+        <div style="padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 12px; color: #92400e; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+          <span>⚠️ <strong>${metrics.unassignedCount} Unassigned Tickets</strong> currently awaiting agent assignment.</span>
+          <a href="${appUrl}/tickets" style="color: #b45309; font-weight: 700; text-decoration: none;">Assign &rarr;</a>
+        </div>
+        `
+          : ""
+      }
+
+      <!-- Team Workload Distribution Table -->
+      <div class="section-title">Team Workload & Capacity Matrix</div>
       <table>
         <thead>
           <tr>
@@ -543,6 +742,7 @@ export class DigestService {
             <th>Active Queue</th>
             <th>Breached</th>
             <th>Resolved</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -554,6 +754,7 @@ export class DigestService {
               <td>${w.activeTicketsCount} tickets</td>
               <td style="color: ${w.breachedCount > 0 ? "#dc2626" : "#64748b"}; font-weight: ${w.breachedCount > 0 ? "700" : "normal"};">${w.breachedCount}</td>
               <td>${w.resolvedCount}</td>
+              <td><span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: ${w.capacityStatus === "Over Capacity" ? "#dc2626" : w.capacityStatus === "High Load" ? "#d97706" : "#16a34a"};">${w.capacityStatus || "Optimal"}</span></td>
             </tr>
           `
             )
@@ -561,6 +762,7 @@ export class DigestService {
         </tbody>
       </table>
 
+      <!-- At-Risk & Breaching Tickets -->
       ${
         atRiskTickets.length > 0
           ? `
@@ -579,9 +781,9 @@ export class DigestService {
             .map(
               (t) => `
             <tr>
-              <td><a href="${baseUrl}/tickets/${t.id}" style="color: #0f172a; text-decoration: none; font-weight: 600;">#${t.ticketNumber} ${t.subject}</a></td>
+              <td><a href="${appUrl}/tickets/${t.id}" style="color: #0f172a; text-decoration: none; font-weight: 600;">#${t.ticketNumber} ${t.subject}</a></td>
               <td>${t.assigneeName}</td>
-              <td><span style="color: ${t.priority === "URGENT" ? "#dc2626" : "#d97706"}; font-weight: 600;">${t.priority}</span></td>
+              <td><span style="color: ${t.priority === Priority.URGENT ? "#dc2626" : "#d97706"}; font-weight: 600;">${t.priority}</span></td>
               <td style="color: #64748b;">${t.slaDueAt ? new Date(t.slaDueAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}</td>
             </tr>
           `
@@ -594,18 +796,85 @@ export class DigestService {
       }
 
       <div style="text-align: center; margin-top: 24px;">
-        <a href="${baseUrl}/dashboard" class="btn">View Operational Dashboard &rarr;</a>
+        <a href="${appUrl}/dashboard" class="btn">View Operational Dashboard &rarr;</a>
       </div>
     </div>
 
     <div class="footer">
       SupportDesk Department Summary • Sent to ${supervisor.email}<br>
-      To adjust notification schedules, configure in <a href="${baseUrl}/settings/tags" style="color: #64748b;">System Settings</a>.
+      To adjust notification schedules, configure in <a href="${appUrl}/dashboard" style="color: #64748b;">System Settings</a>.
     </div>
   </div>
 </body>
 </html>
     `.trim();
+  }
+
+  /**
+   * Dispatches a live, on-demand digest directly to a single staff member's email address.
+   * Force-bypasses suppression so the user can verify their digest output immediately.
+   */
+  static async sendUserDigestNow(userId: string, baseUrl?: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        digestFrequency: true,
+        digestTime: true,
+        digestTimezone: true,
+      },
+    });
+
+    if (!user || user.role === Role.CUSTOMER) {
+      throw new Error("Only staff members (Agents and Supervisors) can receive email digests.");
+    }
+
+    const appBaseUrl =
+      baseUrl ||
+      process.env.FRONTEND_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "https://busy-desk-project.vercel.app";
+
+    const period = user.digestFrequency === DigestFrequency.WEEKLY ? "weekly" : "daily";
+
+    if (user.role === Role.AGENT) {
+      const data = await this.getAgentDigestData(user.id, period);
+      const html = this.renderAgentDigestHtml(data, appBaseUrl);
+      const result = await EmailService.sendDigestEmail({
+        to: user.email,
+        recipientName: user.name,
+        role: user.role,
+        subject: `Support Queue Digest (${period === "weekly" ? "Weekly" : "Daily"}): ${data.metrics.assignedOpenCount} Active Tickets`,
+        htmlContent: html,
+      });
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { digestLastSentAt: new Date() },
+      });
+
+      return result;
+    } else {
+      const data = await this.getSupervisorDigestData(user.id, period);
+      const html = this.renderSupervisorDigestHtml(data, appBaseUrl);
+      const result = await EmailService.sendDigestEmail({
+        to: user.email,
+        recipientName: user.name,
+        role: user.role,
+        subject: `Operations Queue Digest (${period === "weekly" ? "Weekly" : "Daily"}): ${data.metrics.totalOpenTickets} Total Open Tickets`,
+        htmlContent: html,
+      });
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { digestLastSentAt: new Date() },
+      });
+
+      return result;
+    }
   }
 
   /**
@@ -618,7 +887,11 @@ export class DigestService {
   }) {
     const frequency = params.frequency || DigestFrequency.DAILY;
     const forceAll = !!params.forceAll;
-    const baseUrl = params.baseUrl || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl =
+      params.baseUrl ||
+      process.env.FRONTEND_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "https://busy-desk-project.vercel.app";
 
     // Query active staff users opting in to this frequency
     const users = await prisma.user.findMany({

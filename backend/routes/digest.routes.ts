@@ -96,3 +96,42 @@ export async function triggerCronDigestRoute(req: Request): Promise<NextResponse
     );
   }
 }
+
+export async function sendMyDigestNowRoute(req: Request): Promise<NextResponse> {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Dynamic base URL detection from request headers
+    const origin = req.headers.get("origin") || req.headers.get("referer");
+    let baseUrl: string | undefined = undefined;
+    if (origin) {
+      try {
+        const parsed = new URL(origin);
+        baseUrl = `${parsed.protocol}//${parsed.host}`;
+      } catch {}
+    }
+
+    const result = await DigestController.sendMyDigestNow(user, baseUrl);
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error || "Failed to dispatch digest email." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Digest email successfully dispatched to ${user.email}`,
+      recipient: user.email,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to dispatch digest." },
+      { status: 400 }
+    );
+  }
+}
+

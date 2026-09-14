@@ -147,34 +147,34 @@ sequenceDiagram
     participant SSE as ticketBroadcaster (SSE)
     actor Agent as Assigned Agent (Sarah)
 
-    Customer->>Browser: Enters reply message & clicks "Send Reply"
-    Browser->>Proxy: POST /api/tickets/{ticketId}/customer-reply { body: "Here are the requested logs." }
-    Proxy->>Route: Forward to http://localhost:3001/api/tickets/{ticketId}/customer-reply
-    Route->>Auth: Verify signed HTTP-only cookie (`session_token`) via `jose`
-    Auth-->>Route: Authenticated Session (userId: "cust_1", role: "CUSTOMER", status: "ACTIVE")
+    Customer->>Browser: Enters reply message and clicks Send Reply
+    Browser->>Proxy: POST /api/tickets/:id/customer-reply (with message body)
+    Proxy->>Route: Forward to backend on port 3001
+    Route->>Auth: Verify signed HTTP-only session cookie via jose
+    Auth-->>Route: Authenticated Session (userId: cust_1, role: CUSTOMER)
     Route->>Ctrl: ReplyController.addCustomerReply(ticketId, data, sessionUser)
-    Ctrl->>DB: Fetch ticket by ID & verify requester ownership (requesterId === "cust_1")
-    Note over Ctrl,DB: Ticket is currently in PENDING status (waiting on customer).
+    Ctrl->>DB: Fetch ticket by ID and verify requester ownership
+    Note over Ctrl,DB: Ticket is currently in PENDING status (waiting on customer)
     
     Ctrl->>DB: BEGIN Transaction
-    Ctrl->>DB: INSERT INTO "replies" (ticketId, authorId, authorType="CUSTOMER", body, isInternal=false)
-    Ctrl->>DB: INSERT INTO "audit_logs" (eventType="REPLY_ADDED", actorName="Alice Henderson")
+    Ctrl->>DB: INSERT reply (authorType: CUSTOMER, isInternal: false)
+    Ctrl->>DB: INSERT audit_log (eventType: REPLY_ADDED, actor: Alice Henderson)
     
-    Ctrl->>Ctrl: SlaController.computeStateOnStatusChange(ticket, Status.OPEN, now)
-    Note over Ctrl: Read frozen slaPausedRemainingSeconds.<br/>Compute resumed slaDueAt = now + slaPausedRemainingSeconds.<br/>Clear slaPausedAt = null, slaPausedRemainingSeconds = null.
+    Ctrl->>Ctrl: SlaController.computeStateOnStatusChange(ticket, OPEN, now)
+    Note over Ctrl: Read frozen paused seconds.<br/>Compute resumed deadline = now + paused seconds.<br/>Clear paused state.
     
-    Ctrl->>DB: UPDATE "tickets" SET status="OPEN", slaDueAt=resumedDueAt, slaPausedAt=null, slaPausedRemainingSeconds=null
-    Ctrl->>DB: INSERT INTO "audit_logs" (eventType="STATUS_CHANGED", oldValue="PENDING", newValue="OPEN", reason="Customer replied; SLA clock resumed")
-    Ctrl->>DB: UPSERT "sla_alerts" (sync alert record to resumed deadline)
+    Ctrl->>DB: UPDATE ticket (status: OPEN, slaDueAt: resumedDueAt, slaPausedAt: null)
+    Ctrl->>DB: INSERT audit_log (STATUS_CHANGED: PENDING to OPEN, SLA clock resumed)
+    Ctrl->>DB: UPSERT sla_alerts (sync alert to resumed deadline)
     Ctrl->>DB: COMMIT Transaction
     DB-->>Ctrl: Transaction Committed Successfully
     
-    Ctrl->>SSE: ticketBroadcaster.broadcast(ticketId, { type: "REPLY_ADDED", reply })
+    Ctrl->>SSE: ticketBroadcaster.broadcast(ticketId, reply)
     SSE-->>Agent: Live message pushed to active agent workspace without page reload
-    Ctrl->>Ctrl: invalidateMetricsCache() (clears 15s supervisor dashboard cache)
-    Ctrl-->>Route: Return { success: true, reply, ticket }
-    Route-->>Browser: HTTP 201 Created { reply, ticket }
-    Browser->>Customer: Reply appears in conversation feed; status badge switches to OPEN; SLA countdown resumes ticking!
+    Ctrl->>Ctrl: invalidateMetricsCache (clears 15s supervisor dashboard cache)
+    Ctrl-->>Route: Return success payload
+    Route-->>Browser: HTTP 201 Created
+    Browser->>Customer: Timeline appends reply, status changes to OPEN, SLA countdown resumes ticking
 ```
 
 ---

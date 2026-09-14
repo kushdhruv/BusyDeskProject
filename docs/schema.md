@@ -14,6 +14,9 @@ Stores user identities across all three system access tiers (`SUPERVISOR`, `AGEN
 - `status` (`Enum: PENDING_SETUP | ACTIVE | SUSPENDED`, Default: `ACTIVE`) — Account state. Suspended users are denied session validation.
 - `digestEnabled` (`Boolean`, Default: `true`) — Daily/weekly email digest opt-in.
 - `digestFrequency` (`Enum: DAILY | WEEKLY | NEVER`, Default: `DAILY`) — Delivery frequency.
+- `digestTime` (`String`, Default: `"09:00"`) — Preferred delivery time in HH:mm format.
+- `digestDayOfWeek` (`Int`, Default: `1`) — Preferred delivery day of week (1 = Monday ... 7 = Sunday) for weekly summaries.
+- `digestTimezone` (`String`, Default: `"UTC"`) — User's configured timezone.
 - `digestLastSentAt` (`DateTime?`, Nullable) — Last successful digest dispatch timestamp.
 - `createdAt` (`DateTime`, Default: `now()`) — Registration timestamp.
 - `updatedAt` (`DateTime`, Auto-update) — Last update timestamp.

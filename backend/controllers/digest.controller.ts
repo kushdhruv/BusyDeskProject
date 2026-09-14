@@ -1,6 +1,6 @@
 /**
  * Digest Controller
- * Handles user preferences, HTML previews, and scheduled cron execution.
+ * Handles user preferences, HTML previews, personal on-demand dispatches, and scheduled cron execution.
  */
 
 import { Role, DigestFrequency } from "@prisma/client";
@@ -20,6 +20,9 @@ export class DigestController {
         email: true,
         digestEnabled: true,
         digestFrequency: true,
+        digestTime: true,
+        digestDayOfWeek: true,
+        digestTimezone: true,
         digestLastSentAt: true,
       },
     });
@@ -36,7 +39,13 @@ export class DigestController {
    */
   static async updateMyPreferences(
     actor: SessionUser,
-    data: { enabled?: boolean; frequency?: DigestFrequency }
+    data: {
+      enabled?: boolean;
+      frequency?: DigestFrequency;
+      time?: string;
+      dayOfWeek?: number;
+      timezone?: string;
+    }
   ) {
     const updateData: any = {};
     if (data.enabled !== undefined) updateData.digestEnabled = Boolean(data.enabled);
@@ -50,6 +59,25 @@ export class DigestController {
       }
     }
 
+    if (data.time !== undefined && typeof data.time === "string") {
+      const cleanTime = data.time.trim();
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (timeRegex.test(cleanTime)) {
+        updateData.digestTime = cleanTime;
+      }
+    }
+
+    if (data.dayOfWeek !== undefined) {
+      const dow = Number(data.dayOfWeek);
+      if (dow >= 1 && dow <= 7) {
+        updateData.digestDayOfWeek = dow;
+      }
+    }
+
+    if (data.timezone !== undefined && typeof data.timezone === "string") {
+      updateData.digestTimezone = data.timezone.trim().slice(0, 64);
+    }
+
     return prisma.user.update({
       where: { id: actor.id },
       data: updateData,
@@ -58,6 +86,9 @@ export class DigestController {
         email: true,
         digestEnabled: true,
         digestFrequency: true,
+        digestTime: true,
+        digestDayOfWeek: true,
+        digestTimezone: true,
         digestLastSentAt: true,
       },
     });
@@ -99,6 +130,17 @@ export class DigestController {
     const html = DigestService.renderSupervisorDigestHtml(data);
 
     return { data, html };
+  }
+
+  /**
+   * Sends an immediate personalized digest to the authenticated staff member's email.
+   */
+  static async sendMyDigestNow(actor: SessionUser, baseUrl?: string) {
+    if (actor.role === Role.CUSTOMER) {
+      throw new Error("Customers do not receive staff email digests.");
+    }
+
+    return DigestService.sendUserDigestNow(actor.id, baseUrl);
   }
 
   /**

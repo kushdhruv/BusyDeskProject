@@ -149,4 +149,55 @@ describe("Email Digest Unit Tests", () => {
       expect(emptyAgentData.suppressReason).toBeDefined();
     });
   });
+
+  describe("Enriched Digest Features", () => {
+    it("renders customer follow-up section and resolved momentum banner", () => {
+      const enrichedData: AgentDigestData = {
+        ...mockAgentData,
+        awaitingReplies: [
+          {
+            id: "t-rep-1",
+            ticketNumber: 2011,
+            subject: "Error connecting via SSH key",
+            priority: Priority.HIGH,
+            customerName: "Alice Walker",
+            lastReplyTime: new Date("2026-09-13T08:15:00Z"),
+          },
+        ],
+        recentResolvedHighlights: [
+          {
+            id: "t-res-1",
+            ticketNumber: 1999,
+            subject: "Reset multi-factor authentication",
+            resolvedAt: new Date("2026-09-13T07:00:00Z"),
+          },
+        ],
+      };
+
+      const html = DigestService.renderAgentDigestHtml(enrichedData, "https://support.busy.com");
+
+      expect(html).toContain("Customer Follow-ups Awaiting Reply");
+      expect(html).toContain("#2011 Error connecting via SSH key");
+      expect(html).toContain("Alice Walker");
+      expect(html).toContain("Momentum:");
+      expect(html).toContain("3 tickets");
+    });
+
+    it("renders weekly digest header and unassigned tickets warning for supervisor", () => {
+      const weeklySupervisorData: SupervisorDigestData = {
+        ...mockSupervisorData,
+        period: "weekly",
+        metrics: {
+          ...mockSupervisorData.metrics,
+          unassignedCount: 5,
+        },
+      };
+
+      const html = DigestService.renderSupervisorDigestHtml(weeklySupervisorData, "https://support.busy.com");
+
+      expect(html).toContain("5 Unassigned Tickets");
+      expect(html).toContain("Resolved (weekly)");
+    });
+  });
 });
+

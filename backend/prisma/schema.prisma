@@ -113,6 +113,9 @@ model User {
   // Email digest preferences
   digestEnabled       Boolean          @default(true)
   digestFrequency     DigestFrequency  @default(DAILY)
+  digestTime          String           @default("09:00")
+  digestDayOfWeek     Int              @default(1)
+  digestTimezone      String           @default("UTC")
   digestLastSentAt    DateTime?
 
   @@map("users")
